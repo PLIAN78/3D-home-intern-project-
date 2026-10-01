@@ -6,6 +6,7 @@ import type { ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import { Trees } from "@/components/viewer/Trees";
 import type { SiteContext } from "@/lib/community/siteContext";
+import { withGroundXray } from "@/lib/materials/groundXray";
 import { buildContextGeometry, buildLotFills, buildSiteHomes, lotOutlineSegments } from "@/lib/geometry/siteGeometry";
 import type { Community, Lot } from "@/lib/models/community";
 import { buildState, type LotProgress } from "@/lib/models/construction";
@@ -45,12 +46,13 @@ export function RealWorldContext({ context, community, showStreetNames }: { cont
   );
   return (
     <group name="RealWorldContext">
-      <mesh geometry={geo.ground} material={contextMaterials.ground()} receiveShadow />
-      <mesh geometry={geo.green} material={contextMaterials.green()} receiveShadow />
-      <mesh geometry={geo.woods} material={contextMaterials.woods()} receiveShadow />
-      <mesh geometry={geo.water} material={contextMaterials.water()} />
-      <mesh geometry={geo.paths} material={contextMaterials.paths()} receiveShadow />
-      <mesh geometry={geo.roads} material={contextMaterials.roads()} receiveShadow />
+      {/* Fixed draw order: these can all be transparent at once (basement x-ray). */}
+      <mesh geometry={geo.ground} material={contextMaterials.ground()} receiveShadow renderOrder={-4} />
+      <mesh geometry={geo.green} material={contextMaterials.green()} receiveShadow renderOrder={-3} />
+      <mesh geometry={geo.woods} material={contextMaterials.woods()} receiveShadow renderOrder={-3} />
+      <mesh geometry={geo.water} material={contextMaterials.water()} renderOrder={-3} />
+      <mesh geometry={geo.paths} material={contextMaterials.paths()} receiveShadow renderOrder={-2} />
+      <mesh geometry={geo.roads} material={contextMaterials.roads()} receiveShadow renderOrder={-1} />
       <mesh geometry={geo.buildings} material={contextMaterials.buildings()} castShadow receiveShadow />
       <mesh geometry={geo.roofs} material={contextMaterials.roofs()} receiveShadow />
       <Trees trees={geo.trees} />
@@ -96,8 +98,22 @@ export function LotLayer({ community, progress, colouring, selectedLotId, skipHo
     },
     [colouring, progress],
   );
-  const fills = useMemo(() => buildLotFills(community.lots, colourOf), [community, colourOf]);
-  useEffect(() => () => fills.forEach((f) => f.geometry.dispose()), [fills]);
+  const fills = useMemo(
+    () =>
+      buildLotFills(community.lots, colourOf).map((f) => ({
+        ...f,
+        material: withGroundXray(new THREE.MeshStandardMaterial({ color: f.color, roughness: 0.95, transparent: true, opacity: 0.7, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 })),
+      })),
+    [community, colourOf],
+  );
+  useEffect(
+    () => () =>
+      fills.forEach((f) => {
+        f.geometry.dispose();
+        f.material.dispose();
+      }),
+    [fills],
+  );
   const outline = useMemo(() => lotOutlineSegments(community.lots), [community]);
   const homes = useMemo(() => buildSiteHomes(community.lots, progress, skipHomeOnLotId), [community, progress, skipHomeOnLotId]);
   useEffect(() => () => homes.meshes.forEach((m) => m.geometry.dispose()), [homes]);
@@ -121,6 +137,7 @@ export function LotLayer({ community, progress, colouring, selectedLotId, skipHo
         <mesh
           key={f.color}
           geometry={f.geometry}
+          material={f.material}
           receiveShadow
           onClick={
             onSelectLot
@@ -148,9 +165,7 @@ export function LotLayer({ community, progress, colouring, selectedLotId, skipHo
                 }
               : undefined
           }
-        >
-          <meshStandardMaterial color={f.color} roughness={0.95} transparent opacity={0.7} depthWrite={false} polygonOffset polygonOffsetFactor={-4} polygonOffsetUnits={-4} />
-        </mesh>
+        />
       ))}
       <Line points={outline} segments color="#fbf8ef" lineWidth={1} transparent opacity={0.7} />
       {blocks.length > 0 && <Line points={blocks} segments color="#fbf8ef" lineWidth={1} dashed dashSize={2} gapSize={1.5} transparent opacity={0.6} />}

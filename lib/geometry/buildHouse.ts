@@ -52,9 +52,12 @@ export interface HouseGeometry {
  * surface keys. Callers own disposal (see disposeHouseGeometry).
  */
 export function buildHouseGeometry(model: HouseModel): HouseGeometry {
-  const floors = sortedFloors(model).map((floor, index): FloorGeometry => {
+  const sorted = sortedFloors(model);
+  const floors = sorted.map((floor, index): FloorGeometry => {
     const footprint = resolveFootprint(floor);
-    const walls = generateWalls(floor, footprint);
+    // Walls stop 2 cm under the finished floor of the level above.
+    const above = sorted[index + 1];
+    const walls = generateWalls(floor, footprint, above ? above.elevation - 0.02 : undefined);
     const { slab, ceiling } = generateFloorSurfaces(floor, footprint);
     return {
       floorId: floor.id,

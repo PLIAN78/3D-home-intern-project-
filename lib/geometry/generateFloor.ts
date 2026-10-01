@@ -65,21 +65,46 @@ export function generateFloorSurfaces(floor: Floor, footprint: Point2D[]) {
       ]);
     }
   };
-  edgeLoop(contour);
+  // The rim sits 2 cm inside the slab outline so it never shares a plane with
+  // the exterior wall faces that run past it.
+  edgeLoop(insetLoop(contour, 0.02));
   for (const h of holes) edgeLoop(h);
 
   // Floors traced without rooms still get a finished floor across the footprint.
   if (!floor.rooms.length) slab.get(floor.belowGrade ? "concrete" : "flooring").flatPolygon(contour, holes, floor.elevation, "up");
 
-  for (const room of floor.rooms) {
-    if (room.polygon.length < 3) continue;
+  // Room outlines from drawings often overlap (open-concept areas, labels' rooms).
+  // Coplanar finishes would flicker, so stack them 2 mm apart: largest lowest,
+  // smaller rooms (baths, closets) on top.
+  const rooms = floor.rooms.filter((r) => r.polygon.length >= 3).sort((a, b) => polygonArea(b.polygon) - polygonArea(a.polygon));
+  rooms.forEach((room, i) => {
     const poly = ensureCCW(room.polygon.map(v2));
     const roomHoles = holes.filter((h) => h.every((p) => insideLoose(p, poly)));
-    slab.get(roomFinishSurface(room.finish)).flatPolygon(poly, roomHoles, floor.elevation, "up");
-  }
+    slab.get(roomFinishSurface(room.finish)).flatPolygon(poly, roomHoles, floor.elevation + Math.min(i, 15) * 0.002, "up");
+  });
 
   ceiling.get("ceiling").flatPolygon(contour, holes, floor.elevation + floor.ceilingHeight - 0.002, "down");
   return { slab, ceiling };
+}
+
+/** Offset a CCW loop inward by d (miter joins, clamped at sharp corners). */
+function insetLoop(loop: THREE.Vector2[], d: number): THREE.Vector2[] {
+  const n = loop.length;
+  return loop.map((p, i) => {
+    const a = loop[(i - 1 + n) % n];
+    const b = loop[(i + 1) % n];
+    const e1 = new THREE.Vector2(p.x - a.x, p.y - a.y).normalize();
+    const e2 = new THREE.Vector2(b.x - p.x, b.y - p.y).normalize();
+    // Inward normals of a CCW loop point left of each edge.
+    const n1 = new THREE.Vector2(-e1.y, e1.x);
+    const n2 = new THREE.Vector2(-e2.y, e2.x);
+    const m = n1.clone().add(n2);
+    const len = m.length();
+    if (len < 1e-6) return p.clone();
+    m.divideScalar(len);
+    const scale = Math.min(4, 1 / Math.max(0.25, m.dot(n1)));
+    return new THREE.Vector2(p.x + m.x * d * scale, p.y + m.y * d * scale);
+  });
 }
 
 function insideLoose(p: THREE.Vector2, poly: THREE.Vector2[]): boolean {

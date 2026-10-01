@@ -13,6 +13,7 @@ import { CommunityScene } from "./CommunityScene";
 import { GeoCommunityScene } from "./GeoCommunityScene";
 import { separationMetres } from "./ExplodedViewController";
 import { House3D, useHouseGeometry } from "./House3D";
+import { GroundXray, useBasementXray } from "./GroundXray";
 import { SceneEnvironment } from "./SceneEnvironment";
 import { ViewerContextProvider } from "./ViewerContext";
 
@@ -60,6 +61,8 @@ export default function HouseViewer({ projectId, projectName, house, community, 
   );
   const offset = useMemo(() => houseOffsetOnLot(lot, info), [lot, info]);
   const focus = useMemo(() => lotToWorld(lot, houseCentreLocal(lot, info)), [lot, info]);
+  const xray = useBasementXray(geometry);
+  const xrayRadius = Math.max(info.planSize.width, info.planSize.depth) / 2 + 1.5;
   const groundFloor = house.floors.find((f) => !f.belowGrade && f.elevation >= 0);
   const customerHouse = useMemo(
     () => ({
@@ -112,6 +115,7 @@ export default function HouseViewer({ projectId, projectName, house, community, 
             </CommunityScene>
           )}
           <CameraController lot={lot} house={info} verticalShift={verticalShift} geo={!!community.geo} />
+          <GroundXray active={xray} centre={focus} radius={xrayRadius} />
           <ScreenshotHandler fileName={`${projectName.replace(/\s+/g, "-").toLowerCase()}-view`} />
         </Suspense>
       </ViewerContextProvider>

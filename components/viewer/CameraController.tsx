@@ -5,6 +5,7 @@ import { CameraControls } from "@react-three/drei";
 import type { Lot } from "@/lib/models/community";
 import { cameraForView, communityCamera, houseCentreLocal, lotToWorld, type HouseFootprintInfo } from "@/lib/viewer/placement";
 import { useViewerStore } from "@/stores/viewerStore";
+import { useAdaptiveNear } from "./useAdaptiveNear";
 
 interface Props {
   lot: Lot;
@@ -21,6 +22,7 @@ interface Props {
  */
 export function CameraController({ lot, house, verticalShift, geo = false }: Props) {
   const ref = useRef<ComponentRef<typeof CameraControls>>(null);
+  useAdaptiveNear(ref);
   const mode = useViewerStore((s) => s.mode);
   const request = useViewerStore((s) => s.cameraRequest);
   const first = useRef(true);

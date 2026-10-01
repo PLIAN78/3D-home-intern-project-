@@ -5,6 +5,7 @@ import { Canvas } from "@react-three/fiber";
 import { CameraControls } from "@react-three/drei";
 import * as THREE from "three";
 import { SceneEnvironment } from "@/components/viewer/SceneEnvironment";
+import { useAdaptiveNear } from "@/components/viewer/useAdaptiveNear";
 import type { Community, Lot } from "@/lib/models/community";
 import { BUILD_STATE_LABEL, buildState, progressPercent, type LotProgress } from "@/lib/models/construction";
 import { communityCamera, type V3 } from "@/lib/viewer/placement";
@@ -40,6 +41,7 @@ function overview(community: Community): { position: V3; target: V3 } {
 /** Lives inside the canvas so the controls exist when we first frame the view. */
 function DashboardCamera({ selected, initial }: { selected: Lot | null; initial: { position: V3; target: V3 } }) {
   const ref = useRef<ComponentRef<typeof CameraControls>>(null);
+  useAdaptiveNear(ref);
   const first = useRef(true);
   useEffect(() => {
     const c = ref.current;

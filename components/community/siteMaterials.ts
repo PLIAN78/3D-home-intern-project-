@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { BuildSurface } from "@/lib/geometry/siteGeometry";
 import type { Lot } from "@/lib/models/community";
 import type { BuildState } from "@/lib/models/construction";
+import { withGroundXray } from "@/lib/materials/groundXray";
 import { getSiteMaterial, siteTexture } from "@/lib/materials/materialFactory";
 
 /** Shared, cached materials for real-world community scenes. */
@@ -16,13 +17,14 @@ function textured(key: string, pattern: "grass" | "concrete", color: string, acc
 const flat = (key: string, params: THREE.MeshStandardMaterialParameters) => getSiteMaterial(key, () => new THREE.MeshStandardMaterial(params));
 const offset = { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 };
 
+// Ground-type surfaces turn see-through around the house when a basement is on show.
 export const contextMaterials = {
-  ground: () => textured("geo-ground", "grass", "#7c9455", "#6b8449", [8, 8]),
-  green: () => textured("geo-green", "grass", "#86a95a", "#76984c", [6, 6], offset),
-  woods: () => flat("geo-woods", { color: "#4f6b3c", roughness: 1, ...offset }),
-  water: () => flat("geo-water", { color: "#5d8fb0", roughness: 0.15, metalness: 0.1, envMapIntensity: 1.2, ...offset }),
-  roads: () => textured("geo-asphalt", "concrete", "#56585c", "#484a4e", [4, 4], { roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
-  paths: () => flat("geo-path", { color: "#c9c2b1", roughness: 0.95, ...offset }),
+  ground: () => withGroundXray(textured("geo-ground", "grass", "#7c9455", "#6b8449", [8, 8])),
+  green: () => withGroundXray(textured("geo-green", "grass", "#86a95a", "#76984c", [6, 6], offset)),
+  woods: () => withGroundXray(flat("geo-woods", { color: "#4f6b3c", roughness: 1, ...offset })),
+  water: () => withGroundXray(flat("geo-water", { color: "#5d8fb0", roughness: 0.15, metalness: 0.1, envMapIntensity: 1.2, ...offset })),
+  roads: () => withGroundXray(textured("geo-asphalt", "concrete", "#56585c", "#484a4e", [4, 4], { roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })),
+  paths: () => withGroundXray(flat("geo-path", { color: "#c9c2b1", roughness: 0.95, ...offset })),
   buildings: () => flat("geo-bldg", { color: "#e6e1d8", roughness: 0.9 }),
   roofs: () => flat("geo-roof", { color: "#77777a", roughness: 0.85 }),
 };

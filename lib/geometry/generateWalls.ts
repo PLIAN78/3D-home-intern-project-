@@ -85,12 +85,19 @@ export interface WallBuildResult {
   interior: SurfaceBuckets<SurfaceKey>;
 }
 
-export function generateWalls(floor: Floor, footprint: Point2D[] | undefined): WallBuildResult {
+/**
+ * `maxTop` caps wall tops just under the finished floor above, so a wall that
+ * runs up into the next slab never shares a plane with that floor's surface
+ * (coplanar faces flicker / z-fight).
+ */
+export function generateWalls(floor: Floor, footprint: Point2D[] | undefined, maxTop?: number): WallBuildResult {
   const shell = new SurfaceBuckets<SurfaceKey>();
   const interior = new SurfaceBuckets<SurfaceKey>();
   const centre = footprint ? polygonCentroid(footprint) : { x: 0, y: 0 };
 
-  for (const wall of floor.walls) {
+  for (const source of floor.walls) {
+    const capped = maxTop !== undefined && floor.elevation + source.height > maxTop ? Math.max(0.5, maxTop - floor.elevation) : source.height;
+    const wall = capped === source.height ? source : { ...source, height: capped };
     const L = wallLength(wall);
     if (L < 0.05) continue;
     const angle = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);

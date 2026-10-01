@@ -7,6 +7,7 @@ import * as THREE from "three";
 import type { Community, Lot } from "@/lib/models/community";
 import { addBox, MeshBuilder, planFrame, type Vec3 } from "@/lib/geometry/meshBuilder";
 import { placeholderFor, type PlaceholderSurface } from "@/lib/geometry/placeholderHouse";
+import { withGroundXray } from "@/lib/materials/groundXray";
 import { getSiteMaterial, siteTexture } from "@/lib/materials/materialFactory";
 import { houseOffsetOnLot, lotToWorld, type HouseFootprintInfo } from "@/lib/viewer/placement";
 import { Trees } from "./Trees";
@@ -17,14 +18,15 @@ import { Trees } from "./Trees";
 function texturedMaterial(key: string, pattern: "grass" | "concrete", color: string, accent: string, tile: [number, number], extra: THREE.MeshStandardMaterialParameters = {}) {
   return getSiteMaterial(key, () => {
     const tex = siteTexture(key, pattern, color, accent, tile);
-    return new THREE.MeshStandardMaterial({ map: tex?.map ?? null, roughness: 0.95, ...extra });
+    // Ground-type surfaces turn see-through around the house when a basement is on show.
+    return withGroundXray(new THREE.MeshStandardMaterial({ map: tex?.map ?? null, roughness: 0.95, ...extra }));
   });
 }
 
 const groundMat = () => texturedMaterial("grass", "grass", "#6f8d4a", "#5c7a3c", [5, 5]);
 const asphaltMat = () => texturedMaterial("asphalt", "concrete", "#4a4c50", "#3a3c40", [4, 4], { roughness: 0.9 });
 const concreteMat = () => texturedMaterial("sidewalk", "concrete", "#cfccc5", "#b9b6af", [2, 2], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-const curbMat = () => getSiteMaterial("curb", () => new THREE.MeshStandardMaterial({ color: "#bdbab3", roughness: 0.9 }));
+const curbMat = () => getSiteMaterial("curb", () => withGroundXray(new THREE.MeshStandardMaterial({ color: "#bdbab3", roughness: 0.9 })));
 
 function placeholderMaterial(lot: Lot, surface: PlaceholderSurface): THREE.Material {
   const { bodyColor, roofColor } = lot.placeholder;
@@ -202,10 +204,11 @@ export function CommunityScene({ community, selectedLotId, showBaseModel, showLo
 
   return (
     <group name="Community">
-      <mesh geometry={site.ground} material={groundMat()} receiveShadow />
-      <mesh geometry={site.asphalt} material={asphaltMat()} receiveShadow />
-      <mesh geometry={site.concrete} material={concreteMat()} receiveShadow />
-      <mesh geometry={site.curb} material={curbMat()} receiveShadow castShadow />
+      {/* Fixed draw order: these can all be transparent at once (basement x-ray). */}
+      <mesh geometry={site.ground} material={groundMat()} receiveShadow renderOrder={-3} />
+      <mesh geometry={site.asphalt} material={asphaltMat()} receiveShadow renderOrder={-2} />
+      <mesh geometry={site.concrete} material={concreteMat()} receiveShadow renderOrder={-1} />
+      <mesh geometry={site.curb} material={curbMat()} receiveShadow castShadow renderOrder={-1} />
 
       <Line points={lotLines} segments color="#f4f1e8" lineWidth={1} transparent opacity={0.55} />
       {selectedOutline && <Line points={selectedOutline} color="#f0a43a" lineWidth={3} />}
