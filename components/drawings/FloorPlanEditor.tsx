@@ -30,7 +30,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { patchDrawing, saveHouseModelRequest } from "@/lib/drawings/api";
+import { patchDrawing, savePlanSetVariants, saveHouseModelRequest } from "@/lib/drawings/api";
+import { composeHouseModel, LEVEL_LABEL, variantFor, type FloorVariant, type LevelId, type PlanSelection } from "@/lib/models/planSet";
 import { countUnverified, deleteElement, dist, scaleFloor } from "@/lib/editor/editorOps";
 import type { ProjectBundle } from "@/lib/data/repository";
 import type { Drawing, DrawingCalibration } from "@/lib/models/drawing";
@@ -66,11 +67,51 @@ interface Props {
   drawings: Drawing[];
   initialFloorId?: string;
   initialDrawingId?: string;
+  /** Drawing-set projects: which elevation / layouts to edit. */
+  planSelection?: PlanSelection;
 }
 
-export function FloorPlanEditor({ bundle, drawings: initialDrawings, initialFloorId, initialDrawingId }: Props) {
+/** Prefix for synthetic "drawings" that show drawing-set sheets under their floor. */
+const SHEET = "sheet:";
+
+export function FloorPlanEditor({ bundle, drawings: uploaded, planSelection, initialFloorId, initialDrawingId }: Props) {
   const router = useRouter();
-  const { project } = bundle;
+  const { project, planSet } = bundle;
+  const projectId = project.id;
+
+  // Drawing-set projects: edit the composed home for one elevation, each floor
+  // over its own (already scaled + aligned) sheet.
+  const planContext = useMemo(() => {
+    if (!planSet || !planSelection) return null;
+    const house = composeHouseModel(planSet, planSelection, { id: bundle.house.id, projectId: projectId, name: bundle.house.name });
+    const variantByFloor: Record<string, FloorVariant> = {};
+    for (const f of house.floors) {
+      const v = variantFor(planSet, planSelection.elevationId, f.id as LevelId, planSelection.options[f.id as LevelId] ?? null);
+      if (v) variantByFloor[f.id] = v;
+    }
+    const sheets: Drawing[] = Object.entries(variantByFloor).map(([floorId, v]) => ({
+      id: `${SHEET}${v.id}`,
+      projectId: projectId,
+      fileName: `Sheet ${v.page} · ${LEVEL_LABEL[v.levelId]}${v.optionId ? ` · ${planSet.options.find((o) => o.id === v.optionId)?.name ?? ""}` : ""}`,
+      contentType: "image/png",
+      sizeBytes: 0,
+      category: "floor-plan",
+      floorId,
+      storageKey: v.sheet.rasterKey,
+      rasterKey: v.sheet.rasterKey,
+      rasterWidth: v.sheet.width,
+      rasterHeight: v.sheet.height,
+      uploadStatus: "uploaded",
+      processingStatus: v.reviewed ? "reviewed" : "needs-review",
+      calibration: { metresPerPixel: v.sheet.metresPerPixel, originPx: v.sheet.originPx, calibrated: true },
+      createdAt: "",
+      updatedAt: "",
+    }));
+    return { house, variantByFloor, sheets };
+  }, [planSet, planSelection, bundle.house, projectId]);
+
+  const sourceHouse = planContext?.house ?? bundle.house;
+  const initialDrawings = useMemo(() => [...(planContext?.sheets ?? []), ...uploaded], [planContext, uploaded]);
   const [drawings, setDrawings] = useState(initialDrawings);
   const [fitNonce, setFitNonce] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -93,12 +134,12 @@ export function FloorPlanEditor({ bundle, drawings: initialDrawings, initialFloo
 
   // Initialise once per page load.
   useEffect(() => {
-    const floors = sortedFloors(bundle.house);
+    const floors = sortedFloors(sourceHouse);
     const first = initialFloorId && floors.some((f) => f.id === initialFloorId) ? initialFloorId : (floors.find((f) => !f.belowGrade) ?? floors[0])?.id;
     const d = initialDrawings.find((x) => x.id === initialDrawingId) ?? initialDrawings.find((x) => x.floorId === first);
     // The canvas mounts (and fits itself) once the store has a floor.
-    useEditorStore.getState().init(structuredClone(bundle.house), first ?? "", d?.id ?? null, calibrationFor(d));
-  }, [bundle.house, initialDrawings, initialFloorId, initialDrawingId]);
+    useEditorStore.getState().init(structuredClone(sourceHouse), first ?? "", d?.id ?? null, calibrationFor(d));
+  }, [sourceHouse, initialDrawings, initialFloorId, initialDrawingId]);
 
   const floors = useMemo(() => sortedFloors(model), [model]);
   const floor = floors.find((f) => f.id === floorId);
@@ -113,7 +154,8 @@ export function FloorPlanEditor({ bundle, drawings: initialDrawings, initialFloo
 
   const persistCalibration = useCallback((id: string | null, c: DrawingCalibration) => {
     const d = drawings.find((x) => x.id === id);
-    if (!d || JSON.stringify(d.calibration) === JSON.stringify(c)) return;
+    // Drawing-set sheets store their mapping on the plan set (saved with the floors).
+    if (!d || d.id.startsWith(SHEET) || JSON.stringify(d.calibration) === JSON.stringify(c)) return;
     void patchDrawing(d.id, { calibration: c })
       .then((u) => setDrawings((list) => list.map((x) => (x.id === u.id ? u : x))))
       .catch(() => undefined);
@@ -139,9 +181,30 @@ export function FloorPlanEditor({ bundle, drawings: initialDrawings, initialFloo
       const tracedFloors = s.model.floors.filter((f) => f.walls.length);
       if (!tracedFloors.length) return void toast.error("Nothing to save yet", { description: "Trace at least one wall first." });
       const usesDrawing = !!s.drawingId;
-      if (usesDrawing && !s.calibration.calibrated && !window.confirm("This drawing's scale hasn't been calibrated, so dimensions may be wrong.\n\nSave anyway? (Use the Scale tool to calibrate.)")) return;
+      if (!planSet && usesDrawing && !s.calibration.calibrated && !window.confirm("This drawing's scale hasn't been calibrated, so dimensions may be wrong.\n\nSave anyway? (Use the Scale tool to calibrate.)")) return;
       setSaving(true);
       try {
+        if (planSet && planContext) {
+          // Write reviewed floors back into the drawing set; the server recomposes the home.
+          const sheet = s.drawingId?.startsWith(SHEET) ? s.drawingId.slice(SHEET.length) : null;
+          await savePlanSetVariants(
+            project.id,
+            planSet.id,
+            s.model.floors
+              .filter((f) => planContext.variantByFloor[f.id])
+              .map((f) => {
+                const v = planContext.variantByFloor[f.id];
+                const current = v.id === sheet;
+                return { variantId: v.id, floor: f, ...(current ? { sheetOrigin: s.calibration.originPx, metresPerPixel: s.calibration.metresPerPixel } : {}) };
+              }),
+          );
+          useEditorStore.getState().markSaved(s.model);
+          const pending = s.model.floors.reduce((n, f) => n + countUnverified(f), 0);
+          toast.success("Floor plans saved", { description: pending ? `${pending} element(s) still marked unreviewed.` : "All floors on this elevation are reviewed." });
+          if (thenView) router.push(`/projects/${project.slug}`);
+          else router.refresh();
+          return;
+        }
         const { model: finalized, notes } = finalizeHouseModel(s.model);
         const pending = finalized.floors.reduce((n, f) => n + countUnverified(f), 0);
         const provNotes = [...notes];
@@ -169,7 +232,7 @@ export function FloorPlanEditor({ bundle, drawings: initialDrawings, initialFloo
         setSaving(false);
       }
     },
-    [project, router, store, persistCalibration],
+    [project, router, store, persistCalibration, planSet, planContext],
   );
 
   // Keyboard shortcuts
@@ -256,6 +319,26 @@ export function FloorPlanEditor({ bundle, drawings: initialDrawings, initialFloo
             {project.name} · {project.modelName}
           </div>
         </div>
+        {planSet && planSelection && (
+          <Select
+            value={planSelection.elevationId}
+            onValueChange={(v) => {
+              if (dirty && !window.confirm("Discard unsaved changes on this elevation?")) return;
+              router.push(`/projects/${project.slug}/trace?elevation=${encodeURIComponent(v)}`);
+            }}
+          >
+            <SelectTrigger size="sm" className="ml-3 h-8 w-auto text-xs" aria-label="Elevation">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {planSet.elevations.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <div className="ml-4 flex rounded-lg bg-muted p-0.5">
           {[...floors].reverse().map((f) => (
             <button
@@ -343,7 +426,7 @@ export function FloorPlanEditor({ bundle, drawings: initialDrawings, initialFloo
                 )}
               </section>
 
-              {drawing && (
+              {drawing && !drawing.id.startsWith(SHEET) && (
                 <section className="space-y-2">
                   <h3 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Automatic extraction</h3>
                   <InterpretationPanel drawing={drawing} onDrawingUpdated={(d) => setDrawings((list) => list.map((x) => (x.id === d.id ? d : x)))} />

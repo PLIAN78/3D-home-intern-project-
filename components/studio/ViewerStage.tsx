@@ -10,6 +10,8 @@ import { FloorSelector } from "@/components/configurator/FloorSelector";
 import { ViewControls } from "@/components/configurator/ViewControls";
 import { cn } from "@/lib/utils";
 import { useViewerStore } from "@/stores/viewerStore";
+import { usePlanSelectionRaw } from "@/stores/projectStore";
+import { describeSelection, sanitizeSelection } from "@/lib/models/planSet";
 
 const HouseViewer = dynamic(() => import("@/components/viewer/HouseViewer"), {
   ssr: false,
@@ -59,6 +61,8 @@ export function ViewerStage({ bundle, variant }: ViewerStageProps) {
   const { project, house, community } = bundle;
   const hasSelected = useViewerStore((s) => s.selectedSlot !== null);
   const lot = community.lots.find((l) => l.id === project.lotId);
+  const rawPlan = usePlanSelectionRaw(project.id);
+  const planLabel = bundle.planSet ? describeSelection(bundle.planSet, sanitizeSelection(bundle.planSet, rawPlan)) : null;
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-stone-100">
@@ -90,6 +94,7 @@ export function ViewerStage({ bundle, variant }: ViewerStageProps) {
         <div className="flex items-start justify-between gap-3">
           <div className="pointer-events-auto rounded-xl border bg-background/90 px-3 py-2 shadow-lg ring-1 ring-black/5 backdrop-blur-md">
             <div className="text-sm font-semibold tracking-tight">{project.modelName}</div>
+            {planLabel && <div className="text-[11px] font-medium text-foreground/80">{planLabel}</div>}
             <div className="text-[11px] text-muted-foreground">
               Lot {lot?.number ?? project.lotNumber} · {community.name}
             </div>

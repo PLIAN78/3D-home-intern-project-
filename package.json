@@ -8,9 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "node scripts/copy-pdf-worker.mjs",
+    "predev": "node scripts/copy-pdf-worker.mjs",
+    "prebuild": "node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.9",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
     "class-variance-authority": "^0.7.1",

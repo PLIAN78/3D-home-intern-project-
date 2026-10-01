@@ -14,6 +14,8 @@ export interface Project {
   modelName: string;
   floorCount: number;
   houseModelId: string;
+  /** Drawing set the home is generated from (elevations + layout options). */
+  planSetId?: string;
   status: ProjectStatus;
   updatedAt: string;
 }

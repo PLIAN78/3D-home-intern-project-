@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Expand, Loader2, PencilRuler, ScanSearch, Trash2 } from "lucide-react";
+import { ChevronDown, Expand, Layers, Loader2, PencilRuler, ScanSearch, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,27 @@ function DrawingPreview({ drawing, open, onOpenChange }: { drawing: Drawing; ope
   );
 }
 
-function DrawingCard({ drawing, floors, projectSlug }: { drawing: Drawing; floors: Floor[]; projectSlug: string }) {
+/** Whole-set status + the one-click action for PDF drawing sets. */
+function SetRow({ drawing, onOpen }: { drawing: Drawing; onOpen: () => void }) {
+  const a = drawing.analysis;
+  return (
+    <div className="mt-2 flex items-center gap-2 rounded-md bg-brand/10 px-2 py-1.5">
+      <Layers className="size-3.5 shrink-0 text-[color:oklch(0.5_0.13_62)]" />
+      <span className="min-w-0 flex-1 truncate text-[11px]">
+        {!a && (drawing.pageCount ?? 1) > 1 && `Drawing set · ${drawing.pageCount} sheets`}
+        {!a && (drawing.pageCount ?? 1) <= 1 && "Build the 3D home from this sheet"}
+        {a?.status === "running" && `Reading… ${a.stage}`}
+        {a?.status === "done" && "Drawing set analysed"}
+        {a?.status === "failed" && "Analysis failed"}
+      </span>
+      <Button size="xs" onClick={onOpen} className="bg-brand text-brand-foreground hover:bg-brand/90">
+        {a?.status === "done" ? "View" : a?.status === "running" ? "Progress" : "Generate 3D"}
+      </Button>
+    </div>
+  );
+}
+
+function DrawingCard({ drawing, floors, projectSlug, onOpenSet }: { drawing: Drawing; floors: Floor[]; projectSlug: string; onOpenSet?: (id: string) => void }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
@@ -158,7 +178,7 @@ function DrawingCard({ drawing, floors, projectSlug }: { drawing: Drawing; floor
         </Select>
       </div>
 
-      {drawing.contentType === "application/pdf" && (drawing.pageCount ?? 1) > 1 && (
+      {drawing.contentType === "application/pdf" && (drawing.pageCount ?? 1) > 1 && !drawing.analysis && (
         <Select value={String(drawing.page ?? 1)} onValueChange={(v) => changePage(Number(v))}>
           <SelectTrigger size="sm" className="mt-1.5 h-7 w-full text-xs" aria-label="PDF page">
             <SelectValue />
@@ -212,18 +232,21 @@ function DrawingCard({ drawing, floors, projectSlug }: { drawing: Drawing; floor
           <Trash2 />
         </Button>
       </div>
-      {isPlan && !floor && <p className="mt-1.5 text-[10px] text-amber-700">Assign a floor before tracing.</p>}
+      {drawing.contentType === "application/pdf" && onOpenSet && (
+        <SetRow drawing={drawing} onOpen={() => onOpenSet(drawing.id)} />
+      )}
+      {isPlan && !floor && !drawing.analysis && <p className="mt-1.5 text-[10px] text-amber-700">Assign a floor before tracing.</p>}
       <DrawingPreview drawing={drawing} open={preview} onOpenChange={setPreview} />
     </div>
   );
 }
 
-export function DrawingList({ drawings, floors, projectSlug }: { drawings: Drawing[]; floors: Floor[]; projectSlug: string }) {
+export function DrawingList({ drawings, floors, projectSlug, onOpenSet }: { drawings: Drawing[]; floors: Floor[]; projectSlug: string; onOpenSet?: (id: string) => void }) {
   if (!drawings.length) return <p className="py-2 text-center text-xs text-muted-foreground">No drawings uploaded yet.</p>;
   return (
     <div className="space-y-2">
       {drawings.map((d) => (
-        <DrawingCard key={d.id} drawing={d} floors={floors} projectSlug={projectSlug} />
+        <DrawingCard key={d.id} drawing={d} floors={floors} projectSlug={projectSlug} onOpenSet={onOpenSet} />
       ))}
     </div>
   );

@@ -1,7 +1,9 @@
 "use client";
 
 import type { Drawing, DrawingCalibration, DrawingCategory } from "@/lib/models/drawing";
-import type { HouseModel } from "@/lib/models/house";
+import type { Floor, HouseModel } from "@/lib/models/house";
+import type { PlanSetSummary } from "@/lib/models/planSet";
+import type { Project } from "@/lib/models/project";
 
 /** Thin client for the drawing / model route handlers. */
 
@@ -75,4 +77,26 @@ export async function replaceRaster(id: string, page: number, raster: { blob: Bl
 
 export async function saveHouseModelRequest(projectId: string, model: HouseModel, reviewedDrawingId?: string) {
   return json<{ ok: true }>(await fetch(`/api/projects/${projectId}/house-model`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, reviewedDrawingId }) }));
+}
+
+// --- Drawing sets -----------------------------------------------------------
+
+export async function analyzeDrawingSet(id: string) {
+  return json<Drawing>(await fetch(`/api/drawings/${id}/analyze`, { method: "POST" }));
+}
+
+export async function fetchDrawing(id: string) {
+  return json<Drawing>(await fetch(`/api/drawings/${id}`, { cache: "no-store" }));
+}
+
+export async function fetchPlanSetSummary(projectId: string, planSetId: string) {
+  return json<PlanSetSummary>(await fetch(`/api/projects/${projectId}/plan-set?planSetId=${encodeURIComponent(planSetId)}`, { cache: "no-store" }));
+}
+
+export async function applyPlanSetRequest(projectId: string, planSetId: string) {
+  return json<Project>(await fetch(`/api/projects/${projectId}/plan-set`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planSetId }) }));
+}
+
+export async function savePlanSetVariants(projectId: string, planSetId: string, variants: { variantId: string; floor: Floor; sheetOrigin?: { x: number; y: number }; metresPerPixel?: number }[]) {
+  return json<{ ok: true }>(await fetch(`/api/projects/${projectId}/plan-set`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planSetId, variants }) }));
 }

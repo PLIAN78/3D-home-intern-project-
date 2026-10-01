@@ -18,6 +18,8 @@ import {
 } from "@/lib/models/materials";
 import { swatchDataUrl } from "@/lib/materials/swatches";
 import { useProjectStore, useSelections } from "@/stores/projectStore";
+import type { PlanSelection, PlanSet } from "@/lib/models/planSet";
+import { PlanOptionsPanel } from "./PlanOptionsPanel";
 import { useViewerStore } from "@/stores/viewerStore";
 
 function Swatch({ option, className }: { option: MaterialOption; className?: string }) {
@@ -73,20 +75,25 @@ interface MaterialPanelProps {
   projectId: string;
   modelName: string;
   variant?: "studio" | "customer";
+  /** Drawing-set homes add a Plan tab (elevation + layout options). */
+  planSet?: PlanSet;
+  planSelection?: PlanSelection | null;
+  onPlanChange?: (s: PlanSelection) => void;
 }
 
 /** Right-hand "Home Options" configurator. */
-export function MaterialPanel({ projectId, modelName, variant = "studio" }: MaterialPanelProps) {
+export function MaterialPanel({ projectId, modelName, variant = "studio", planSet, planSelection, onPlanChange }: MaterialPanelProps) {
   const selections = useSelections(projectId);
   const resetSelections = useProjectStore((s) => s.resetSelections);
   const selectedSlot = useViewerStore((s) => s.selectedSlot);
   const selectSlot = useViewerStore((s) => s.selectSlot);
-  const [group, setGroup] = useState<MaterialGroup>("exterior");
+  const hasPlan = !!(planSet && planSelection && onPlanChange);
+  const [group, setGroup] = useState<MaterialGroup | "plan">(hasPlan ? "plan" : "exterior");
   const itemRefs = useRef<Partial<Record<MaterialSlotId, HTMLDivElement | null>>>({});
 
   // Clicking a surface in 3D opens its category here.
   const slotGroup = selectedSlot ? MATERIAL_SLOTS.find((s) => s.id === selectedSlot)?.group : undefined;
-  const activeGroup = slotGroup ?? group;
+  const activeGroup = slotGroup ?? (group === "plan" && !hasPlan ? "exterior" : group);
   useEffect(() => {
     if (!selectedSlot) return;
     const t = setTimeout(() => itemRefs.current[selectedSlot]?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 220);
@@ -113,11 +120,12 @@ export function MaterialPanel({ projectId, modelName, variant = "studio" }: Mate
         <Tabs
           value={activeGroup}
           onValueChange={(v) => {
-            setGroup(v as MaterialGroup);
+            setGroup(v as MaterialGroup | "plan");
             selectSlot(null);
           }}
         >
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className={hasPlan ? "grid w-full grid-cols-3" : "grid w-full grid-cols-2"}>
+            {hasPlan && <TabsTrigger value="plan">Plan</TabsTrigger>}
             <TabsTrigger value="exterior">Exterior</TabsTrigger>
             <TabsTrigger value="interior">Interior</TabsTrigger>
           </TabsList>
@@ -125,6 +133,11 @@ export function MaterialPanel({ projectId, modelName, variant = "studio" }: Mate
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
+        {activeGroup === "plan" && hasPlan && (
+          <div className="p-4">
+            <PlanOptionsPanel planSet={planSet!} selection={planSelection!} onChange={onPlanChange!} variant={variant} />
+          </div>
+        )}
         <Accordion
           type="single"
           collapsible

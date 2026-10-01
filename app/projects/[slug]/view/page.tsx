@@ -11,8 +11,8 @@ export async function generateMetadata({ params }: PageProps<"/projects/[slug]/v
 
 export default async function CustomerViewPage({ params, searchParams }: PageProps<"/projects/[slug]/view">) {
   const { slug } = await params;
-  const { c } = await searchParams;
+  const { c, p } = await searchParams;
   const bundle = await getProjectBundle(slug);
   if (!bundle) notFound();
-  return <CustomerShell bundle={bundle} encoded={typeof c === "string" ? c : null} />;
+  return <CustomerShell bundle={bundle} encoded={typeof c === "string" ? c : null} planEncoded={typeof p === "string" ? p : null} />;
 }

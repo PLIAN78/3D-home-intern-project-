@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { ProjectBundle } from "@/lib/data/repository";
 import type { CustomerConfiguration } from "@/lib/models/project";
-import { encodeSelections, useProjectStore, useSelections } from "@/stores/projectStore";
+import type { PlanSelection } from "@/lib/models/planSet";
+import { encodeJson, encodeSelections, useProjectStore, useSelections } from "@/stores/projectStore";
 import { useViewerStore } from "@/stores/viewerStore";
 import { BrandMark } from "./BrandMark";
 
-export function customerUrl(slug: string, encoded: string) {
-  return `${window.location.origin}/projects/${slug}/view?c=${encoded}`;
+/** Customer-view link carrying finishes (`c`) and, for drawing-set homes, elevation + layout (`p`). */
+export function customerUrl(slug: string, encoded: string, plan?: PlanSelection | null) {
+  const p = plan ? `&p=${encodeJson(plan)}` : "";
+  return `${window.location.origin}/projects/${slug}/view?c=${encoded}${p}`;
 }
 
 export function buildConfiguration(bundle: ProjectBundle, options: CustomerConfiguration["options"]): CustomerConfiguration {
@@ -35,7 +38,7 @@ export function downloadJson(name: string, data: unknown) {
   URL.revokeObjectURL(a.href);
 }
 
-export function StudioHeader({ bundle }: { bundle: ProjectBundle }) {
+export function StudioHeader({ bundle, planSelection }: { bundle: ProjectBundle; planSelection?: PlanSelection | null }) {
   const { project } = bundle;
   const selections = useSelections(project.id);
   const markSaved = useProjectStore((s) => s.markSaved);
@@ -46,7 +49,7 @@ export function StudioHeader({ bundle }: { bundle: ProjectBundle }) {
     toast.success("Configuration saved", { description: "Stored in this browser. Server persistence arrives with the database phase." });
   };
   const copyLink = async () => {
-    const url = customerUrl(project.slug, encodeSelections(selections));
+    const url = customerUrl(project.slug, encodeSelections(selections), planSelection);
     try {
       await navigator.clipboard.writeText(url);
       toast.success("Customer link copied", { description: "Opens the customer view with these selections." });
@@ -76,7 +79,7 @@ export function StudioHeader({ bundle }: { bundle: ProjectBundle }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => downloadJson(`${project.slug}-configuration.json`, buildConfiguration(bundle, selections))}>
+            <DropdownMenuItem onSelect={() => downloadJson(`${project.slug}-configuration.json`, { ...buildConfiguration(bundle, selections), plan: planSelection ?? undefined })}>
               <FileJson /> Configuration JSON
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={requestScreenshot}>
@@ -90,7 +93,7 @@ export function StudioHeader({ bundle }: { bundle: ProjectBundle }) {
         <Button variant="outline" size="sm" onClick={save}>
           <Save /> Save
         </Button>
-        <Button size="sm" onClick={() => window.open(customerUrl(project.slug, encodeSelections(selections)), "_blank", "noopener")}>
+        <Button size="sm" onClick={() => window.open(customerUrl(project.slug, encodeSelections(selections), planSelection), "_blank", "noopener")}>
           <ExternalLink /> Customer Preview
         </Button>
       </div>

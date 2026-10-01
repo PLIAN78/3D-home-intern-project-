@@ -9,7 +9,9 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CutawayControls } from "@/components/configurator/CutawayControls";
+import { useState } from "react";
 import { DrawingList } from "@/components/drawings/DrawingList";
+import { DrawingSetDialog } from "@/components/drawings/DrawingSetDialog";
 import { DrawingUploader } from "@/components/drawings/DrawingUploader";
 import type { Drawing } from "@/lib/models/drawing";
 import type { ProjectBundle } from "@/lib/data/repository";
@@ -185,18 +187,20 @@ function ModelTab({ bundle }: { bundle: ProjectBundle }) {
 function DrawingsTab({ bundle, drawings }: { bundle: ProjectBundle; drawings: Drawing[] }) {
   const floors = sortedFloors(bundle.house);
   const toReview = drawings.filter((d) => d.processingStatus === "needs-review").length;
+  const [setDialog, setSetDialog] = useState<string | null>(null);
   return (
     <div className="space-y-4">
-      <DrawingUploader projectId={bundle.project.id} floors={floors} />
+      <DrawingUploader projectId={bundle.project.id} floors={floors} onSetUploaded={(d) => setSetDialog(d.id)} />
+      <DrawingSetDialog projectId={bundle.project.id} projectSlug={bundle.project.slug} drawingId={setDialog} onOpenChange={(open) => !open && setSetDialog(null)} />
       <div>
         <div className="mb-1 flex items-center justify-between">
           <SectionTitle>Drawings ({drawings.length})</SectionTitle>
           {toReview > 0 && <span className="text-[10px] font-medium text-amber-700">{toReview} need review</span>}
         </div>
-        <DrawingList drawings={drawings} floors={floors} projectSlug={bundle.project.slug} />
+        <DrawingList drawings={drawings} floors={floors} projectSlug={bundle.project.slug} onOpenSet={setSetDialog} />
       </div>
       <p className="text-[10px] leading-snug text-muted-foreground">
-        Extracted geometry is a starting point only. Every interpretation is reviewed and corrected in the tracing editor before it reaches the 3D model.
+        Plans are traced automatically and marked as unreviewed. You can generate straight away and fine-tune any floor later in the editor.
       </p>
     </div>
   );

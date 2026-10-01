@@ -3,6 +3,14 @@ import { deleteDrawing, getDrawing, updateDrawing } from "@/lib/data/repository"
 import { DRAWING_CATEGORIES, type Drawing } from "@/lib/models/drawing";
 import { getStorage } from "@/lib/storage/objectStorage";
 
+/** Current drawing state (used to poll set-analysis progress). */
+export async function GET(_req: NextRequest, ctx: RouteContext<"/api/drawings/[drawingId]">) {
+  const { drawingId } = await ctx.params;
+  const drawing = await getDrawing(drawingId);
+  if (!drawing) return Response.json({ error: "Not found" }, { status: 404 });
+  return Response.json(drawing, { headers: { "Cache-Control": "no-store" } });
+}
+
 /** Update category, floor assignment or scale calibration. */
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/drawings/[drawingId]">) {
   const { drawingId } = await ctx.params;

@@ -7,19 +7,21 @@ import { MaterialPanel } from "@/components/configurator/MaterialPanel";
 import { BrandMark } from "@/components/studio/BrandMark";
 import { buildConfiguration, customerUrl, downloadJson } from "@/components/studio/StudioHeader";
 import { ViewerStage } from "@/components/studio/ViewerStage";
+import { useActiveHouse } from "@/components/studio/useActiveHouse";
 import { useConfigHydration } from "@/components/studio/useConfigHydration";
 import type { ProjectBundle } from "@/lib/data/repository";
 import { encodeSelections, useProjectStore, useSelections } from "@/stores/projectStore";
 
 /** Customer-facing sales view: no engineering controls, just the home and its options. */
-export function CustomerShell({ bundle, encoded }: { bundle: ProjectBundle; encoded?: string | null }) {
-  const { project } = bundle;
-  useConfigHydration(project.id, encoded);
+export function CustomerShell({ bundle: saved, encoded, planEncoded }: { bundle: ProjectBundle; encoded?: string | null; planEncoded?: string | null }) {
+  const { project } = saved;
+  useConfigHydration(project.id, encoded, planEncoded);
+  const { bundle, selection, setSelection } = useActiveHouse(saved);
   const selections = useSelections(project.id);
   const markSaved = useProjectStore((s) => s.markSaved);
 
   const share = async () => {
-    const url = customerUrl(project.slug, encodeSelections(selections));
+    const url = customerUrl(project.slug, encodeSelections(selections), selection);
     try {
       if (navigator.share) await navigator.share({ title: `My ${project.modelName} at ${project.communityName}`, url });
       else {
@@ -43,7 +45,7 @@ export function CustomerShell({ bundle, encoded }: { bundle: ProjectBundle; enco
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => downloadJson(`${project.slug}-my-selections.json`, buildConfiguration(bundle, selections))}>
+          <Button variant="ghost" size="sm" onClick={() => downloadJson(`${project.slug}-my-selections.json`, { ...buildConfiguration(bundle, selections), plan: selection ?? undefined })}>
             <Download /> <span className="hidden sm:inline">Summary</span>
           </Button>
           <Button variant="outline" size="sm" onClick={share}>
@@ -66,7 +68,7 @@ export function CustomerShell({ bundle, encoded }: { bundle: ProjectBundle; enco
           <ViewerStage bundle={bundle} variant="customer" />
         </main>
         <aside className="hidden w-[340px] shrink-0 border-l md:block">
-          <MaterialPanel projectId={project.id} modelName={project.modelName} variant="customer" />
+          <MaterialPanel key={bundle.planSet?.id ?? "materials"} projectId={project.id} modelName={project.modelName} variant="customer" planSet={bundle.planSet} planSelection={selection} onPlanChange={setSelection} />
         </aside>
       </div>
     </div>

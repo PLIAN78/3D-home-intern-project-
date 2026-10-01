@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { DEFAULT_SELECTIONS, getMaterialOption, isMaterialSlotId, type MaterialSelections, type MaterialSlotId } from "@/lib/models/materials";
+import type { PlanSelection } from "@/lib/models/planSet";
 
 /**
  * Customer configuration state: the selected material option per slot, kept
@@ -10,6 +11,9 @@ import { DEFAULT_SELECTIONS, getMaterialOption, isMaterialSlotId, type MaterialS
 interface ProjectState {
   selectionsByProject: Record<string, MaterialSelections>;
   savedAtByProject: Record<string, string>;
+  /** Elevation + layout options per project (drawing-set homes). */
+  planByProject: Record<string, PlanSelection>;
+  setPlanSelection: (projectId: string, sel: PlanSelection) => void;
   setOption: (projectId: string, slot: MaterialSlotId, optionId: string) => void;
   applySelections: (projectId: string, selections: Partial<MaterialSelections>) => void;
   resetSelections: (projectId: string) => void;
@@ -21,6 +25,8 @@ export const useProjectStore = create<ProjectState>()(
     (set) => ({
       selectionsByProject: {},
       savedAtByProject: {},
+      planByProject: {},
+      setPlanSelection: (projectId, sel) => set((s) => ({ planByProject: { ...s.planByProject, [projectId]: sel } })),
       setOption: (projectId, slot, optionId) =>
         set((s) => ({
           selectionsByProject: {
@@ -35,7 +41,12 @@ export const useProjectStore = create<ProjectState>()(
             [projectId]: { ...DEFAULT_SELECTIONS, ...s.selectionsByProject[projectId], ...sanitize(selections) },
           },
         })),
-      resetSelections: (projectId) => set((s) => ({ selectionsByProject: { ...s.selectionsByProject, [projectId]: { ...DEFAULT_SELECTIONS } } })),
+      resetSelections: (projectId) =>
+        set((s) => {
+          const plans = { ...s.planByProject };
+          delete plans[projectId];
+          return { selectionsByProject: { ...s.selectionsByProject, [projectId]: { ...DEFAULT_SELECTIONS } }, planByProject: plans };
+        }),
       markSaved: (projectId) => set((s) => ({ savedAtByProject: { ...s.savedAtByProject, [projectId]: new Date().toISOString() } })),
     }),
     {
@@ -81,5 +92,22 @@ export function decodeSelections(encoded: string): Partial<MaterialSelections> {
     return sanitize(JSON.parse(json));
   } catch {
     return {};
+  }
+}
+
+export function usePlanSelectionRaw(projectId: string): PlanSelection | undefined {
+  return useProjectStore((s) => s.planByProject[projectId]);
+}
+
+/** URL-safe encoding for any small JSON value (share links). */
+export function encodeJson(value: unknown): string {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(value)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function decodeJson<T>(encoded: string): T | null {
+  try {
+    return JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g, "+").replace(/_/g, "/"))))) as T;
+  } catch {
+    return null;
   }
 }

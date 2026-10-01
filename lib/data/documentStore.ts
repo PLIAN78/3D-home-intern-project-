@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { HouseModel } from "@/lib/models/house";
 import type { Drawing } from "@/lib/models/drawing";
+import type { PlanSet } from "@/lib/models/planSet";
 import type { Project } from "@/lib/models/project";
 import { DATA_DIR } from "@/lib/storage/objectStorage";
 import { PLAN_36 } from "@/lib/sample/plan36";
@@ -16,6 +17,7 @@ export interface Database {
   projects: Project[];
   houseModels: Record<string, HouseModel>;
   drawings: Drawing[];
+  planSets?: Record<string, PlanSet>;
 }
 
 const DB_FILE = path.join(DATA_DIR, "db.json");
@@ -36,7 +38,7 @@ export const SEED_PROJECT: Project = {
 };
 
 function seed(): Database {
-  return { version: 1, projects: [SEED_PROJECT], houseModels: { [PLAN_36.id]: PLAN_36 }, drawings: [] };
+  return { version: 1, projects: [SEED_PROJECT], houseModels: { [PLAN_36.id]: PLAN_36 }, drawings: [], planSets: {} };
 }
 
 // Route handlers and pages can run as separate module instances, so the

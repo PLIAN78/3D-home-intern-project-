@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { uploadDrawing } from "@/lib/drawings/api";
 import { formatBytes, guessCategory, guessFloorId } from "@/lib/drawings/guess";
 import { rasterizeFile } from "@/lib/drawings/rasterize";
-import { categoryLabel } from "@/lib/models/drawing";
+import { categoryLabel, type Drawing } from "@/lib/models/drawing";
 import type { Floor } from "@/lib/models/house";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +32,7 @@ export const SAMPLE_DRAWINGS = [
 ];
 
 /** Drag-and-drop multi-file uploader. Files are rasterised in the browser, then uploaded with progress. */
-export function DrawingUploader({ projectId, floors }: { projectId: string; floors: Floor[] }) {
+export function DrawingUploader({ projectId, floors, onSetUploaded }: { projectId: string; floors: Floor[]; /** Called for multi-page PDFs (drawing sets) so the set flow can start. */ onSetUploaded?: (drawing: Drawing) => void }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -45,6 +45,7 @@ export function DrawingUploader({ projectId, floors }: { projectId: string; floo
       const items = files.map((f) => ({ key: `${f.name}-${f.size}-${Math.random().toString(36).slice(2)}`, name: f.name, size: f.size, stage: "preparing" as Stage, progress: 0 }));
       setQueue((q) => [...items, ...q]);
       let ok = 0;
+      let firstSet: Drawing | null = null;
       await Promise.all(
         files.map(async (file, i) => {
           const key = items[i].key;
@@ -57,10 +58,11 @@ export function DrawingUploader({ projectId, floors }: { projectId: string; floo
             });
             patch(key, { stage: "uploading" });
             const category = guessCategory(file.name);
-            await uploadDrawing(
+            const uploaded = await uploadDrawing(
               { projectId, file, raster, category, floorId: category === "floor-plan" ? guessFloorId(file.name, floors) : undefined },
               (p) => patch(key, { progress: p }),
             );
+            if (!firstSet && uploaded.contentType === "application/pdf" && (raster?.pageCount ?? 1) >= 2) firstSet = uploaded;
             patch(key, { stage: "done", progress: 1 });
             ok++;
           } catch (e) {
@@ -68,13 +70,14 @@ export function DrawingUploader({ projectId, floors }: { projectId: string; floo
           }
         }),
       );
+      if (firstSet) onSetUploaded?.(firstSet);
+      else if (ok) toast.success(`${ok} drawing${ok > 1 ? "s" : ""} uploaded`, { description: "Check each drawing's type and floor below." });
       if (ok) {
-        toast.success(`${ok} drawing${ok > 1 ? "s" : ""} uploaded`, { description: "Check each drawing's type and floor below." });
         router.refresh();
         setTimeout(() => setQueue((q) => q.filter((i) => i.stage !== "done")), 2500);
       }
     },
-    [projectId, floors, router],
+    [projectId, floors, router, onSetUploaded],
   );
 
   const addSamples = async () => {
@@ -116,8 +119,8 @@ export function DrawingUploader({ projectId, floors }: { projectId: string; floo
         )}
       >
         <FileUp className="mb-1.5 size-5 text-muted-foreground" />
-        <div className="text-sm font-medium">Drop drawings or click to browse</div>
-        <div className="text-[11px] text-muted-foreground">PDF, PNG or JPG · floor plans, elevations, redlines…</div>
+        <div className="text-sm font-medium">Drop your décor / plan set PDF</div>
+        <div className="text-[11px] text-muted-foreground">We read every floor, elevation and option and build the 3D home. PNG/JPG plans work too.</div>
         <input
           ref={input}
           type="file"

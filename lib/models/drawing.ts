@@ -60,8 +60,21 @@ export interface Drawing {
   processingStatus: ProcessingStatus;
   calibration?: DrawingCalibration;
   interpretation?: FloorPlanInterpretation;
+  /** Whole-set analysis (multi-page décor / plan sets). */
+  analysis?: DrawingAnalysis;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DrawingAnalysis {
+  status: "running" | "done" | "failed";
+  stage: string;
+  done: number;
+  total: number;
+  planSetId?: string;
+  error?: string;
+  startedAt: string;
+  finishedAt?: string;
 }
 
 // ---------------------------------------------------------------------------

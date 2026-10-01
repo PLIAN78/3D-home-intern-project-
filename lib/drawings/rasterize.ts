@@ -21,7 +21,8 @@ function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
 async function pdfjs() {
   const lib = await import("pdfjs-dist");
   if (!lib.GlobalWorkerOptions.workerSrc) {
-    lib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+    // Copied to /public by scripts/copy-pdf-worker.mjs (postinstall / predev / prebuild).
+    lib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
   }
   return lib;
 }

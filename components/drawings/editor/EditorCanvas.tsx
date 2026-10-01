@@ -117,7 +117,8 @@ export function EditorCanvas({ underlay, ghost, fitNonce, onCalibrate, onAlign }
       xs.push(b.minX, b.maxX);
       ys.push(b.minY, b.maxY);
     }
-    if (underlayRect && showUnderlay) {
+    // With traced geometry, frame the plan itself (sheets can be much larger than the drawing).
+    if (underlayRect && showUnderlay && !b) {
       xs.push(underlayRect.x, underlayRect.x + underlayRect.w);
       ys.push(underlayRect.y, underlayRect.y + underlayRect.h);
     }

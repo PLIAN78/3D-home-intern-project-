@@ -7,6 +7,8 @@ Internal tool that turns architectural drawings into an interactive, configurabl
 - **Phase 1:** procedural 3D viewer, floor isolation, exploded "cake" view, cutaways, material configurator, customer view with share links, demo neighbourhood.
 - **Phase 2:** project creation, drawing upload (PDF/PNG/JPG with categories, previews and statuses), pluggable drawing interpreters with confidence and warnings, and a 2D tracing editor whose output regenerates the 3D model.
 
+- **Phase 3, one-step drawing sets:** upload a builder's décor or plan-set PDF and the app reads every sheet. It finds each floor, elevation and layout option, works out the scale from the room sizes, traces and stacks the floors, and asks one question: generate now, or review first. The home opens on the standard plan with default finishes, and the configurator's **Plan** tab switches elevations and layouts.
+
 ## Run
 
 ```bash
@@ -25,6 +27,30 @@ npm run build
 | `/projects/[slug]` | Studio: drawings, floors, model data, 3D viewer, configurator |
 | `/projects/[slug]/trace?floor=…&drawing=…` | 2D floor-plan tracing / review editor |
 | `/projects/[slug]/view?c=…` | Customer view; `c` carries the encoded selections |
+
+### Demo script (Phase 3, drawing sets)
+
+1. **New project:** choose a blank start, then drop the décor / plan-set PDF on the **Drawings** tab.
+2. **Wait for the dialog:** "Reading your drawing set…" shows progress. A 48-sheet set takes about 1–3 minutes.
+3. **Read the summary:** model, floors, elevations and layout options. Then answer *Do you want to review or edit the floor plans first?*
+   - **No, generate my 3D home:** opens the standard plan, default elevation and default finishes.
+   - **Yes, review first:** opens the editor with every floor over its own sheet, already scaled and aligned. Saving writes the floors back into the set.
+4. **Switch options:** in **Home Options → Plan**, change the elevation (A1, A/A2/B1, B, F…) and per-floor layouts (Chef Center, Spa Ensuite, 4 Bedroom…). The 3D home rebuilds instantly, and customer share links carry the choice.
+
+#### How a drawing set is read (`lib/drawings/planSet/`)
+
+| Step | Module | What it does |
+| --- | --- | --- |
+| Read | `pdfServer.ts` | Server-side pdf.js + `@napi-rs/canvas`: renders each page and extracts text with its position |
+| Classify | `classify.ts` | Reads the title block (`STANDARD` / `SOGF-…` option codes, titles, sheet numbers) and the "ELEVATION …" captions to label each page with its floor, elevation and option. Pages without a caption inherit their section's elevation |
+| Scale | `extractFloor.ts` | Each room label with a dimension (e.g. `18'6"x13'8"`) votes for a scale by measuring the clear span between walls. One consensus scale is used for the whole set |
+| Trace | `extractFloor.ts` + `interpreters/lineDetection.ts` | Morphological opening removes tile grids and text. Wall bands are detected, and the main drawing is the wall cluster that contains the room labels (sheet borders and option insets are rejected). Rooms come from labels, exterior walls are classified, and garage and front doors are identified from the labels |
+| Stack | `align.ts` | Each floor is registered to the main floor by maximising exterior-wall overlap. Options are registered to their level's standard plan |
+| Assemble | `buildPlanSet.ts`, `lib/models/planSet.ts` | Groups variants by elevation, floor and option, flags partial and grade-condition sheets as reference-only, and `composeHouseModel()` builds a `HouseModel` for any selection |
+
+Analysis runs as a background job (`after()` in `app/api/drawings/[id]/analyze`), and the UI polls its progress. Auto-traced floors stay flagged *unreviewed* until someone saves them from the editor, and the studio shows the confidence level.
+
+Dev tools: `npx tsx scripts/build-set.mts <set.pdf> [outDir]` prints what the pipeline extracts, and `scripts/analyze-set.mts` checks individual sheets with an overlay.
 
 ### Demo script (Phase 2)
 
