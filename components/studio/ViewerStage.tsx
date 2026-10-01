@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { useViewerStore } from "@/stores/viewerStore";
 import { usePlanSelectionRaw } from "@/stores/projectStore";
 import { describeSelection, sanitizeSelection } from "@/lib/models/planSet";
+import { LotProgressCard } from "@/components/community/LotProgressCard";
+import { OSM_ATTRIBUTION } from "@/components/community/RealWorldScene";
 
 const HouseViewer = dynamic(() => import("@/components/viewer/HouseViewer"), {
   ssr: false,
@@ -66,7 +68,7 @@ export function ViewerStage({ bundle, variant }: ViewerStageProps) {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-stone-100">
-      <HouseViewer projectId={project.id} projectName={project.name} house={house} community={community} lotId={project.lotId} />
+      <HouseViewer projectId={project.id} projectName={project.name} house={house} community={community} lotId={project.lotId} lotProgress={bundle.lotProgress} />
       {!hasGeometry(house) && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/40 backdrop-blur-[2px]">
           <div className="max-w-sm rounded-2xl border bg-background p-6 text-center shadow-xl">
@@ -92,17 +94,21 @@ export function ViewerStage({ bundle, variant }: ViewerStageProps) {
 
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="pointer-events-auto rounded-xl border bg-background/90 px-3 py-2 shadow-lg ring-1 ring-black/5 backdrop-blur-md">
-            <div className="text-sm font-semibold tracking-tight">{project.modelName}</div>
-            {planLabel && <div className="text-[11px] font-medium text-foreground/80">{planLabel}</div>}
-            <div className="text-[11px] text-muted-foreground">
-              Lot {lot?.number ?? project.lotNumber} · {community.name}
-            </div>
-            {variant === "studio" && (house.provenance.source === "demo-seed" || house.provenance.confidence < 0.7) && hasGeometry(house) && (
-              <div className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-200">
-                <Info className="size-3" /> {house.provenance.source === "demo-seed" ? "Demo model · approximate dimensions" : `Needs review · ${Math.round(house.provenance.confidence * 100)}% confidence`}
+          <div className="flex flex-col items-start gap-2">
+            <div className="pointer-events-auto rounded-xl border bg-background/90 px-3 py-2 shadow-lg ring-1 ring-black/5 backdrop-blur-md">
+              <div className="text-sm font-semibold tracking-tight">{project.modelName}</div>
+              {planLabel && <div className="text-[11px] font-medium text-foreground/80">{planLabel}</div>}
+              <div className="text-[11px] text-muted-foreground">
+                Lot {lot?.number ?? project.lotNumber} · {community.name}
               </div>
-            )}
+              {variant === "studio" && (house.provenance.source === "demo-seed" || house.provenance.confidence < 0.7) && hasGeometry(house) && (
+                <div className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-200">
+                  <Info className="size-3" />{" "}
+                  {house.provenance.source === "demo-seed" ? "Demo model · approximate dimensions" : `Needs review · ${Math.round(house.provenance.confidence * 100)}% confidence`}
+                </div>
+              )}
+            </div>
+            {lot && community.geo && <LotProgressCard community={community} lot={lot} progress={bundle.lotProgress?.[lot.id]} variant={variant} />}
           </div>
           <CommunityBanner bundle={bundle} />
           <ViewControls />
@@ -123,6 +129,7 @@ export function ViewerStage({ bundle, variant }: ViewerStageProps) {
               <Eye className="size-3" /> Visualization for illustration only — finishes and dimensions may vary.
             </div>
           )}
+          {community.geo && <div className="self-end text-[10px] text-neutral-700/80">{OSM_ATTRIBUTION}</div>}
         </div>
       </div>
     </div>

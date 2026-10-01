@@ -4,7 +4,7 @@ import type { ProjectStatus } from "@/lib/models/project";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { BrandMark } from "@/components/studio/BrandMark";
+import { AppHeader } from "@/components/studio/AppHeader";
 import { listProjects } from "@/lib/data/repository";
 
 const STATUS_LABEL: Record<ProjectStatus, string> = { draft: "Draft", "in-review": "In review", "ready-for-sales": "Ready for sales" };
@@ -21,9 +21,7 @@ export default async function Home() {
   const projects = await listProjects();
   return (
     <div className="min-h-dvh bg-gradient-to-b from-stone-50 to-background">
-      <header className="flex h-14 items-center border-b bg-background/80 px-6 backdrop-blur">
-        <BrandMark subtitle="Internal" />
-      </header>
+      <AppHeader active="/" />
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>

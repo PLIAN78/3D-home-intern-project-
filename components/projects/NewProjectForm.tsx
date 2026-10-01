@@ -16,12 +16,12 @@ interface CommunityOption {
   lots: { id: string; number: string; takenBy?: string; status?: string }[];
 }
 
-export function NewProjectForm({ communities }: { communities: CommunityOption[] }) {
+export function NewProjectForm({ communities, initialCommunityId, initialLotId }: { communities: CommunityOption[]; initialCommunityId?: string; initialLotId?: string }) {
   const [state, action, pending] = useActionState<CreateProjectState, FormData>(createProjectAction, {});
-  const [communityId, setCommunityId] = useState(state.fields?.communityId ?? communities[0]?.id ?? "");
+  const [communityId, setCommunityId] = useState(state.fields?.communityId ?? (communities.some((c) => c.id === initialCommunityId) ? initialCommunityId! : (communities[0]?.id ?? "")));
   const community = communities.find((c) => c.id === communityId);
   const firstFree = community?.lots.find((l) => !l.takenBy)?.id ?? "";
-  const [lotId, setLotId] = useState(state.fields?.lotId ?? firstFree);
+  const [lotId, setLotId] = useState(state.fields?.lotId ?? (community?.lots.some((l) => l.id === initialLotId && !l.takenBy) ? initialLotId! : firstFree));
   const [template, setTemplate] = useState<"blank" | "plan-36">(state.fields?.template === "plan-36" ? "plan-36" : "blank");
   const [floors, setFloors] = useState(state.fields?.floorCount ?? "3");
 
@@ -64,7 +64,7 @@ export function NewProjectForm({ communities }: { communities: CommunityOption[]
               {community?.lots.map((l) => (
                 <SelectItem key={l.id} value={l.id} disabled={!!l.takenBy}>
                   Lot {l.number}
-                  {l.takenBy ? ` — ${l.takenBy}` : ""}
+                  {l.takenBy ? ` — ${l.takenBy}` : l.status === "available" ? " — available" : l.status === "future" ? " — future release" : ""}
                 </SelectItem>
               ))}
             </SelectContent>

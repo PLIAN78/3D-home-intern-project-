@@ -7,6 +7,7 @@ Internal tool that turns architectural drawings into an interactive, configurabl
 - **Phase 1:** procedural 3D viewer, floor isolation, exploded "cake" view, cutaways, material configurator, customer view with share links, demo neighbourhood.
 - **Phase 2:** project creation, drawing upload (PDF/PNG/JPG with categories, previews and statuses), pluggable drawing interpreters with confidence and warnings, and a 2D tracing editor whose output regenerates the 3D model.
 
+- **Phase 4, real communities and build progress:** the Caivan communities from caivan.com are listed under **Communities**. *Place on real map* reads a community's published site plan and finds every lot, its collection and its sales status. It then locates the community from its street names and lines the plan up with real streets from OpenStreetMap (≈2 m error on The Conservancy). The community opens as a 3D map of the real neighbourhood, with every home drawn at its construction stage. Each lot has a progress bar and a stage timeline; the construction team updates them, and customers see them in their home view.
 - **Phase 3, one-step drawing sets:** upload a builder's décor or plan-set PDF and the app reads every sheet. It finds each floor, elevation and layout option, works out the scale from the room sizes, traces and stacks the floors, and asks one question: generate now, or review first. The home opens on the standard plan with default finishes, and the configurator's **Plan** tab switches elevations and layouts.
 
 ## Run
@@ -27,6 +28,32 @@ npm run build
 | `/projects/[slug]` | Studio: drawings, floors, model data, 3D viewer, configurator |
 | `/projects/[slug]/trace?floor=…&drawing=…` | 2D floor-plan tracing / review editor |
 | `/projects/[slug]/view?c=…` | Customer view; `c` carries the encoded selections |
+| `/communities` | Caivan community catalogue: import a site plan (published or uploaded) |
+| `/communities/[id]?lot=…` | Real-world 3D community map, lot list and filters, lot detail, construction progress |
+
+### Demo script (Phase 4, communities and build progress)
+
+1. **Communities → The Conservancy → Place on real map.** The import downloads the site plan and reads its lots. It then geocodes the street names, fetches OpenStreetMap data, fits the plan to the streets and builds the community. With map data already cached this takes seconds; otherwise 1–5 minutes, because public Overpass servers are often busy.
+2. **Open community.** Click any lot, or search for `337`. The panel shows the collection, approximate frontage and depth, a Google Maps link, the progress bar, the stage timeline and *Update progress*. **Build progress** recolours the map by stage: excavation, foundation, framing, closed-in or complete.
+3. **Visualize a home on this lot** creates a project on that real lot. In the studio and customer view, **Community** shows the configured home in the real neighbourhood, and a **Build progress** card shows the lot's stage, timeline and expected closing.
+
+Progress generated at import is marked **Sample data** until someone saves real progress for the lot. Lot dimensions come from the marketing site plan and are approximate.
+
+#### How a community is placed (`lib/community/`)
+
+- `sitePlan/readVectors.ts`: reads the site-plan PDF's vector paths (with fill colours) and text from pdf.js operator lists.
+- `sitePlan/parseSitePlan.ts`: lots are the small closed polygons that contain a lot number. It also reads the collection from the fill tint (matched to the legend swatches), the status from the red/green dots, the street labels with their angle, and a scale hint from collection frontages.
+- `geocode.ts`: finds the community through Nominatim from its street names (median, outliers dropped).
+- `osm.ts`: fetches roads (including streets still under construction), buildings, water, parks and woods from Overpass. Results are cached in `.data/cache/osm`, and a cached download that covers the area is reused.
+- `sitePlan/georeference.ts`: fits a robust similarity transform (ICP with rotation starts, trimmed matches and a label-direction penalty) by snapping each street label to the OSM street of the same name. It needs at least three different streets, and the import refuses a fit worse than 25 m RMS.
+- `sitePlan/shapeMatch.ts`: the fallback for plans whose street names are part of the background illustration rather than PDF text (most published plans label only the arterial roads). It fits the lots to the road network: each lot's narrow end should sit about a boulevard away from a road, no road may run through a lot, and unsold lots can't sit on existing mapped buildings. It uses an exhaustive coarse search around the geocoded sales-centre address, then local refinement. These placements are marked **approximate** in the UI.
+- **Adjust placement** (community page): shift, rotate or scale the whole plan over the real map with live preview (arrow keys, `[` and `]`), then save. Every lot's position and lat/lng is updated (`lib/community/adjustPlacement.ts`).
+- `buildCommunity.ts`: turns each lot into an oriented box that faces its street (preferring the short side), numbers townhome units (`TH-301-3`), and records lat/lng per lot.
+- 3D (`lib/geometry/siteGeometry.ts`, `components/community/`): the surroundings and every home at its build stage are merged into a few draw calls. Map data is © OpenStreetMap contributors (ODbL) and attributed in every view.
+
+**Known limits:** a placement is only as good as OpenStreetMap's coverage, and brand-new streets are often missing. Of the published plans, The Conservancy places by street names (≈1–2 m). Fox Run uses the lot-shape fit and lands on the right streets, but should be checked. Magnolia, Arbor West and Summer Valley label only two or three arterials and may need *Adjust placement*. Some plans number townhome units without block labels, so those units are listed by number and collection.
+
+**Next step for photoreal context:** Google Photorealistic 3D Tiles can replace the OSM massing through `3d-tiles-renderer`. It needs a Google Maps Platform API key with billing; the georeferenced `origin` and per-lot lat/lng are already in place for it.
 
 ### Demo script (Phase 3, drawing sets)
 
@@ -67,7 +94,9 @@ Sample drawings live in `public/samples/`. They are rendered from the Plan 36 mo
 ```
 lib/models/        Domain types: house.ts, drawing.ts, materials.ts, community.ts, project.ts
                    finalize.ts (elevations, wall heights, footprints, auto roofs), validate.ts, templates.ts
-lib/sample/        Seed data: plan36.ts (3-level home), bradleyRidge.ts (10-lot street)
+lib/sample/        Seed data: plan36.ts (3-level home), bradleyRidge.ts (10-lot street), caivanCommunities.ts (catalogue)
+lib/community/     Site-plan reading, geocoding, OpenStreetMap context, georeferencing, import job
+lib/models/        … construction.ts (stages, % complete, build state), communityImport.ts
 lib/data/          repository.ts (async data-access boundary) + documentStore.ts (JSON file store)
 lib/storage/       ObjectStorage interface + local-disk implementation (swap for S3 / R2 / Vercel Blob)
 lib/drawings/      DrawingInterpreter contract, interpreters/ (heuristic line detection, mock),
@@ -77,7 +106,8 @@ lib/geometry/      Pure 3D geometry generation (walls, openings, floors, roofs, 
 lib/materials/     Option → Three.js material factory, canvas-painted textures, swatches
 stores/            Zustand: viewerStore, projectStore (selections), editorStore (tracing + undo/redo)
 components/drawings/ DrawingUploader, DrawingList, FloorPlanEditor, editor/ (canvas, panels, calibration)
-components/viewer/ R3F scene: HouseViewer, House3D, FloorMesh, SurfaceMesh, CommunityScene, CameraController…
+components/viewer/ R3F scene: HouseViewer, House3D, FloorMesh, SurfaceMesh, CommunityScene, GeoCommunityScene, CameraController…
+components/community/ Catalogue, dashboard, CommunityViewer, RealWorldScene (OSM context + lots), BuildProgress
 app/api/           Route handlers: uploads, drawing updates, interpretation, file serving, model saves
 ```
 

@@ -139,6 +139,7 @@ const STATUS_LABEL: Record<NonNullable<Lot["status"]>, string> = {
   sold: "Sold",
   "model-home": "Model Home",
   selected: "Your Home",
+  future: "Future release",
 };
 
 interface CommunitySceneProps {

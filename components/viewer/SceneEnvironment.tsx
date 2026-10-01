@@ -13,9 +13,11 @@ const SUN_DIR = new THREE.Vector3(0.55, 0.78, 0.42).normalize();
 interface Props {
   focus: V3;
   mode: ViewMode;
+  /** Real-world communities span kilometres: push fog and the sky out. */
+  geo?: boolean;
 }
 
-export function SceneEnvironment({ focus, mode }: Props) {
+export function SceneEnvironment({ focus, mode, geo = false }: Props) {
   const light = useRef<THREE.DirectionalLight>(null);
   const scene = useThree((s) => s.scene);
   const target = useMemo(() => new THREE.Object3D(), []);
@@ -31,28 +33,29 @@ export function SceneEnvironment({ focus, mode }: Props) {
   useEffect(() => {
     const l = light.current;
     if (!l) return;
-    const extent = mode === "house" ? 24 : 85;
+    const extent = mode === "house" ? 24 : geo ? 140 : 85;
     const cam = l.shadow.camera;
     cam.left = -extent;
     cam.right = extent;
     cam.top = extent;
     cam.bottom = -extent;
     cam.near = 1;
-    cam.far = 260;
+    cam.far = geo ? 400 : 260;
     cam.updateProjectionMatrix();
     target.position.set(focus[0], 0, focus[2]);
     target.updateMatrixWorld();
     l.target = target;
-    l.position.set(focus[0] + SUN_DIR.x * 110, SUN_DIR.y * 110, focus[2] + SUN_DIR.z * 110);
+    const d = geo ? 200 : 110;
+    l.position.set(focus[0] + SUN_DIR.x * d, SUN_DIR.y * d, focus[2] + SUN_DIR.z * d);
     l.shadow.needsUpdate = true;
-  }, [mode, focus, target]);
+  }, [mode, focus, target, geo]);
 
   const sunPosition: V3 = [SUN_DIR.x * 100, SUN_DIR.y * 100, SUN_DIR.z * 100];
 
   return (
     <>
-      <Sky distance={4500} sunPosition={sunPosition} turbidity={5.5} rayleigh={0.9} mieCoefficient={0.004} mieDirectionalG={0.82} />
-      <fog attach="fog" args={["#dbe3e8", 140, 460]} />
+      <Sky distance={geo ? 9000 : 4500} sunPosition={sunPosition} turbidity={5.5} rayleigh={0.9} mieCoefficient={0.004} mieDirectionalG={0.82} />
+      <fog attach="fog" args={geo ? ["#dbe3e8", 1400, 5200] : ["#dbe3e8", 140, 460]} />
       <hemisphereLight args={["#e3ecf6", "#76705a", 0.55]} />
       <directionalLight
         ref={light}

@@ -16,7 +16,7 @@ export async function createProjectAction(_prev: CreateProjectState, form: FormD
   if (!fields.name) return { error: "Project name is required.", fields };
   if (!fields.modelName) return { error: "Model / home name is required.", fields };
   if (!Number.isInteger(floorCount) || floorCount < 1 || floorCount > 5) return { error: "Number of floors must be between 1 and 5.", fields };
-  const community = listCommunities().find((c) => c.id === fields.communityId);
+  const community = (await listCommunities()).find((c) => c.id === fields.communityId);
   if (!community) return { error: "Choose a community.", fields };
   if (!community.lots.some((l) => l.id === fields.lotId)) return { error: "Choose a lot.", fields };
 

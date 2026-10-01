@@ -2,6 +2,9 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { HouseModel } from "@/lib/models/house";
 import type { Drawing } from "@/lib/models/drawing";
+import type { Community } from "@/lib/models/community";
+import type { CommunityImportJob } from "@/lib/models/communityImport";
+import type { LotProgress } from "@/lib/models/construction";
 import type { PlanSet } from "@/lib/models/planSet";
 import type { Project } from "@/lib/models/project";
 import { DATA_DIR } from "@/lib/storage/objectStorage";
@@ -18,6 +21,11 @@ export interface Database {
   houseModels: Record<string, HouseModel>;
   drawings: Drawing[];
   planSets?: Record<string, PlanSet>;
+  /** Real-world communities imported from site plans (demo communities stay in code). */
+  communities?: Record<string, Community>;
+  /** Construction progress keyed by `${communityId}/${lotId}`. */
+  lotProgress?: Record<string, LotProgress>;
+  communityImports?: Record<string, CommunityImportJob>;
 }
 
 const DB_FILE = path.join(DATA_DIR, "db.json");

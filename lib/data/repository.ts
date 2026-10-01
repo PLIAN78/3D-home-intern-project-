@@ -3,6 +3,8 @@ import type { Community } from "@/lib/models/community";
 import type { Drawing } from "@/lib/models/drawing";
 import type { HouseModel } from "@/lib/models/house";
 import type { Floor } from "@/lib/models/house";
+import type { CommunityImportJob } from "@/lib/models/communityImport";
+import { demoProgress, type LotProgress } from "@/lib/models/construction";
 import { composeHouseModel, defaultPlanSelection, type PlanSet } from "@/lib/models/planSet";
 import type { Project } from "@/lib/models/project";
 import { blankHouseModel } from "@/lib/models/templates";
@@ -24,14 +26,17 @@ export interface ProjectBundle {
   community: Community;
   /** Present when the home is generated from a drawing set (elevations + options). */
   planSet?: PlanSet;
+  /** Construction progress for every lot in a real community (keyed by lot id). */
+  lotProgress?: Record<string, LotProgress>;
 }
 
-export function listCommunities(): Community[] {
-  return Object.values(COMMUNITIES);
+/** Demo communities (code) + real communities imported from site plans. */
+export async function listCommunities(): Promise<Community[]> {
+  return read((db) => [...Object.values(db.communities ?? {}), ...Object.values(COMMUNITIES)]);
 }
 
-export function getCommunity(id: string): Community | undefined {
-  return COMMUNITIES[id];
+export async function getCommunity(id: string): Promise<Community | undefined> {
+  return read((db) => db.communities?.[id] ?? COMMUNITIES[id]);
 }
 
 export async function listProjects(): Promise<Project[]> {
@@ -45,10 +50,15 @@ export async function getProjectBundle(slug: string): Promise<ProjectBundle | un
     const project = db.projects.find((p) => p.slug === slug);
     if (!project) return undefined;
     const house = db.houseModels[project.houseModelId];
-    const community = COMMUNITIES[project.communityId];
+    const community = db.communities?.[project.communityId] ?? COMMUNITIES[project.communityId];
     if (!house || !community) return undefined;
     const planSet = project.planSetId ? db.planSets?.[project.planSetId] : undefined;
-    return { project, house, community, planSet };
+    let lotProgress: Record<string, LotProgress> | undefined;
+    if (community.geo) {
+      lotProgress = {};
+      for (const [k, v] of Object.entries(db.lotProgress ?? {})) if (k.startsWith(community.id + "/")) lotProgress[v.lotId] = v;
+    }
+    return { project, house, community, planSet, lotProgress };
   });
 }
 
@@ -80,7 +90,7 @@ function slugify(s: string) {
 }
 
 export async function createProject(input: CreateProjectInput): Promise<Project> {
-  const community = COMMUNITIES[input.communityId];
+  const community = await getCommunity(input.communityId);
   if (!community) throw new Error("Unknown community");
   const lot = community.lots.find((l) => l.id === input.lotId);
   if (!lot) throw new Error("Unknown lot");
@@ -212,4 +222,63 @@ export async function updatePlanSetVariants(planSetId: string, floors: { variant
       project.updatedAt = new Date().toISOString();
     }
   });
+}
+
+// ---------------------------------------------------------------------------
+// Real communities + construction progress
+// ---------------------------------------------------------------------------
+
+export async function saveCommunity(community: Community, opts: { seedDemoProgress?: boolean } = {}): Promise<void> {
+  await write((db) => {
+    db.communities = { ...(db.communities ?? {}), [community.id]: community };
+    db.lotProgress = { ...(db.lotProgress ?? {}) };
+    // Drop sample progress for lots that no longer exist after a re-import (real entries are kept).
+    const ids = new Set(community.lots.map((l) => l.id));
+    for (const [k, v] of Object.entries(db.lotProgress)) if (v.communityId === community.id && v.demo && !ids.has(v.lotId)) delete db.lotProgress[k];
+    if (opts.seedDemoProgress) {
+      for (const lot of community.lots) {
+        const key = community.id + "/" + lot.id;
+        if (lot.status === "sold" && !db.lotProgress[key]) db.lotProgress[key] = demoProgress(community.id, lot.id, community.id + lot.number);
+      }
+    }
+  });
+}
+
+export async function listLotProgress(communityId: string): Promise<Record<string, LotProgress>> {
+  await connection();
+  return read((db) => {
+    const out: Record<string, LotProgress> = {};
+    for (const [k, v] of Object.entries(db.lotProgress ?? {})) if (k.startsWith(communityId + "/")) out[v.lotId] = v;
+    return out;
+  });
+}
+
+export async function saveLotProgress(p: LotProgress): Promise<LotProgress> {
+  return write((db) => {
+    db.lotProgress = { ...(db.lotProgress ?? {}), [p.communityId + "/" + p.lotId]: p };
+    return p;
+  });
+}
+
+/** Mark a lot as sold to a project (used when a project is placed on a real lot). */
+export async function setLotStatus(communityId: string, lotId: string, status: NonNullable<Community["lots"][number]["status"]>): Promise<void> {
+  await write((db) => {
+    const lot = db.communities?.[communityId]?.lots.find((l) => l.id === lotId);
+    if (lot) lot.status = status;
+  });
+}
+
+export async function saveImportJob(job: CommunityImportJob): Promise<void> {
+  await write((db) => {
+    db.communityImports = { ...(db.communityImports ?? {}), [job.id]: job };
+  });
+}
+
+export async function getImportJob(id: string): Promise<CommunityImportJob | undefined> {
+  return read((db) => db.communityImports?.[id]);
+}
+
+export async function listImportJobs(): Promise<CommunityImportJob[]> {
+  await connection();
+  return read((db) => Object.values(db.communityImports ?? {}));
 }
