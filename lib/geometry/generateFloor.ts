@@ -68,6 +68,9 @@ export function generateFloorSurfaces(floor: Floor, footprint: Point2D[]) {
   edgeLoop(contour);
   for (const h of holes) edgeLoop(h);
 
+  // Floors traced without rooms still get a finished floor across the footprint.
+  if (!floor.rooms.length) slab.get(floor.belowGrade ? "concrete" : "flooring").flatPolygon(contour, holes, floor.elevation, "up");
+
   for (const room of floor.rooms) {
     if (room.polygon.length < 3) continue;
     const poly = ensureCCW(room.polygon.map(v2));

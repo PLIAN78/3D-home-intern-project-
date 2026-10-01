@@ -29,6 +29,8 @@ export interface Wall {
   /** Exterior walls get a cladding veneer on their outside face. */
   exterior?: boolean;
   cladding?: CladdingZone;
+  /** Imported by an interpreter and not yet confirmed by a person. */
+  unverified?: boolean;
 }
 
 export type RoomFinish = "main" | "tile" | "concrete" | "garage";
@@ -38,6 +40,8 @@ export interface Room {
   name: string;
   polygon: Point2D[];
   finish?: RoomFinish;
+  /** Imported by an interpreter and not yet confirmed by a person. */
+  unverified?: boolean;
 }
 
 export type DoorKind = "interior" | "exterior" | "front" | "garage" | "patio" | "opening";
@@ -50,6 +54,8 @@ export interface Door {
   width: number;
   height: number;
   kind?: DoorKind;
+  /** Imported by an interpreter and not yet confirmed by a person. */
+  unverified?: boolean;
 }
 
 export interface Window {
@@ -60,6 +66,8 @@ export interface Window {
   width: number;
   height: number;
   sillHeight: number;
+  /** Imported by an interpreter and not yet confirmed by a person. */
+  unverified?: boolean;
 }
 
 export type FixtureKind = "base-cabinets" | "upper-cabinets" | "island" | "stair" | "porch" | "column" | "appliance";
@@ -129,6 +137,8 @@ export interface ExteriorConfig {
   /** Plan point (house-local) the driveway leads from, normally garage door centre. */
   drivewayStart?: Point2D;
   drivewayWidth?: number;
+  /** Regenerate simple roofs from floor outlines when the model is saved (traced models). */
+  autoRoof?: boolean;
 }
 
 export interface ModelProvenance {
@@ -204,6 +214,10 @@ export function isLivingRoom(r: Room): boolean {
   return r.finish !== "garage" && r.finish !== "concrete";
 }
 
+export function hasGeometry(model: HouseModel): boolean {
+  return model.floors.some((f) => f.walls.length > 0);
+}
+
 export function floorArea(floor: Floor, includeRoom: (r: Room) => boolean = () => true): number {
   return floor.rooms.filter(includeRoom).reduce((s, r) => s + polygonArea(r.polygon), 0);
 }
@@ -232,10 +246,12 @@ export function modelPlanBounds(model: HouseModel): PlanBounds {
       }
     }
   }
+  if (!Number.isFinite(b.minX)) return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
   return b;
 }
 
 /** Highest point of the building's wall tops (excluding roof). */
 export function topOfWalls(model: HouseModel): number {
+  if (!model.floors.length) return 0;
   return Math.max(...model.floors.map((f) => f.elevation + f.ceilingHeight));
 }

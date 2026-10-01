@@ -1,6 +1,7 @@
 "use client";
 
-import { Download, Eye, EyeOff, FileUp, Focus, ShieldAlert } from "lucide-react";
+import Link from "next/link";
+import { Download, Eye, EyeOff, Focus, PencilRuler, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,8 +9,11 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CutawayControls } from "@/components/configurator/CutawayControls";
+import { DrawingList } from "@/components/drawings/DrawingList";
+import { DrawingUploader } from "@/components/drawings/DrawingUploader";
+import type { Drawing } from "@/lib/models/drawing";
 import type { ProjectBundle } from "@/lib/data/repository";
-import { floorArea, isLivingRoom, polygonArea, sortedFloors, SQ_M_TO_SQ_FT, type Floor } from "@/lib/models/house";
+import { floorArea, isLivingRoom, polygonArea, sortedFloors, SQ_M_TO_SQ_FT, type Floor, type GeometrySource } from "@/lib/models/house";
 import { cn } from "@/lib/utils";
 import { isFloorVisible, useViewerStore } from "@/stores/viewerStore";
 
@@ -21,6 +25,8 @@ const feetInches = (m: number) => {
 
 /** Finished area, or gross area flagged as unfinished (e.g. basements). */
 function areaLabel(f: Floor) {
+  if (!f.walls.length) return "Not traced yet";
+  if (!f.rooms.length) return "No rooms defined";
   const living = floorArea(f, isLivingRoom);
   if (living > 0) return `${sqft(living)} sq ft`;
   return `Unfinished · ${sqft(floorArea(f))} sq ft`;
@@ -35,11 +41,16 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+const SOURCE_LABEL: Record<GeometrySource, string> = {
+  "demo-seed": "demo seed data",
+  interpreted: "interpreted drawing",
+  "manual-trace": "traced from drawings",
+};
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h3 className="mb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{children}</h3>;
 }
 
-const DRAWING_TYPES = ["Floor Plan", "Elevation", "Redline", "Décor", "Structural", "Other"];
 
 function FloorsTab({ bundle }: { bundle: ProjectBundle }) {
   const isolated = useViewerStore((s) => s.isolated);
@@ -62,6 +73,16 @@ function FloorsTab({ bundle }: { bundle: ProjectBundle }) {
                     {areaLabel(f)} · {feetInches(f.ceilingHeight)}
                   </div>
                 </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button asChild variant="ghost" size="icon-sm" aria-label={`Trace ${f.name}`}>
+                      <Link href={`/projects/${bundle.project.slug}/trace?floor=${f.id}`}>
+                        <PencilRuler />
+                      </Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Trace / edit plan</TooltipContent>
+                </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -118,7 +139,8 @@ function ModelTab({ bundle }: { bundle: ProjectBundle }) {
     <div className="space-y-5">
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
         <div className="flex items-center gap-1.5 text-xs font-semibold">
-          <ShieldAlert className="size-3.5" /> Geometry source: demo seed data
+          <ShieldAlert className="size-3.5" /> Geometry source: {SOURCE_LABEL[house.provenance.source]}
+          {house.provenance.source !== "demo-seed" && <span className="ml-auto font-normal">confidence {Math.round(house.provenance.confidence * 100)}%</span>}
         </div>
         <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[11px] leading-snug">
           {house.provenance.notes.map((n) => (
@@ -160,31 +182,22 @@ function ModelTab({ bundle }: { bundle: ProjectBundle }) {
   );
 }
 
-function DrawingsTab() {
+function DrawingsTab({ bundle, drawings }: { bundle: ProjectBundle; drawings: Drawing[] }) {
+  const floors = sortedFloors(bundle.house);
+  const toReview = drawings.filter((d) => d.processingStatus === "needs-review").length;
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-dashed p-5 text-center">
-        <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-muted">
-          <FileUp className="size-5 text-muted-foreground" />
-        </div>
-        <div className="text-sm font-medium">No drawings uploaded</div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          This home was generated from demo seed data. Upload &amp; tracing of PDFs and scans is the next phase.
-        </p>
-        <Button size="sm" className="mt-3" disabled>
-          Upload drawings
-        </Button>
-      </div>
+      <DrawingUploader projectId={bundle.project.id} floors={floors} />
       <div>
-        <SectionTitle>Supported categories</SectionTitle>
-        <div className="flex flex-wrap gap-1.5">
-          {DRAWING_TYPES.map((t) => (
-            <Badge key={t} variant="secondary">
-              {t}
-            </Badge>
-          ))}
+        <div className="mb-1 flex items-center justify-between">
+          <SectionTitle>Drawings ({drawings.length})</SectionTitle>
+          {toReview > 0 && <span className="text-[10px] font-medium text-amber-700">{toReview} need review</span>}
         </div>
+        <DrawingList drawings={drawings} floors={floors} projectSlug={bundle.project.slug} />
       </div>
+      <p className="text-[10px] leading-snug text-muted-foreground">
+        Extracted geometry is a starting point only. Every interpretation is reviewed and corrected in the tracing editor before it reaches the 3D model.
+      </p>
     </div>
   );
 }
@@ -220,9 +233,9 @@ function ProjectTab({ bundle }: { bundle: ProjectBundle }) {
 }
 
 /** Left column of the studio: project, drawings, floors, model data. */
-export function ProjectSidebar({ bundle }: { bundle: ProjectBundle }) {
+export function ProjectSidebar({ bundle, drawings, initialTab = "floors" }: { bundle: ProjectBundle; drawings: Drawing[]; initialTab?: string }) {
   return (
-    <Tabs defaultValue="floors" className="flex h-full min-h-0 flex-col gap-0">
+    <Tabs defaultValue={initialTab} className="flex h-full min-h-0 flex-col gap-0">
       <div className="border-b px-3 pt-3 pb-2">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="project">Project</TabsTrigger>
@@ -237,7 +250,7 @@ export function ProjectSidebar({ bundle }: { bundle: ProjectBundle }) {
             <ProjectTab bundle={bundle} />
           </TabsContent>
           <TabsContent value="drawings">
-            <DrawingsTab />
+            <DrawingsTab bundle={bundle} drawings={drawings} />
           </TabsContent>
           <TabsContent value="floors">
             <FloorsTab bundle={bundle} />
@@ -248,7 +261,7 @@ export function ProjectSidebar({ bundle }: { bundle: ProjectBundle }) {
         </div>
       </ScrollArea>
       <Separator />
-      <div className="px-4 py-2.5 text-[10px] text-muted-foreground">Home Studio · Phase 1 MVP</div>
+      <div className="px-4 py-2.5 text-[10px] text-muted-foreground">Home Studio · MVP</div>
     </Tabs>
   );
 }

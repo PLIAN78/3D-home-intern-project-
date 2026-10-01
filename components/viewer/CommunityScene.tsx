@@ -238,7 +238,7 @@ export function CommunityScene({ community, selectedLotId, showBaseModel, showLo
                   }
                 >
                   Lot {lot.number}
-                  {lot.status ? ` · ${STATUS_LABEL[lot.status]}` : ""}
+                  {isSelected ? " · Your Home" : lot.status && lot.status !== "selected" ? ` · ${STATUS_LABEL[lot.status]}` : ""}
                 </div>
               </Html>
             )}

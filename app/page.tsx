@@ -1,21 +1,24 @@
 import Link from "next/link";
-import { ArrowRight, Box, Eye, FileUp, Layers, Map as MapIcon, Palette } from "lucide-react";
+import { ArrowRight, Box, Eye, FileUp, Layers, Map as MapIcon, Palette, Plus } from "lucide-react";
+import type { ProjectStatus } from "@/lib/models/project";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandMark } from "@/components/studio/BrandMark";
 import { listProjects } from "@/lib/data/repository";
 
+const STATUS_LABEL: Record<ProjectStatus, string> = { draft: "Draft", "in-review": "In review", "ready-for-sales": "Ready for sales" };
+
 const STEPS = [
-  { icon: FileUp, title: "Upload drawings", body: "Floor plans, elevations, redlines — PDF or image.", status: "Next phase" },
+  { icon: FileUp, title: "Upload & trace", body: "Upload PDFs or images, auto-extract walls, review and trace in 2D.", status: "Live" },
   { icon: Box, title: "Generate 3D", body: "Procedural walls, floors, openings and roofs from structured JSON.", status: "Live" },
   { icon: Palette, title: "Configure finishes", body: "Brick, stone, siding, roof, doors, flooring, cabinets.", status: "Live" },
   { icon: Layers, title: "Inspect floors", body: "Isolate levels, cutaways and the exploded “cake” view.", status: "Live" },
   { icon: MapIcon, title: "Place in community", body: "See the configured home on its lot in the neighbourhood.", status: "Live" },
 ];
 
-export default function Home() {
-  const projects = listProjects();
+export default async function Home() {
+  const projects = await listProjects();
   return (
     <div className="min-h-dvh bg-gradient-to-b from-stone-50 to-background">
       <header className="flex h-14 items-center border-b bg-background/80 px-6 backdrop-blur">
@@ -46,13 +49,13 @@ export default function Home() {
               <CardHeader>
                 <div className="flex items-center justify-between gap-2">
                   <CardTitle>{p.name}</CardTitle>
-                  <Badge variant="outline">In review</Badge>
+                  <Badge variant="outline">{STATUS_LABEL[p.status]}</Badge>
                 </div>
                 <CardDescription>
-                  {p.communityName} · Lot {p.lotNumber} · {p.modelName} · {p.floorCount} levels
+                  {p.communityName} · Lot {p.lotNumber} · {p.modelName} · {p.floorCount} level{p.floorCount === 1 ? "" : "s"}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">Demo project with seed geometry — no drawings uploaded yet.</CardContent>
+              <CardContent className="text-xs text-muted-foreground">Updated {new Date(p.updatedAt).toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" })}</CardContent>
               <CardFooter className="gap-2">
                 <Button asChild size="sm">
                   <Link href={`/projects/${p.slug}`}>
@@ -67,15 +70,17 @@ export default function Home() {
               </CardFooter>
             </Card>
           ))}
-          <Card className="flex items-center justify-center border-dashed bg-transparent shadow-none">
-            <CardContent className="py-10 text-center">
-              <p className="text-sm font-medium">New project</p>
-              <p className="mt-1 text-xs text-muted-foreground">Project creation &amp; drawing upload arrive in the next phase.</p>
-              <Button size="sm" variant="outline" className="mt-3" disabled>
-                Create project
-              </Button>
-            </CardContent>
-          </Card>
+          <Link href="/projects/new" className="group">
+            <Card className="flex h-full items-center justify-center border-dashed bg-transparent shadow-none transition-colors group-hover:bg-muted/40">
+              <CardContent className="py-10 text-center">
+                <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-muted">
+                  <Plus className="size-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium">New project</p>
+                <p className="mt-1 text-xs text-muted-foreground">Choose a community and lot, then upload drawings.</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         <h2 className="mt-12 mb-3 text-sm font-semibold tracking-tight">Workflow</h2>

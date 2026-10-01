@@ -66,7 +66,7 @@ export function StudioHeader({ bundle }: { bundle: ProjectBundle }) {
         </div>
       </div>
       <Badge variant="outline" className="hidden md:inline-flex">
-        In review
+        {project.status === "draft" ? "Draft" : project.status === "ready-for-sales" ? "Ready for sales" : "In review"}
       </Badge>
       <div className="ml-auto flex items-center gap-2">
         <DropdownMenu>

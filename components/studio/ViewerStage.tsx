@@ -1,7 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Eye, Info, MousePointerClick } from "lucide-react";
+import Link from "next/link";
+import { Eye, Info, MousePointerClick, PencilRuler } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { hasGeometry } from "@/lib/models/house";
 import type { ProjectBundle } from "@/lib/data/repository";
 import { FloorSelector } from "@/components/configurator/FloorSelector";
 import { ViewControls } from "@/components/configurator/ViewControls";
@@ -60,6 +63,28 @@ export function ViewerStage({ bundle, variant }: ViewerStageProps) {
   return (
     <div className="relative h-full w-full overflow-hidden bg-stone-100">
       <HouseViewer projectId={project.id} projectName={project.name} house={house} community={community} lotId={project.lotId} />
+      {!hasGeometry(house) && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/40 backdrop-blur-[2px]">
+          <div className="max-w-sm rounded-2xl border bg-background p-6 text-center shadow-xl">
+            <div className="text-base font-semibold">No 3D geometry yet</div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {variant === "studio" ? "Upload a floor plan, extract or trace its walls, and the 3D home is generated automatically." : "This home is still being prepared. Please check back soon."}
+            </p>
+            {variant === "studio" && (
+              <div className="mt-4 flex justify-center gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/projects/${project.slug}?tab=drawings`}>Upload drawings</Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href={`/projects/${project.slug}/trace`}>
+                    <PencilRuler /> Open editor
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3">
         <div className="flex items-start justify-between gap-3">
@@ -68,9 +93,9 @@ export function ViewerStage({ bundle, variant }: ViewerStageProps) {
             <div className="text-[11px] text-muted-foreground">
               Lot {lot?.number ?? project.lotNumber} · {community.name}
             </div>
-            {variant === "studio" && house.provenance.source === "demo-seed" && (
+            {variant === "studio" && (house.provenance.source === "demo-seed" || house.provenance.confidence < 0.7) && hasGeometry(house) && (
               <div className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-200">
-                <Info className="size-3" /> Demo model · approximate dimensions
+                <Info className="size-3" /> {house.provenance.source === "demo-seed" ? "Demo model · approximate dimensions" : `Needs review · ${Math.round(house.provenance.confidence * 100)}% confidence`}
               </div>
             )}
           </div>
