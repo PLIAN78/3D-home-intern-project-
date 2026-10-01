@@ -79,7 +79,8 @@ export function defaultPlanSelection(set: PlanSet): PlanSelection {
 
 export function variantFor(set: PlanSet, elevationId: string, levelId: LevelId, optionId: string | null): FloorVariant | undefined {
   const pick = (opt: string | null) => set.variants.find((v) => v.elevationId === elevationId && v.levelId === levelId && v.optionId === opt);
-  return (optionId ? pick(optionId) : undefined) ?? pick(null);
+  // Sets saved before standard-plan promotion may have a level drawn only as an option.
+  return (optionId ? pick(optionId) : undefined) ?? pick(null) ?? set.variants.find((v) => v.elevationId === elevationId && v.levelId === levelId);
 }
 
 /** Options that exist for a level in a given elevation. */

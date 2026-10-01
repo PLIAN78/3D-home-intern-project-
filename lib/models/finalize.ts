@@ -1,4 +1,5 @@
 import type { Floor, HouseModel, Point2D, RoofSection, Wall } from "./house";
+import { clipRoomToFootprint, rasterFootprint } from "./footprint";
 import { sortedFloors, wallLength } from "./house";
 
 /**
@@ -166,9 +167,13 @@ export function finalizeHouseModel(model: HouseModel): { model: HouseModel; note
     if (f.doors.length + f.windows.length < before) notes.push(`${f.name}: removed ${before - f.doors.length - f.windows.length} opening(s) that no longer fit their wall.`);
 
     if (f.walls.length) {
-      const fp = deriveFootprint(f);
-      if (fp) f.footprint = fp;
-      else {
+      // Exact loop of exterior walls → outline traced from all walls → bounding box.
+      const fp = deriveFootprint(f) ?? rasterFootprint(f);
+      if (fp) {
+        f.footprint = fp;
+        // Rooms outlined as rectangles can spill outside L-shaped plans.
+        f.rooms = f.rooms.map((r) => clipRoomToFootprint(r, fp));
+      } else {
         const b = wallBounds(f)!;
         f.footprint = [
           { x: b.minX, y: b.minY },

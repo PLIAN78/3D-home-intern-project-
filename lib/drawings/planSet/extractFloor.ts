@@ -77,6 +77,33 @@ export function mainCluster(walls: InterpretedWall[], ctx?: ClusterContext): num
     c.maxY = Math.max(c.maxY, r.y1);
     clusters.set(find(i), c);
   });
+  // One drawing often splits into several wall clusters that only meet at door
+  // gaps or thin walls (e.g. house and garage). Fragments of the same drawing
+  // interleave, so clusters whose bounding boxes overlap are merged; separate
+  // drawings (option insets, alternates) sit apart on the sheet.
+  const biggest = Math.max(0, ...[...clusters.values()].map((c) => c.len));
+  for (let changed = true; changed; ) {
+    changed = false;
+    const roots = [...clusters.keys()];
+    for (let i = 0; i < roots.length && !changed; i++) {
+      for (let j = i + 1; j < roots.length && !changed; j++) {
+        const a = clusters.get(roots[i])!;
+        const b = clusters.get(roots[j])!;
+        if (Math.min(a.len, b.len) < biggest * 0.08) continue;
+        const ix = Math.min(a.maxX, b.maxX) - Math.max(a.minX, b.minX);
+        const iy = Math.min(a.maxY, b.maxY) - Math.max(a.minY, b.minY);
+        if (ix <= 0 || iy <= 0) continue;
+        // Require a real overlap, not just touching corners.
+        const smaller = Math.min((a.maxX - a.minX) * (a.maxY - a.minY), (b.maxX - b.minX) * (b.maxY - b.minY));
+        if (ix * iy < smaller * 0.05) continue;
+        parent[find(roots[j])] = find(roots[i]);
+        clusters.set(roots[i], { len: a.len + b.len, minX: Math.min(a.minX, b.minX), minY: Math.min(a.minY, b.minY), maxX: Math.max(a.maxX, b.maxX), maxY: Math.max(a.maxY, b.maxY) });
+        clusters.delete(roots[j]);
+        changed = true;
+      }
+    }
+  }
+
   let best = -1;
   let bestScore = -1;
   for (const [root, c] of clusters) {
@@ -91,6 +118,81 @@ export function mainCluster(walls: InterpretedWall[], ctx?: ClusterContext): num
     if (score > bestScore) [best, bestScore] = [root, score];
   }
   return ws.map((_, i) => i).filter((i) => find(i) === best);
+}
+
+const CAPTION_RE = /\bPLAN\b/i;
+const CAPTION_LEVEL_RE = /\b(FLOOR|BASEMENT|LOWER|UPPER|SECOND|GROUND|MAIN|ATTIC|LOFT|THIRD)\b/i;
+// Add-on alternates drawn beside a plan ("… w/ SIDE UPGRADE", "… w/ ALT. PORCH"). "OPT." is not one:
+// on an option sheet it names the sheet's own subject.
+const ALTERNATE_RE = /\bw\/|\bWITH\b|UPGRADE|\bALT\b|\bALT\.|ALTERNATE/i;
+
+/**
+ * Sheets sometimes draw an alternate (e.g. "… PLAN w/ SIDE UPGRADE") right
+ * against the standard plan, sharing a wall line, so both end up in one wall
+ * cluster. Each drawing has its own caption underneath; when the cluster has
+ * a standard caption and an alternate caption side by side, cut the cluster at
+ * the full-height wall between them and keep the standard side.
+ */
+export function splitAdjacentDrawings(walls: InterpretedWall[], text: PageText): { walls: InterpretedWall[]; dropped: string | null } {
+  if (walls.length < 4) return { walls, dropped: null };
+  const ws = walls.map(asAxis);
+  const minX = Math.min(...ws.map((w) => (w.axis === "h" ? w.a0 : w.c)));
+  const maxX = Math.max(...ws.map((w) => (w.axis === "h" ? w.a1 : w.c)));
+  const minY = Math.min(...ws.map((w) => (w.axis === "v" ? w.a0 : w.c)));
+  const maxY = Math.max(...ws.map((w) => (w.axis === "v" ? w.a1 : w.c)));
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  // Caption lines just below the drawing, then whole caption blocks around them.
+  const near = text.items.filter((t) => t.y > maxY - height * 0.05 && t.y < maxY + text.height * 0.2 && t.x + t.w > minX - width * 0.1 && t.x < maxX + width * 0.1);
+  // "… FLOOR PLAN" on standard sheets, "SECOND FLOOR OPT. SPA ENSUITE" on option sheets.
+  const heads = near.filter((t) => CAPTION_LEVEL_RE.test(t.str) && (CAPTION_RE.test(t.str) || /\bOPT\b|\bOPTION\b/i.test(t.str)));
+  const blocks: { x0: number; x1: number; text: string }[] = [];
+  for (const h of heads) {
+    // A caption block: a code / "ELEVATION X" line above, a qualifier ("w/ …") line below.
+    // Caption lines are left-aligned with each other.
+    const members = near.filter((t) => t.y > h.y - h.h * 3.5 && t.y < h.y + h.h * 2.2 && Math.abs(t.x - h.x) < h.h * 2);
+    const x0 = Math.min(...members.map((t) => t.x));
+    const x1 = Math.max(...members.map((t) => t.x + t.w));
+    if (blocks.some((b) => Math.abs((b.x0 + b.x1) / 2 - (x0 + x1) / 2) < width * 0.1)) continue;
+    blocks.push({ x0, x1, text: members.map((t) => t.str).join(" ") });
+  }
+  if (blocks.length < 2) return { walls, dropped: null };
+  // The main drawing's caption has the fewest add-on qualifiers (an option's own name
+  // may contain one, e.g. "PRIMARY RETREAT W/ DELUXE LAUNDRY"; its add-on adds "w/ SIDE UPGRADE").
+  const addOns = (b: { text: string }) => (b.text.match(new RegExp(ALTERNATE_RE.source, "gi")) ?? []).length;
+  const fewest = Math.min(...blocks.map(addOns));
+  const standard = blocks.filter((b) => addOns(b) === fewest);
+  if (standard.length !== 1) return { walls, dropped: null };
+  const main = standard[0];
+  // Captions start at (or just inside) their drawing's left edge; their widths vary
+  // with the option name, so compare left edges rather than centres.
+  const mc = main.x0;
+  const others = blocks.filter((b) => b !== main);
+  // The nearest alternate beside it decides the cut.
+  const other = others.sort((a, b) => Math.abs(a.x0 - mc) - Math.abs(b.x0 - mc))[0];
+  const oc = other.x0;
+  if (Math.abs(oc - mc) < width * 0.2) return { walls, dropped: null };
+  const lo = Math.min(mc, oc);
+  const hi = Math.max(mc, oc);
+  const cuts = ws.filter((w) => w.axis === "v" && w.a1 - w.a0 >= height * 0.8 && w.c > lo && w.c < hi);
+  if (!cuts.length) return { walls, dropped: null };
+  const cut = cuts.sort((a, b) => Math.abs(a.c - (lo + hi) / 2) - Math.abs(b.c - (lo + hi) / 2))[0].c;
+  const keepRight = mc > cut;
+  const out: InterpretedWall[] = [];
+  for (const w of ws) {
+    const { axis, c, a0, a1, ...wall } = w;
+    if (axis === "v") {
+      if (keepRight ? c >= cut - 1 : c <= cut + 1) out.push(wall);
+      continue;
+    }
+    const s = keepRight ? Math.max(a0, cut) : a0;
+    const e = keepRight ? a1 : Math.min(a1, cut);
+    if (e - s < 8) continue;
+    const forward = wall.end.x >= wall.start.x;
+    out.push({ ...wall, start: { x: forward ? s : e, y: wall.start.y }, end: { x: forward ? e : s, y: wall.end.y } });
+  }
+  return { walls: out, dropped: other.text.replace(/\s+/g, " ").trim() };
 }
 
 /** Text likely to sit inside the plan: room dimensions and mid-sized labels outside notes/title areas. */
@@ -318,6 +420,41 @@ function clipDetection(det: ReturnType<typeof detectWalls>, reference: Interpret
   return { ...det, walls, doors: mapOpenings(det.doors), windows: mapOpenings(det.windows) };
 }
 
+/**
+ * A wall that runs on past the outermost wall it crosses, into empty space,
+ * has usually been bridged across a small gap into a neighbouring inset (or
+ * picked up a leader line). Trim such ends back to that outermost crossing
+ * wall. Edits `det` in place (walls and their openings).
+ */
+function trimOvershoots(det: ReturnType<typeof detectWalls>, keep: number[]) {
+  const ws = keep.map((i) => ({ i, w: asAxis(det.walls[i]) }));
+  for (const { i, w } of ws) {
+    const t = Math.max(4, w.thicknessPx);
+    const crossing = ws.filter((o) => o.w.axis !== w.axis && o.w.a0 - t <= w.c && o.w.a1 + t >= w.c && o.w.c >= w.a0 - t && o.w.c <= w.a1 + t);
+    if (crossing.length < 2) continue;
+    const cs = crossing.map((o) => o.w.c);
+    let lo = w.a0;
+    let hi = w.a1;
+    const minC = Math.min(...cs);
+    const maxC = Math.max(...cs);
+    // Anything else of the drawing beyond that end (parallel walls) means the extension is real.
+    const occupied = (from: number, to: number) => ws.some((o) => o.i !== i && o.w.axis === w.axis && o.w.a1 > from && o.w.a0 < to);
+    if (hi - maxC > t * 3 && !occupied(maxC + t, hi)) hi = maxC + w.thicknessPx / 2;
+    if (minC - lo > t * 3 && !occupied(lo, minC - t)) lo = minC - w.thicknessPx / 2;
+    if (lo === w.a0 && hi === w.a1) continue;
+    const wall = det.walls[i];
+    const forward = w.axis === "h" ? wall.end.x >= wall.start.x : wall.end.y >= wall.start.y;
+    const start = forward ? lo : hi;
+    const end = forward ? hi : lo;
+    const shift = Math.abs(start - (w.axis === "h" ? wall.start.x : wall.start.y));
+    const length = hi - lo;
+    det.walls[i] = w.axis === "h" ? { ...wall, start: { x: start, y: wall.start.y }, end: { x: end, y: wall.end.y } } : { ...wall, start: { x: wall.start.x, y: start }, end: { x: wall.end.x, y: end } };
+    const fix = (list: typeof det.doors) => list.filter((o) => o.wallIndex !== i || ((o.positionPx -= shift), o.positionPx - o.widthPx / 2 >= 0 && o.positionPx + o.widthPx / 2 <= length));
+    det.doors = fix(det.doors);
+    det.windows = fix(det.windows);
+  }
+}
+
 export interface ScaleVote {
   metresPerPixel: number;
   weight: number;
@@ -405,9 +542,16 @@ export function extractFloor(img: GreyImage, text: PageText, opts: ExtractOption
   // Locate the main drawing without scale-aware door bridging (which could
   // join it to nearby option insets), then clip the scale-aware pass to it.
   const det0 = opts.mainWalls && opts.metresPerPixel ? null : detectWalls(img);
-  const main0 = opts.mainWalls ?? mainCluster(det0!.walls, ctx).map((i) => det0!.walls[i]);
-  const det = opts.metresPerPixel ? clipDetection(detectWalls(img, { metresPerPixel: opts.metresPerPixel }), main0) : det0!;
-  const keep = mainCluster(det.walls, ctx);
+  const cluster0 = opts.mainWalls ?? mainCluster(det0!.walls, ctx).map((i) => det0!.walls[i]);
+  // An alternate drawn against the plan ("… w/ SIDE UPGRADE") joins its wall cluster; cut it off.
+  const split = splitAdjacentDrawings(cluster0, text);
+  const main0 = split.walls;
+  if (split.dropped) warnings.push(`Left out an alternate drawn next to the plan ("${split.dropped}").`);
+  const full = opts.metresPerPixel ? detectWalls(img, { metresPerPixel: opts.metresPerPixel }) : det0!;
+  const det = opts.metresPerPixel || split.dropped ? clipDetection(full, main0) : full;
+  const kept0 = mainCluster(det.walls, ctx);
+  trimOvershoots(det, kept0);
+  const keep = kept0.filter((i) => det.walls[i].start.x !== det.walls[i].end.x || det.walls[i].start.y !== det.walls[i].end.y);
   const keepSet = new Set(keep);
   const remap = new Map(keep.map((oldI, newI) => [oldI, newI]));
   const walls = keep.map((i) => det.walls[i]);

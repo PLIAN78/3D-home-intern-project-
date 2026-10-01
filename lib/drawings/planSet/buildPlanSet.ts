@@ -129,6 +129,17 @@ export async function buildPlanSet(input: BuildInput): Promise<PlanSet> {
     }
     await progress("Assembling the home", candidates.length, candidates.length);
 
+    // A level drawn only on option-coded sheets (e.g. model-home sets titled
+    // "SOGF-…") has no standard plan; its first full sheet becomes the standard,
+    // otherwise the default home would be missing that whole floor.
+    for (const v of raw) {
+      if (v.optionId === null) continue;
+      const hasStd = raw.some((s) => s.optionId === null && s.levelId === v.levelId && s.elevationId === v.elevationId);
+      if (hasStd) continue;
+      const first = raw.filter((s) => s.levelId === v.levelId && s.elevationId === v.elevationId).sort((a, b) => wallArea(b.floor.walls) - wallArea(a.floor.walls) || a.page - b.page)[0];
+      first.optionId = null;
+    }
+
     // Keep one standard per elevation+level (first sheet wins); drop partial option sheets.
     const variants: FloorVariant[] = [];
     for (const v of raw) {
