@@ -82,17 +82,17 @@ export function NewProjectForm({ communities, initialCommunityId, initialLotId }
       </div>
 
       <label className={cn("flex items-center gap-2 text-sm", template === "plan-36" && "opacity-50")}>
-        <Checkbox name="hasBasement" defaultChecked disabled={template === "plan-36"} /> Includes a basement (counted in the number of floors)
+        <Checkbox name="hasBasement" defaultChecked disabled={template === "plan-36"} /> Includes a basement
       </label>
 
       <div className="space-y-1.5">
-        <Label>Starting geometry</Label>
+        <Label>Start from</Label>
         <input type="hidden" name="template" value={template} />
         <div className="grid gap-2 sm:grid-cols-2">
           {(
             [
-              { id: "blank", title: "Blank — trace from drawings", body: "Empty floors. Upload plans, then trace or auto-extract." },
-              { id: "plan-36", title: "Copy the Plan 36 sample", body: "Pre-built 3-level demo home you can edit." },
+              { id: "blank", title: "Drawings", body: "Empty floors — upload drawing sets and build from them." },
+              { id: "plan-36", title: "Plan 36 sample", body: "Pre-built 3-level demo home you can edit." },
             ] as const
           ).map((o) => (
             <button

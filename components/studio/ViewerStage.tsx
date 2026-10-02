@@ -126,7 +126,7 @@ export function ViewerStage({ bundle, variant }: ViewerStageProps) {
           <FloorSelector house={house} />
           {variant === "customer" && (
             <div className="flex items-center gap-1 rounded-full bg-background/85 px-2.5 py-0.5 text-[10px] text-foreground/70 shadow-sm backdrop-blur">
-              <Eye className="size-3" /> Visualization for illustration only — finishes and dimensions may vary.
+              <Eye className="size-3" /> For illustration only — finishes and dimensions may vary.
             </div>
           )}
           {community.geo && <div className="self-end text-[10px] text-neutral-700/80">{OSM_ATTRIBUTION}</div>}

@@ -49,7 +49,7 @@ export function FloorSelector({ house }: { house: HouseModel }) {
   const isFull = !isolated && explode === 0 && !Object.values(hiddenFloors).some(Boolean) && showRoof;
 
   return (
-    <div className="pointer-events-auto flex max-w-full items-center gap-0.5 overflow-x-auto rounded-xl border bg-background/90 p-1 shadow-lg ring-1 ring-black/5 backdrop-blur-md">
+    <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-xl border bg-background/90 p-1 shadow-lg ring-1 ring-black/5 backdrop-blur-md">
       <DockButton
         active={isFull && mode === "house"}
         onClick={() => {

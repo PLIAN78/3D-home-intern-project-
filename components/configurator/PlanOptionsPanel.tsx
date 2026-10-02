@@ -35,7 +35,7 @@ export function PlanOptionsPanel({ planSet, selection, onChange, variant }: { pl
         <h3 className="mb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Elevation</h3>
         <div className="grid grid-cols-2 gap-2">
           {planSet.elevations.map((e, i) => (
-            <Choice key={e.id} active={selection.elevationId === e.id} title={e.label.replace(/^Elevation /, "")} subtitle={i === 0 ? "Standard elevation" : "Elevation option"} onClick={() => onChange({ elevationId: e.id, options: selection.options })} />
+            <Choice key={e.id} active={selection.elevationId === e.id} title={e.label.replace(/^Elevation /, "")} subtitle={i === 0 ? "Standard" : undefined} onClick={() => onChange({ elevationId: e.id, options: selection.options })} />
           ))}
         </div>
       </section>
@@ -47,9 +47,9 @@ export function PlanOptionsPanel({ planSet, selection, onChange, variant }: { pl
           <section key={level}>
             <h3 className="mb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{LEVEL_LABEL[level]} layout</h3>
             <div className="space-y-1.5">
-              <Choice active={!current} title="Standard" subtitle="As shown on the standard plan" onClick={() => onChange({ ...selection, options: { ...selection.options, [level]: null } })} />
+              <Choice active={!current} title="Standard" onClick={() => onChange({ ...selection, options: { ...selection.options, [level]: null } })} />
               {opts.map((o) => (
-                <Choice key={o.id} active={current === o.id} title={o.name} subtitle={o.code ?? undefined} onClick={() => onChange({ ...selection, options: { ...selection.options, [level]: o.id } })} />
+                <Choice key={o.id} active={current === o.id} title={o.name} onClick={() => onChange({ ...selection, options: { ...selection.options, [level]: o.id } })} />
               ))}
             </div>
           </section>
@@ -58,8 +58,8 @@ export function PlanOptionsPanel({ planSet, selection, onChange, variant }: { pl
 
       {variant === "studio" && (
         <p className="rounded-lg bg-muted/60 p-2.5 text-[11px] leading-snug text-muted-foreground">
-          Generated from {planSet.modelCode ? `model ${planSet.modelCode}` : "the drawing set"} ({planSet.pageCount} sheets).
-          {unreviewed > 0 ? ` ${unreviewed} floor plan${unreviewed > 1 ? "s" : ""} for this elevation were traced automatically and not yet reviewed.` : " All floors for this elevation have been reviewed."}
+          From {planSet.modelCode ? `model ${planSet.modelCode}` : "the drawing set"} · {planSet.pageCount} sheets.
+          {unreviewed > 0 ? ` ${unreviewed} floor plan${unreviewed > 1 ? "s" : ""} await review.` : " All floors reviewed."}
         </p>
       )}
     </div>

@@ -17,7 +17,7 @@ export function LotProgressCard({ community, lot, progress, variant }: { communi
     <div className="pointer-events-auto w-64 rounded-xl border bg-background/90 shadow-lg ring-1 ring-black/5 backdrop-blur-md">
       <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2 px-3 pt-2 text-left">
         <HardHat className="size-3.5 text-amber-600" />
-        <span className="flex-1 text-xs font-semibold">{variant === "customer" ? "Your build progress" : "Build progress"}</span>
+        <span className="flex-1 text-xs font-semibold">Build progress</span>
         <DemoDataBadge progress={progress} />
         <ChevronDown className={cn("size-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>

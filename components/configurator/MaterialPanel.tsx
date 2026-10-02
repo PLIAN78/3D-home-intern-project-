@@ -109,7 +109,7 @@ export function MaterialPanel({ projectId, modelName, variant = "studio", planSe
         <div className="flex items-start justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold tracking-tight">{variant === "customer" ? "Personalize your home" : "Home Options"}</h2>
-            <p className="text-xs text-muted-foreground">{modelName} · changes apply instantly</p>
+            <p className="text-xs text-muted-foreground">{modelName}</p>
           </div>
           {changed > 0 && (
             <span className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-semibold text-[color:oklch(0.5_0.13_62)]">
@@ -174,14 +174,9 @@ export function MaterialPanel({ projectId, modelName, variant = "studio", planSe
         </Accordion>
       </ScrollArea>
 
-      <div className="flex items-center justify-between gap-2 border-t px-4 py-3">
-        <p className="text-[11px] leading-tight text-muted-foreground">
-          Tip: click any surface on the
-          <br />
-          home to jump to its options.
-        </p>
+      <div className="flex items-center justify-end border-t px-4 py-2">
         <Button variant="ghost" size="sm" onClick={() => resetSelections(projectId)} disabled={changed === 0}>
-          <RotateCcw /> Reset
+          <RotateCcw /> Reset all
         </Button>
       </div>
     </div>

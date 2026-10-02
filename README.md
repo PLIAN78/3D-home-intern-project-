@@ -8,6 +8,7 @@ Internal tool that turns architectural drawings into an interactive, configurabl
 - **Phase 2:** project creation, drawing upload (PDF/PNG/JPG with categories, previews and statuses), pluggable drawing interpreters with confidence and warnings, and a 2D tracing editor whose output regenerates the 3D model.
 
 - **Phase 4, real communities and build progress:** the Caivan communities from caivan.com are listed under **Communities**. *Place on real map* reads a community's published site plan and finds every lot, its collection and its sales status. It then locates the community from its street names and lines the plan up with real streets from OpenStreetMap (≈2 m error on The Conservancy). The community opens as a 3D map of the real neighbourhood, with every home drawn at its construction stage. Each lot has a progress bar and a stage timeline; the construction team updates them, and customers see them in their home view.
+- **Database and real photos:** data lives in SQLite through Drizzle ORM (`.data/home-studio.db`). A property catalogue links every Caivan community to its published photography, collections and home designs on caivan.com: elevation renderings, interiors, aerials, floorplan PDFs and 360° tours. Photos appear on community cards, a **Homes & photos** page per community, the lot panel (*Homes for this lot*, Street View), the studio's **Project** tab, and the customer view's **Real photos**.
 - **Phase 3, one-step drawing sets:** upload a builder's décor or plan-set PDF and the app reads every sheet. It finds each floor, elevation and layout option, works out the scale from the room sizes, traces and stacks the floors, and asks one question: generate now, or review first. The home opens on the standard plan with default finishes, and the configurator's **Plan** tab switches elevations and layouts.
 
 ## Run
@@ -19,7 +20,15 @@ npm test             # vitest: interpreters, editor ops, model finalisation
 npm run typecheck
 npm run lint
 npm run build
+
+npm run db:migrate   # create/upgrade the database and print row counts (also runs on first request)
+npm run catalog:sync # re-read homes and photos from caivan.com into the snapshot and the database
+npm run db:studio    # browse the database (Drizzle Studio)
+npm run db:generate  # after editing lib/db/schema.ts: write a new migration into drizzle/
+npm run reanalyze    # re-read projects' drawing sets with the current pipeline (skips sets with reviewed floors)
 ```
+
+On first start, an existing `.data/db.json` (the old JSON store) is imported into SQLite once and renamed `db.json.migrated`. `DATABASE_PATH` overrides the database file.
 
 | Route | Purpose |
 | --- | --- |
@@ -29,7 +38,8 @@ npm run build
 | `/projects/[slug]/trace?floor=…&drawing=…` | 2D floor-plan tracing / review editor |
 | `/projects/[slug]/view?c=…` | Customer view; `c` carries the encoded selections |
 | `/communities` | Caivan community catalogue: import a site plan (published or uploaded) |
-| `/communities/[id]?lot=…` | Real-world 3D community map, lot list and filters, lot detail, construction progress |
+| `/communities/[id]?lot=…` | Real-world 3D community map, lot list and filters, lot detail, construction progress (redirects to *Homes & photos* until the community is placed) |
+| `/communities/[id]/homes` | Collections, home designs (renderings, specs, floorplans, 360° tours), community photo gallery, sales centre |
 
 ### Demo script (Phase 4, communities and build progress)
 
@@ -75,6 +85,12 @@ Progress generated at import is marked **Sample data** until someone saves real 
 | Stack | `align.ts` | Each floor is registered to the main floor by maximising exterior-wall overlap. Options are registered to their level's standard plan |
 | Assemble | `buildPlanSet.ts`, `lib/models/planSet.ts` | Groups variants by elevation, floor and option, flags partial and grade-condition sheets as reference-only, and `composeHouseModel()` builds a `HouseModel` for any selection |
 
+**A home is built from two drawing sets of the same model** (Drawings tab → *Build the 3D home*; both are required): the **redline / working drawings** and the **décor plans**. `combineSets.ts` merges them: walls, scale and outline come from the redline vectors; storey heights, roof pitches (main / gable / lower) and per-storey cladding come from each elevation's FRONT ELEVATION sheet (`elevationSpec.ts`); the décor plans add the layout options (aligned onto the redline plans), the windows and doors (moved onto the redline walls), and wall pieces the redline only outlined. Elevations only one set draws (e.g. décor-only B and F) are kept from that set. The job runs in `runCombinedAnalysis` (`POST /api/projects/[id]/drawing-set`).
+
+**Architectural working drawings** (permit / redline sets, e.g. Revit exports) are read too: sheets are recognised by their drawing captions (`A1 - GROUND FLOOR PLAN (STANDARD)`), the title block decides the elevation, and walls come from the PDF's vector wall fills (`vectorWalls.ts`) rather than the raster, because these drawings outline walls instead of filling them. Option insets drawn against a plan (walk-up steps, an optional bathroom) are cut off by their own caption (`dropAttachedInsets`); upper floors get missing outline pieces added as unverified walls, and an open double-garage front gets its wall and door back.
+
+The exterior is inferred from the floor outlines (`lib/models/autoExterior.ts`): a hip over the top floor's main body with street-facing 10:12 gables on projecting bays, lower roofs over every part not covered by the floor above, and a covered porch (slab, columns, roof) in the front-door recess. On community maps, each lot shows the product sold on it (single with one or two garages, townhome, or stacked Summit-style town) sized to the lot, and nearby OpenStreetMap houses get pitched roofs.
+
 Analysis runs as a background job (`after()` in `app/api/drawings/[id]/analyze`), and the UI polls its progress. Auto-traced floors stay flagged *unreviewed* until someone saves them from the editor, and the studio shows the confidence level.
 
 Dev tools: `npx tsx scripts/build-set.mts <set.pdf> [outDir]` prints what the pipeline extracts, and `scripts/analyze-set.mts` checks individual sheets with an overlay.
@@ -97,7 +113,9 @@ lib/models/        Domain types: house.ts, drawing.ts, materials.ts, community.t
 lib/sample/        Seed data: plan36.ts (3-level home), bradleyRidge.ts (10-lot street), caivanCommunities.ts (catalogue)
 lib/community/     Site-plan reading, geocoding, OpenStreetMap context, georeferencing, import job
 lib/models/        … construction.ts (stages, % complete, build state), communityImport.ts
-lib/data/          repository.ts (async data-access boundary) + documentStore.ts (JSON file store)
+lib/data/          repository.ts (async data-access boundary, Drizzle queries)
+lib/db/            schema.ts (SQLite tables), client.ts (connection, WAL, migrations), seed.ts, rows.ts; migrations in drizzle/
+lib/catalog/       caivanScraper.ts (caivan.com pages → collections, designs, photos), caivanCatalog.snapshot.json (committed seed)
 lib/storage/       ObjectStorage interface + local-disk implementation (swap for S3 / R2 / Vercel Blob)
 lib/drawings/      DrawingInterpreter contract, interpreters/ (heuristic line detection, mock),
                    rasterize.ts (browser pdf.js / image → PNG), api.ts (client), guess.ts, samplePlanSvg.ts
@@ -133,7 +151,8 @@ upload (PDF/PNG/JPG)
 - **The `HouseModel` JSON is the contract.** Seed data, interpreters, and the tracing editor all produce it, and the 3D viewer only reads it.
 - **Every floor is its own group** (`House → Basement / Main Floor / Second Floor / Roof`). Inside each floor, layers (shell, interior, slab, ceiling, fixtures) let cutaways toggle without rebuilding geometry.
 - **Geometry is merged by surface.** Each floor has one mesh per surface key, which keeps draw calls low, and clicking a mesh maps straight to its configurable slot.
-- **Persistence is behind `lib/data/repository.ts`.** The JSON document store (`.data/db.json`, git-ignored) is single-process and meant for the MVP. Uploaded files go to `.data/uploads/` through `ObjectStorage`.
+- **Persistence is behind `lib/data/repository.ts`.** SQLite (`.data/home-studio.db`, git-ignored) through Drizzle: queried fields are columns, and deep documents (house models, drawing sets, lot outlines) are typed JSON columns. WAL mode lets the dev server, build workers and scripts share the file. Moving to PostgreSQL means switching `sqliteTable` → `pgTable` and the driver. Uploaded files go to `.data/uploads/` through `ObjectStorage`.
+- **Photos are linked, not copied.** Catalogue rows store caivan.com image URLs, and pages load them directly with a credit line. The scraper reads public community and collection pages; caivan.com's Cloudflare blocks Node's `fetch`, so it falls back to the system `curl`. The committed snapshot seeds new databases offline.
 
 ### Plan coordinates
 
@@ -141,7 +160,7 @@ Units are metres. Plan `(x, y)` maps to world `(x, z)`, with `+y` running from t
 
 ## Next phases
 
-1. Drizzle + PostgreSQL behind the repository (Project, Drawing, HouseModel, Floor, CustomerConfiguration, Material, Community, Lot), plus S3/R2 storage
+1. PostgreSQL for multi-user hosting (the Drizzle schema ports directly), plus S3/R2 storage
 2. AI-backed `DrawingInterpreter` (rooms, labels, dimension strings → scale)
 3. Editor: diagonal walls, multi-select, stairs/fixtures, per-floor roof editing
 4. Customer polish: QR code, measurement, walkthrough, day/night

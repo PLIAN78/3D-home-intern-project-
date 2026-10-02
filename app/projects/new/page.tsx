@@ -28,7 +28,7 @@ export default async function NewProjectPage({ searchParams }: PageProps<"/proje
         </Button>
         <Card>
           <CardHeader>
-            <CardTitle>New home visualization project</CardTitle>
+            <CardTitle>New project</CardTitle>
             <CardDescription>Create the project, then upload its drawings.</CardDescription>
           </CardHeader>
           <CardContent>
