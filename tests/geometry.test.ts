@@ -1,3 +1,7 @@
+import type { Lot } from "@/lib/models/community";
+import { placeholderFor } from "@/lib/geometry/placeholderHouse";
+import { productSpec } from "@/lib/geometry/productMassing";
+import { placeholderScale } from "@/lib/geometry/siteGeometry";
 import { describe, expect, it } from "vitest";
 import { buildHouseGeometry } from "@/lib/geometry/buildHouse";
 import type { SurfaceGeometry } from "@/lib/geometry/surfaces";
@@ -45,5 +49,34 @@ describe("floor junctions (no coplanar faces → no flicker)", () => {
       for (let i = 1; i < a.length; i += 3) if (a[i] >= floor.elevation - 1e-6 && a[i] < floor.elevation + 0.05) heights.add(Math.round(a[i] * 10000));
     }
     expect(heights.size).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("homes on real lots", () => {
+  const lot = (collection: string | null, width: number, depth = 33): Lot => ({
+    id: "l",
+    number: "1",
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+    width,
+    depth,
+    frontSetback: 6,
+    collection,
+    placeholder: { style: "classic", bodyColor: "#ccc", roofColor: "#333", garageSide: "left", storeys: 2 },
+  });
+
+  it("builds the product sold on the lot, sized to its frontage", () => {
+    expect(productSpec(lot("35′ Collection", 10.7))).toMatchObject({ kind: "single", width: 9.5, garageCars: 1, storeys: 2 });
+    expect(productSpec(lot("50′ Collection", 15.2))).toMatchObject({ kind: "single", garageCars: 2 });
+    expect(productSpec(lot("The Perfect Townhome", 6.1))).toMatchObject({ kind: "town", garageCars: 1, storeys: 2 });
+    expect(productSpec(lot("The Summit Series", 6.4))).toMatchObject({ kind: "stacked", garageCars: 0, storeys: 3 });
+    expect(productSpec(lot(null, 12))).toBeNull();
+  });
+
+  it("fits the massing on the lot without scaling", () => {
+    const l = lot("42′ Collection", 12.8);
+    const g = placeholderFor(l);
+    expect(g.planSize.width).toBeLessThanOrEqual(l.width - 1.2 + 1e-6);
+    expect(placeholderScale(l)[0]).toBe(1);
   });
 });

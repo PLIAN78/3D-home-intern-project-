@@ -85,6 +85,11 @@ export async function analyzeDrawingSet(id: string) {
   return json<Drawing>(await fetch(`/api/drawings/${id}/analyze`, { method: "POST" }));
 }
 
+/** Build the home from a redline (working drawings) set and a décor set; poll the redline drawing. */
+export async function startDrawingSet(projectId: string, redlineDrawingId: string, decorDrawingId: string) {
+  return json<Drawing>(await fetch(`/api/projects/${projectId}/drawing-set`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ redlineDrawingId, decorDrawingId }) }));
+}
+
 export async function fetchDrawing(id: string) {
   return json<Drawing>(await fetch(`/api/drawings/${id}`, { cache: "no-store" }));
 }

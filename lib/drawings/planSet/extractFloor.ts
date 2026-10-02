@@ -2,6 +2,7 @@ import type { FloorPlanInterpretation, InterpretedWall } from "@/lib/models/draw
 import type { Floor, Room, RoomFinish } from "@/lib/models/house";
 import { autoClassifyExterior, importInterpretation, newId } from "@/lib/editor/editorOps";
 import { detectWalls, type GreyImage } from "../interpreters/lineDetection";
+import { missingShellWalls } from "@/lib/models/footprint";
 import { isRoomDimension, parseRoomDimension, type PageText } from "./classify";
 
 /**
@@ -195,6 +196,106 @@ export function splitAdjacentDrawings(walls: InterpretedWall[], text: PageText):
   return { walls: out, dropped: other.text.replace(/\s+/g, " ").trim() };
 }
 
+/** Keep the walls on one side of an axis-aligned cut, trimming walls that cross it. */
+function cutWalls(ws: W[], axis: "x" | "y", cut: number, keepLow: boolean): InterpretedWall[] {
+  const out: InterpretedWall[] = [];
+  for (const w of ws) {
+    const { axis: wAxis, c, a0, a1, ...wall } = w;
+    // Walls perpendicular to the cut direction sit wholly on one side.
+    if ((axis === "x" && wAxis === "v") || (axis === "y" && wAxis === "h")) {
+      if (keepLow ? c <= cut + 1 : c >= cut - 1) out.push(wall);
+      continue;
+    }
+    const s = keepLow ? a0 : Math.max(a0, cut);
+    const e = keepLow ? Math.min(a1, cut) : a1;
+    if (e - s < 8) continue;
+    if (axis === "x") {
+      const forward = wall.end.x >= wall.start.x;
+      out.push({ ...wall, start: { x: forward ? s : e, y: wall.start.y }, end: { x: forward ? e : s, y: wall.end.y } });
+    } else {
+      const forward = wall.end.y >= wall.start.y;
+      out.push({ ...wall, start: { x: wall.start.x, y: forward ? s : e }, end: { x: wall.end.x, y: forward ? e : s } });
+    }
+  }
+  return out;
+}
+
+const OPTION_CODE_RE = /^[A-Z]{2,5}-[A-Z0-9]*$/;
+
+/**
+ * Caption blocks on a sheet: an option code ("SOBS-WK01") and/or an
+ * "ELEVATION X" line with the description beneath, all left-aligned.
+ */
+export function captionBlocks(text: PageText): { x: number; top: number; bottom: number; text: string }[] {
+  // The title block (bottom of the sheet) repeats the option code; it is not a caption.
+  const seeds = text.items.filter((t) => t.y < text.height * 0.85 && (/^\W?\s*ELEVATION\b/i.test(t.str.trim()) || OPTION_CODE_RE.test(t.str.trim())));
+  const blocks: { x: number; top: number; bottom: number; text: string }[] = [];
+  for (const s of seeds) {
+    if (blocks.some((b) => Math.abs(b.x - s.x) < 6 && s.y >= b.top - 2 && s.y <= b.bottom + 2)) continue;
+    const lineH = Math.max(s.h, text.height * 0.008);
+    const members = text.items.filter((t) => Math.abs(t.x - s.x) < 6 && t.y >= s.y - lineH * 2.5 && t.y <= s.y + lineH * 3.5).sort((a, b) => a.y - b.y);
+    blocks.push({ x: s.x, top: members[0].y - members[0].h, bottom: members[members.length - 1].y, text: members.map((t) => t.str.trim()).join(" ") });
+  }
+  return blocks;
+}
+
+/**
+ * Option insets ("SOBS-WK01 … BASEMENT OPT. WALK-UP STEPS", "SOBS-FB03 …
+ * BASEMENT BATHROOM") are sometimes drawn against the plan, sharing a wall
+ * line, so they join its wall cluster. Each inset carries its own caption;
+ * the sheet's own caption is the lowest one. For every other caption, cut the
+ * cluster at the long wall between that caption and the sheet's caption
+ * (nearest the inset) and drop the inset's side, provided that side holds no
+ * room dimensions and only a minor part of the walls.
+ */
+export function dropAttachedInsets(walls: InterpretedWall[], text: PageText): { walls: InterpretedWall[]; dropped: string[] } {
+  const dropped: string[] = [];
+  const blocks = captionBlocks(text);
+  if (walls.length < 4 || blocks.length < 2) return { walls, dropped };
+  const main = blocks.reduce((a, b) => (b.bottom > a.bottom ? b : a));
+  const dims = text.items.filter((t) => isRoomDimension(t.str)).map((t) => ({ str: t.str.trim(), x: t.x + t.w / 2, y: t.y - t.h / 2 }));
+  let current = walls;
+  // Alternates already cut off by splitAdjacentDrawings leave nothing to drop here.
+  for (const inset of blocks.filter((b) => b !== main)) {
+    const ws = current.map(asAxis);
+    const xs = ws.flatMap((w) => (w.axis === "h" ? [w.a0, w.a1] : [w.c]));
+    const ys = ws.flatMap((w) => (w.axis === "v" ? [w.a0, w.a1] : [w.c]));
+    const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const total = ws.reduce((s, w) => s + w.a1 - w.a0, 0);
+    // Separate along the axis where the two captions are furthest apart.
+    const dx = inset.x - main.x;
+    const dy = inset.top - main.top;
+    const axis: "x" | "y" = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    const from = axis === "x" ? inset.x : (inset.top + inset.bottom) / 2;
+    const to = axis === "x" ? main.x : main.top;
+    const [lo, hi] = [Math.min(from, to), Math.max(from, to)];
+    // Long walls running across the separating axis are candidate cut lines.
+    const span = axis === "x" ? maxY - minY : maxX - minX;
+    const cuts = ws.filter((w) => (axis === "x" ? w.axis === "v" : w.axis === "h") && w.a1 - w.a0 >= span * 0.45 && w.c > lo && w.c < hi);
+    const inside = dims.filter((d) => d.x >= minX && d.x <= maxX && d.y >= minY && d.y <= maxY);
+    // The inset's own walls can be long too, so try the cut furthest from its
+    // caption first (the plan's edge) and take the first that passes the checks.
+    for (const cut of [...new Set(cuts.map((w) => w.c))].sort((a, b) => Math.abs(b - from) - Math.abs(a - from))) {
+      const keepLow = to < cut;
+      const kept = cutWalls(ws, axis, cut, keepLow);
+      const keptLen = kept.map(asAxis).reduce((s, w) => s + w.a1 - w.a0, 0);
+      const droppedLen = total - keptLen;
+      if (droppedLen < total * 0.03 || droppedLen > total * 0.4) continue;
+      // Insets often repeat a room or two from the plan (sometimes from another
+      // elevation, so the sizes can differ); the plan side must clearly hold more.
+      const beyondCount = inside.filter((d) => {
+        const v = axis === "x" ? d.x : d.y;
+        return keepLow ? v > cut : v < cut;
+      }).length;
+      if (beyondCount > 0 && inside.length - beyondCount < beyondCount * 2) continue;
+      current = kept;
+      dropped.push(inset.text.replace(/\s+/g, " ").trim());
+      break;
+    }
+  }
+  return { walls: current, dropped };
+}
+
 /** Text likely to sit inside the plan: room dimensions and mid-sized labels outside notes/title areas. */
 export function planAnchors(text: PageText): { x: number; y: number }[] {
   const dims = text.items.filter((t) => isRoomDimension(t.str));
@@ -240,7 +341,7 @@ const ROOM_WORDS =
 const NOT_ROOMS =/\b(OPT|ELEVATION|PLAN|FIREPLACE|SINK|STEPS|REQ|SCHEDULE|FLOORING|KNEEWALL|LEDGE|UPPERS|USB|BAR|WINDOWS?|DECK|GRADE|NOTES?|SKETCH|LOT|DN|UP)\b/i;
 
 /** Room labels: short uppercase text, larger than the dimension text, usually with a dimension right below. */
-export function findRoomLabels(text: PageText, bounds: { minX: number; minY: number; maxX: number; maxY: number }): Label[] {
+export function findRoomLabels(text: PageText, bounds: { minX: number; minY: number; maxX: number; maxY: number }, sameSizeLabels = false): Label[] {
   const inside = (t: { x: number; y: number }) => t.x >= bounds.minX && t.x <= bounds.maxX && t.y >= bounds.minY && t.y <= bounds.maxY;
   const dims = text.items.filter((t) => isRoomDimension(t.str) && inside(t));
   const dimH = dims.length ? dims.map((d) => d.h).sort((a, b) => a - b)[Math.floor(dims.length / 2)] : null;
@@ -248,7 +349,8 @@ export function findRoomLabels(text: PageText, bounds: { minX: number; minY: num
   for (const t of text.items) {
     const s = t.str.trim();
     if (!inside(t) || !/^[A-Z][A-Z0-9 .&/'-]{1,28}$/.test(s) || NOT_ROOMS.test(s) || isRoomDimension(s)) continue;
-    if (dimH && (t.h < dimH * 1.3 || t.h > dimH * 3)) continue;
+    // Décor sheets set room names larger than their dimensions; working drawings use one size.
+    if (dimH && (t.h < dimH * (sameSizeLabels ? 0.9 : 1.3) || t.h > dimH * 3)) continue;
     const cx = t.x + t.w / 2;
     // Dimension label directly beneath (within ~2 line heights, horizontally overlapping)
     const below = dims.find((d) => d.y > t.y && d.y - t.y < t.h * 2.2 && Math.abs(d.x + d.w / 2 - cx) < Math.max(t.h * 4, t.w));
@@ -365,6 +467,132 @@ function assignEntryDoors(floor: Floor, labels: { name: string; x: number; y: nu
     }
   }
   return { ...floor, doors, windows };
+}
+
+/**
+ * A wide garage door leaves a gap between two wall ends that the wall tracer
+ * doesn't bridge (only door-sized gaps are). Where the outline has a 2–6 m gap
+ * along the garage, put the wall back with a garage door in it.
+ */
+export function closeGarageFront(floor: Floor, labels: { name: string; x: number; y: number }[]): Floor {
+  // The garage room needs four walls to be outlined, so its label is the reliable marker.
+  const label = labels.find((l) => /GARAGE/i.test(l.name));
+  const ext = floor.walls.filter((w) => w.exterior);
+  if (!label || !ext.length || floor.doors.some((d) => d.kind === "garage")) return floor;
+  // Garage doors face the street (+y). Usually two short piers flank the opening:
+  // collinear wall ends in front of the label, 2–6 m apart, centred on it.
+  const horizontals = floor.walls.filter((w) => Math.abs(w.start.y - w.end.y) < 0.05 && w.start.y > label.y && w.start.y - label.y < 7);
+  let gap: { start: { x: number; y: number }; end: { x: number; y: number }; length: number } | null = null;
+  for (const a of horizontals)
+    for (const b of horizontals) {
+      const a1 = Math.max(a.start.x, a.end.x);
+      const b0 = Math.min(b.start.x, b.end.x);
+      const len = b0 - a1;
+      if (Math.abs(a.start.y - b.start.y) > 0.15 || len < 2 || len > 6 || Math.abs((a1 + b0) / 2 - label.x) > len / 2) continue;
+      const y = (a.start.y + b.start.y) / 2;
+      const spanned = floor.walls.some((w) => w !== a && w !== b && Math.abs(w.start.y - w.end.y) < 0.05 && Math.abs(w.start.y - y) < 0.3 && Math.min(w.start.x, w.end.x) < a1 + len * 0.7 && Math.max(w.start.x, w.end.x) > a1 + len * 0.3);
+      if (!spanned && (!gap || len > gap.length)) gap = { start: { x: a1, y }, end: { x: b0, y }, length: len };
+    }
+  if (!gap) {
+    // No piers: the garage's side walls end together at the front with nothing between them.
+    const verticals = floor.walls.filter((w) => Math.abs(w.start.x - w.end.x) < 0.05 && Math.min(w.start.y, w.end.y) <= label.y && Math.max(w.start.y, w.end.y) >= label.y);
+    const left = verticals.filter((w) => w.start.x < label.x).sort((a, b) => b.start.x - a.start.x)[0];
+    const right = verticals.filter((w) => w.start.x > label.x).sort((a, b) => a.start.x - b.start.x)[0];
+    if (!left || !right) return floor;
+    const yL = Math.max(left.start.y, left.end.y);
+    const yR = Math.max(right.start.y, right.end.y);
+    const span = right.start.x - left.start.x;
+    if (Math.abs(yL - yR) > 0.6 || span < 2.4 || span > 7) return floor;
+    const y = Math.max(yL, yR);
+    if (floor.walls.some((w) => Math.abs(w.start.y - w.end.y) < 0.05 && Math.abs(w.start.y - y) < 0.4 && Math.min(w.start.x, w.end.x) < left.start.x + span * 0.3 && Math.max(w.start.x, w.end.x) > right.start.x - span * 0.3))
+      return floor;
+    gap = { start: { x: left.start.x, y }, end: { x: right.start.x, y }, length: span };
+  }
+  const thickness = [...ext.map((w) => w.thickness)].sort((a, b) => a - b)[Math.floor(ext.length / 2)];
+  const wall = { id: newId("w"), start: gap.start, end: gap.end, thickness, height: Math.max(...ext.map((w) => w.height)), exterior: true, unverified: true };
+  const width = Math.min(gap.length - 0.1, Math.max(2.2, gap.length - 0.4));
+  return {
+    ...floor,
+    walls: [...floor.walls, wall],
+    doors: [...floor.doors, { id: newId("d"), wallId: wall.id, position: gap.length / 2, width, height: 2.13, kind: "garage", unverified: true }],
+  };
+}
+
+/**
+ * Wide exterior "doors" that aren't the front or garage door: on the street
+ * side they are windows the detector saw as empty gaps (picture windows); at
+ * the rear, patio doors. Walls between the garage and the house are fire
+ * separations with at most a person door, so wider gaps there are missed wall
+ * pieces and are closed.
+ */
+export function normalizeExteriorOpenings(input: Floor): Floor {
+  const floor = dedupeWalls(input);
+  const ext = new Map(floor.walls.filter((w) => w.exterior).map((w) => [w.id, w]));
+  if (!ext.size) return floor;
+  const ys = [...ext.values()].flatMap((w) => [w.start.y, w.end.y]);
+  const midY = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const windows = [...floor.windows];
+  const garage = floor.rooms.find((r) => /garage/i.test(r.name));
+  const gb = garage && {
+    x0: Math.min(...garage.polygon.map((p) => p.x)),
+    x1: Math.max(...garage.polygon.map((p) => p.x)),
+    y0: Math.min(...garage.polygon.map((p) => p.y)),
+    y1: Math.max(...garage.polygon.map((p) => p.y)),
+  };
+  const byId = new Map(floor.walls.map((w) => [w.id, w]));
+  const onGarageWall = (wallId: string) => {
+    const w = byId.get(wallId);
+    if (!w || w.exterior || !gb) return false;
+    const vertical = Math.abs(w.start.x - w.end.x) < 0.05;
+    return vertical ? Math.min(Math.abs(w.start.x - gb.x0), Math.abs(w.start.x - gb.x1)) < 0.35 : Math.min(Math.abs(w.start.y - gb.y0), Math.abs(w.start.y - gb.y1)) < 0.35;
+  };
+  const doors = floor.doors.flatMap((d) => {
+    if (d.width > 1.2 && onGarageWall(d.wallId)) return [];
+    const w = ext.get(d.wallId);
+    if (!w || d.kind === "front" || d.kind === "garage" || d.width < 1.6) return [d];
+    const y = (w.start.y + w.end.y) / 2;
+    if (y < midY) return [{ ...d, kind: "patio" as const }];
+    windows.push({ id: d.id, wallId: d.wallId, position: d.position, width: d.width, height: 1.7, sillHeight: 0.5, unverified: true });
+    return [];
+  });
+  return { ...floor, doors, windows };
+}
+
+/**
+ * Two parallel walls within 20 cm that mostly overlap are one wall seen twice
+ * (e.g. a drawn garage-door panel next to the wall line, or a décor wall piece
+ * beside the redline one). Keep the longer; move the shorter's openings onto it.
+ */
+export function dedupeWalls(floor: Floor): Floor {
+  const horiz = (w: Floor["walls"][number]) => Math.abs(w.end.x - w.start.x) >= Math.abs(w.end.y - w.start.y);
+  const span = (w: Floor["walls"][number]) => (horiz(w) ? [Math.min(w.start.x, w.end.x), Math.max(w.start.x, w.end.x)] : [Math.min(w.start.y, w.end.y), Math.max(w.start.y, w.end.y)]);
+  const across = (w: Floor["walls"][number]) => (horiz(w) ? (w.start.y + w.end.y) / 2 : (w.start.x + w.end.x) / 2);
+  const len = (w: Floor["walls"][number]) => span(w)[1] - span(w)[0];
+  const sorted = [...floor.walls].sort((a, b) => len(b) - len(a));
+  const keep: Floor["walls"] = [];
+  const into = new Map<string, Floor["walls"][number]>();
+  for (const w of sorted) {
+    const [a0, a1] = span(w);
+    const host = keep.find((k) => {
+      if (horiz(k) !== horiz(w) || Math.abs(across(k) - across(w)) > 0.2 || !!k.exterior !== !!w.exterior) return false;
+      const [b0, b1] = span(k);
+      return Math.min(a1, b1) - Math.max(a0, b0) >= 0.8 * (a1 - a0);
+    });
+    if (host) into.set(w.id, host);
+    else keep.push(w);
+  }
+  if (!into.size) return floor;
+  const moveOpening = <T extends { wallId: string; position: number }>(o: T): T => {
+    const host = into.get(o.wallId);
+    if (!host) return o;
+    const from = floor.walls.find((x) => x.id === o.wallId)!;
+    const L = Math.hypot(from.end.x - from.start.x, from.end.y - from.start.y) || 1;
+    const p = { x: from.start.x + ((from.end.x - from.start.x) * o.position) / L, y: from.start.y + ((from.end.y - from.start.y) * o.position) / L };
+    const HL = Math.hypot(host.end.x - host.start.x, host.end.y - host.start.y) || 1;
+    const t = ((p.x - host.start.x) * (host.end.x - host.start.x) + (p.y - host.start.y) * (host.end.y - host.start.y)) / HL;
+    return { ...o, wallId: host.id, position: Math.round(t * 100) / 100 };
+  };
+  return { ...floor, walls: floor.walls.filter((w) => !into.has(w.id)), doors: floor.doors.map(moveOpening), windows: floor.windows.map(moveOpening) };
 }
 
 function finishFor(name: string, basement: boolean): RoomFinish {
@@ -508,7 +736,7 @@ export function consensusScale(votes: ScaleVote[]): { metresPerPixel: number; su
 }
 
 /** First pass for drawing sets: the sheet's scale votes (and its main-drawing size). */
-export function measureSheet(img: GreyImage, text: PageText): { votes: ScaleVote[]; wallThicknessPx: number; mainWalls: InterpretedWall[] } {
+export function measureSheet(img: GreyImage, text: PageText, sameSizeLabels = false): { votes: ScaleVote[]; wallThicknessPx: number; mainWalls: InterpretedWall[] } {
   const det = detectWalls(img);
   const keep = mainCluster(det.walls, { pageWidth: img.width, pageHeight: img.height, anchors: planAnchors(text) });
   const walls = keep.map((i) => det.walls[i]);
@@ -517,7 +745,7 @@ export function measureSheet(img: GreyImage, text: PageText): { votes: ScaleVote
   if (!xs.length) return { votes: [], wallThicknessPx: 0, mainWalls: [] };
   const b = { minX: Math.min(...xs) - 5, minY: Math.min(...ys) - 5, maxX: Math.max(...xs) + 5, maxY: Math.max(...ys) + 5 };
   const t = walls.map((w) => w.thicknessPx).sort((p, q) => p - q);
-  return { votes: collectScaleVotes(walls.map(asAxis), findRoomLabels(text, b)), wallThicknessPx: t[Math.floor(t.length / 2)], mainWalls: walls };
+  return { votes: collectScaleVotes(walls.map(asAxis), findRoomLabels(text, b, sameSizeLabels)), wallThicknessPx: t[Math.floor(t.length / 2)], mainWalls: walls };
 }
 
 export interface ExtractOptions {
@@ -530,6 +758,10 @@ export interface ExtractOptions {
   /** Main-drawing walls from a previous pass (skips one detection). */
   mainWalls?: InterpretedWall[];
   basement?: boolean;
+  /** Add unverified exterior walls where the outline has none (upper floors: their shell never opens). */
+  closeShell?: boolean;
+  /** Room names are set at the same size as their dimensions (architectural working drawings). */
+  sameSizeLabels?: boolean;
   floorId: string;
   floorName: string;
   ceilingHeight: number;
@@ -545,10 +777,13 @@ export function extractFloor(img: GreyImage, text: PageText, opts: ExtractOption
   const cluster0 = opts.mainWalls ?? mainCluster(det0!.walls, ctx).map((i) => det0!.walls[i]);
   // An alternate drawn against the plan ("… w/ SIDE UPGRADE") joins its wall cluster; cut it off.
   const split = splitAdjacentDrawings(cluster0, text);
-  const main0 = split.walls;
   if (split.dropped) warnings.push(`Left out an alternate drawn next to the plan ("${split.dropped}").`);
+  // Option insets attached above, below or beside the plan (walk-up steps, an optional bathroom…).
+  const insets = dropAttachedInsets(split.walls, text);
+  for (const d of insets.dropped) warnings.push(`Left out an option drawn against the plan ("${d}").`);
+  const main0 = insets.walls;
   const full = opts.metresPerPixel ? detectWalls(img, { metresPerPixel: opts.metresPerPixel }) : det0!;
-  const det = opts.metresPerPixel || split.dropped ? clipDetection(full, main0) : full;
+  const det = opts.metresPerPixel || split.dropped || insets.dropped.length ? clipDetection(full, main0) : full;
   const kept0 = mainCluster(det.walls, ctx);
   trimOvershoots(det, kept0);
   const keep = kept0.filter((i) => det.walls[i].start.x !== det.walls[i].end.x || det.walls[i].start.y !== det.walls[i].end.y);
@@ -564,7 +799,7 @@ export function extractFloor(img: GreyImage, text: PageText, opts: ExtractOption
   if (det.walls.length - walls.length > 0) warnings.push(`Ignored ${det.walls.length - walls.length} line(s) outside the main drawing (borders, option insets).`);
 
   // --- Scale ------------------------------------------------------------------
-  const labels = findRoomLabels(text, { minX: boundsPx.minX - 5, minY: boundsPx.minY - 5, maxX: boundsPx.maxX + 5, maxY: boundsPx.maxY + 5 });
+  const labels = findRoomLabels(text, { minX: boundsPx.minX - 5, minY: boundsPx.minY - 5, maxX: boundsPx.maxX + 5, maxY: boundsPx.maxY + 5 }, opts.sameSizeLabels);
   let metresPerPixel: number;
   let scaleSource: ScaleSource;
   let scaleConsistency: number | null = null;
@@ -606,6 +841,13 @@ export function extractFloor(img: GreyImage, text: PageText, opts: ExtractOption
   };
   const base: Floor = { id: opts.floorId, name: opts.floorName, elevation: opts.elevation, ceilingHeight: opts.ceilingHeight, belowGrade: !!opts.basement, floorThickness: opts.basement ? 0.1 : 0.3, rooms: [], walls: [], doors: [], windows: [] };
   let floor = autoClassifyExterior(importInterpretation(base, interp, calibration, "replace"));
+  if (opts.closeShell) {
+    const added = missingShellWalls(floor, () => newId("w"));
+    if (added.length) {
+      floor = { ...floor, walls: [...floor.walls, ...added] };
+      warnings.push(`Added ${added.length} exterior wall piece(s) where the outline had a gap — check them.`);
+    }
+  }
 
   // --- Rooms from labels (rectangles between surrounding wall centrelines) -----
   const rooms: Room[] = [];
@@ -634,7 +876,11 @@ export function extractFloor(img: GreyImage, text: PageText, opts: ExtractOption
   floor = { ...floor, rooms: splitSharedRooms(rooms, labels, boundsPx, metresPerPixel) };
 
   const labelPts = labels.map((l) => ({ name: l.name, x: (l.x - boundsPx.minX) * metresPerPixel, y: (l.y - boundsPx.minY) * metresPerPixel }));
+  // Type the openings first: an existing wide gap on the garage front becomes its door,
+  // so the garage front is only rebuilt when there is none.
   floor = assignEntryDoors(floor, labelPts);
+  floor = closeGarageFront(floor, labelPts);
+  floor = normalizeExteriorOpenings(floor);
 
   if (!floor.doors.length) warnings.push("No door openings were recognised on this sheet.");
   if (!rooms.length) warnings.push("Rooms could not be outlined from the labels.");

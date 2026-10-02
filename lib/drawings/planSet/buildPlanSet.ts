@@ -1,10 +1,13 @@
-import type { FloorVariant, LevelId, PlanOption, PlanSet, UnmodeledSheet } from "@/lib/models/planSet";
+import type { ElevationSpec, FloorVariant, LevelId, PlanOption, PlanSet, UnmodeledSheet } from "@/lib/models/planSet";
 import { LEVEL_LABEL } from "@/lib/models/planSet";
 import { defaultFloors } from "@/lib/models/templates";
-import { classifyPages, LEVEL_ORDER, type PageInfo, type PageText } from "./classify";
+import { readSitePlanVectors } from "@/lib/community/sitePlan/readVectors";
+import { classifyPages, classifyWorkingDrawings, isRoomDimension, LEVEL_ORDER, type PageInfo, type PageText, type WorkingSheet } from "./classify";
 import { consensusScale, extractFloor, measureSheet, type ScaleVote } from "./extractFloor";
 import { registerFloor, translateFloor } from "./align";
-import { openPdf } from "./pdfServer";
+import { openPdf, type RenderedPage } from "./pdfServer";
+import { readElevationSpec } from "./elevationSpec";
+import { wallMaskFromVectors } from "./vectorWalls";
 
 export interface BuildProgress {
   stage: string;
@@ -46,6 +49,33 @@ function wallArea(walls: { start: { x: number; y: number }; end: { x: number; y:
   return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
 }
 
+function workingPageInfo(w: WorkingSheet, text: PageText): PageInfo {
+  return {
+    page: w.page,
+    kind: w.kind === "plan" ? "standard" : "other",
+    level: w.level,
+    elevation: w.elevation || null,
+    code: w.kind === "plan" ? "STANDARD" : null,
+    title: w.title,
+    optionName: null,
+    sheet: null,
+    roomDimensionCount: text.items.filter((t) => isRoomDimension(t.str)).length,
+  };
+}
+
+/** Each elevation's front-elevation sheet, read for heights, roof pitches and cladding. */
+function elevationSpecs(sheets: WorkingSheet[], texts: PageText[]): Record<string, ElevationSpec> {
+  const out: Record<string, ElevationSpec> = {};
+  for (const s of sheets) if (s.kind === "elevation" && s.view === "front" && s.elevation && !out[s.elevation]) out[s.elevation] = readElevationSpec(texts[s.page - 1], s.page);
+  return out;
+}
+
+function unmodeledReason(p: PageInfo, w: WorkingSheet | undefined): string {
+  if (p.kind === "grade-condition") return "Grade-condition variant (look-out / walk-out) — reference only";
+  if (w?.kind === "elevation") return "Exterior elevation drawing";
+  return "Not a floor plan";
+}
+
 export async function buildPlanSet(input: BuildInput): Promise<PlanSet> {
   const progress = async (stage: string, done: number, total: number) => input.onProgress?.({ stage, done, total });
   const pdf = await openPdf(input.pdf);
@@ -56,11 +86,20 @@ export async function buildPlanSet(input: BuildInput): Promise<PlanSet> {
       texts.push(await pdf.pageText(i));
       if (i % 8 === 0 || i === n) await progress("Reading sheets", i, n);
     }
-    const info = fallbackClassification(classifyPages(texts), texts);
+    // Architectural working drawings caption every drawing ("A1 - GROUND FLOOR PLAN (STANDARD)")
+    // and outline their walls; décor sets use title blocks and solid walls.
+    const working = classifyWorkingDrawings(texts);
+    const info = working ? working.map((w) => workingPageInfo(w, texts[w.page - 1])) : fallbackClassification(classifyPages(texts), texts);
     const candidates = info.filter((p) => (p.kind === "standard" || p.kind === "option") && p.level);
     const unmodeled: UnmodeledSheet[] = info
       .filter((p) => !candidates.includes(p))
-      .map((p) => ({ page: p.page, title: p.title, reason: p.kind === "grade-condition" ? "Grade-condition variant (look-out / walk-out) — reference only" : "Not a floor plan" }));
+      .map((p) => ({ page: p.page, title: p.title, reason: unmodeledReason(p, working?.[p.page - 1]) }));
+    // The image walls are read from: the sheet itself, or for working drawings its wall vectors painted solid.
+    const wallImage = async (page: number, r: RenderedPage) => {
+      if (!working) return r.grey;
+      const v = await readSitePlanVectors(input.pdf, page);
+      return wallMaskFromVectors(v.polygons, v.texts, v, { width: r.width, height: r.height });
+    };
 
     // Pass 1 — one scale for the whole set (sheets are exported at the same drawing scale).
     // Standard sheets are measured first; option sheets only if that isn't conclusive.
@@ -72,7 +111,7 @@ export async function buildPlanSet(input: BuildInput): Promise<PlanSet> {
     for (const group of [standards, candidates.filter((p) => p.kind !== "standard")]) {
       for (const p of group) {
         const r = await pdf.render(p.page);
-        const m = measureSheet(r.grey, r.text);
+        const m = measureSheet(await wallImage(p.page, r), r.text, !!working);
         votes.push(...m.votes);
         if (cache.size < 16) cache.set(p.page, { render: r, mainWalls: m.mainWalls });
         await progress("Measuring scale", ++k, group === standards ? standards.length : candidates.length);
@@ -96,7 +135,7 @@ export async function buildPlanSet(input: BuildInput): Promise<PlanSet> {
       cache.delete(p.page);
       const r = cached?.render ?? (await pdf.render(p.page));
       const tpl = tplFor(level);
-      const ex = extractFloor(r.grey, r.text, {
+      const ex = extractFloor(await wallImage(p.page, r), r.text, {
         metresPerPixel: setScale?.metresPerPixel,
         scaleSource: "room-dimensions",
         scaleConsistency: setScale?.consistency ?? null,
@@ -105,6 +144,8 @@ export async function buildPlanSet(input: BuildInput): Promise<PlanSet> {
         ceilingHeight: tpl.ceilingHeight,
         elevation: tpl.elevation,
         basement: level === "basement",
+        sameSizeLabels: !!working,
+        closeShell: level !== "ground" && level !== "basement",
         mainWalls: cached?.mainWalls,
       });
       k++;
@@ -183,7 +224,8 @@ export async function buildPlanSet(input: BuildInput): Promise<PlanSet> {
 
     const elevationIds = [...new Set(variants.map((v) => v.elevationId))];
     const levels = LEVEL_ORDER.filter((l) => variants.some((v) => v.levelId === l));
-    const codes = info.map((p) => p.sheet?.match(/(\d{3,5})/)?.[1]).filter(Boolean) as string[];
+    // Décor sheets number by model ("OASD3515A1"); working drawings carry it in the title block ("OASD3515").
+    const codes = (working ? texts.flatMap((t) => t.items.map((i) => /^[A-Z]{2,5}(\d{4})$/.exec(i.str.trim())?.[1])) : info.map((p) => p.sheet?.match(/(\d{3,5})/)?.[1])).filter(Boolean) as string[];
     const modelCode = codes.length ? codes.sort((a, b) => codes.filter((c) => c === b).length - codes.filter((c) => c === a).length)[0] : null;
 
     return {
@@ -203,6 +245,8 @@ export async function buildPlanSet(input: BuildInput): Promise<PlanSet> {
       unmodeled: unmodeled.sort((a, b) => a.page - b.page),
       defaultElevationId: elevationIds[0] ?? "STD",
       pageCount: n,
+      format: working ? "working" : "decor",
+      exterior: working ? elevationSpecs(working, texts) : undefined,
     };
   } finally {
     await pdf.close();

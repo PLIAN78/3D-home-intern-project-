@@ -3,6 +3,7 @@ import type { Lot, PlaceholderStyle } from "@/lib/models/community";
 import type { RoofSection } from "@/lib/models/house";
 import { addBox, AXIS_FRAME, SurfaceBuckets } from "./meshBuilder";
 import { generateRoofSection } from "./generateRoof";
+import { buildProductGeometry, productSpec } from "./productMassing";
 
 export type PlaceholderSurface = "body" | "roof" | "trim" | "window" | "garage" | "door" | "foundation";
 
@@ -110,14 +111,24 @@ export function buildPlaceholderGeometry(style: PlaceholderStyle, storeys: 1 | 2
 
 const cache = new Map<string, PlaceholderGeometry>();
 
-/** Placeholder geometries are shared between lots with the same massing. */
+/**
+ * Geometry for the home on a lot, shared between lots with the same massing:
+ * the product sold on it when its collection is known (real communities),
+ * otherwise a generic style-based house (demo streets).
+ */
 export function placeholderFor(lot: Lot): PlaceholderGeometry {
+  const product = productSpec(lot);
   const { style, storeys, garageSide } = lot.placeholder;
-  const key = `${style}:${storeys}:${garageSide}`;
+  const key = product ? `product:${product.key}` : `${style}:${storeys}:${garageSide}`;
   let g = cache.get(key);
   if (!g) {
-    g = buildPlaceholderGeometry(style, storeys, garageSide);
+    g = product ? buildProductGeometry(product) : buildPlaceholderGeometry(style, storeys, garageSide);
     cache.set(key, g);
   }
   return g;
+}
+
+/** Storeys of the home on a lot (for construction-stage framing). */
+export function storeysFor(lot: Lot): number {
+  return productSpec(lot)?.storeys ?? lot.placeholder.storeys;
 }

@@ -70,14 +70,12 @@ function SetRow({ drawing, onOpen }: { drawing: Drawing; onOpen: () => void }) {
     <div className="mt-2 flex items-center gap-2 rounded-md bg-brand/10 px-2 py-1.5">
       <Layers className="size-3.5 shrink-0 text-[color:oklch(0.5_0.13_62)]" />
       <span className="min-w-0 flex-1 truncate text-[11px]">
-        {!a && (drawing.pageCount ?? 1) > 1 && `Drawing set · ${drawing.pageCount} sheets`}
-        {!a && (drawing.pageCount ?? 1) <= 1 && "Build the 3D home from this sheet"}
         {a?.status === "running" && `Reading… ${a.stage}`}
-        {a?.status === "done" && "Drawing set analysed"}
+        {a?.status === "done" && (a.partnerDrawingId ? `Read with the ${drawing.category === "redline" ? "décor" : "redline"} set` : "Drawing set read")}
         {a?.status === "failed" && "Analysis failed"}
       </span>
       <Button size="xs" onClick={onOpen} className="bg-brand text-brand-foreground hover:bg-brand/90">
-        {a?.status === "done" ? "View" : a?.status === "running" ? "Progress" : "Generate 3D"}
+        {a?.status === "done" ? "View" : a?.status === "running" ? "Progress" : "Details"}
       </Button>
     </div>
   );
@@ -232,7 +230,7 @@ function DrawingCard({ drawing, floors, projectSlug, onOpenSet }: { drawing: Dra
           <Trash2 />
         </Button>
       </div>
-      {drawing.contentType === "application/pdf" && onOpenSet && (
+      {drawing.contentType === "application/pdf" && drawing.analysis && onOpenSet && (
         <SetRow drawing={drawing} onOpen={() => onOpenSet(drawing.id)} />
       )}
       {isPlan && !floor && !drawing.analysis && <p className="mt-1.5 text-[10px] text-amber-700">Assign a floor before tracing.</p>}

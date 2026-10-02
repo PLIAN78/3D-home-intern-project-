@@ -46,7 +46,8 @@ export interface PageInfo {
   roomDimensionCount: number;
 }
 
-const DIM_RE = /^\d+'\s*\d+(?:\s*\d\/\d)?"?\s*[xX×]\s*\d+'\s*\d+(?:\s*\d\/\d)?"?$/;
+// 18'6"x13'8" on décor sheets, 18'-7"x13'-8" on architectural working drawings.
+const DIM_RE = /^\d+'\s*-?\s*\d+(?:\s*\d\/\d)?"?\s*[xX×]\s*\d+'\s*-?\s*\d+(?:\s*\d\/\d)?"?$/;
 
 export function isRoomDimension(s: string) {
   return DIM_RE.test(s.trim());
@@ -151,7 +152,7 @@ export function classifyPages(pages: PageText[]): PageInfo[] {
 
 /** Parse 18'6" → metres. */
 export function feetInchesToMetres(s: string): number | null {
-  const m = s.trim().match(/^(\d+)'\s*(\d+)?(?:\s*(\d)\/(\d))?"?$/);
+  const m = s.trim().match(/^(\d+)'\s*-?\s*(\d+)?(?:\s*(\d)\/(\d))?"?$/);
   if (!m) return null;
   const inches = Number(m[1]) * 12 + Number(m[2] ?? 0) + (m[3] ? Number(m[3]) / Number(m[4]) : 0);
   return inches * 0.0254;
@@ -161,4 +162,62 @@ export function parseRoomDimension(s: string): [number, number] | null {
   const parts = s.split(/[xX×]/).map((p) => feetInchesToMetres(p));
   if (parts.length !== 2 || parts.some((p) => p === null)) return null;
   return [parts[0]!, parts[1]!];
+}
+
+// ---------------------------------------------------------------------------
+// Architectural working drawings (permit sets)
+// ---------------------------------------------------------------------------
+
+/** "A1 - GROUND FLOOR PLAN (STANDARD)", "B1 - FRONT ELEVATION (CLEAN TRADITIONAL)" */
+const WD_PLAN_RE = /^([A-Z]\d?)\s*-\s*(BASEMENT|GROUND FLOOR|MAIN FLOOR|FIRST FLOOR|SECOND FLOOR|THIRD FLOOR)\s+PLAN\s*\(STANDARD\)\s*$/i;
+const WD_ELEVATION_RE = /^([A-Z]\d?)\s*-\s*(FRONT|REAR|LEFT|RIGHT)\s+ELEVATION\b/i;
+
+export type ElevationView = "front" | "rear" | "left" | "right";
+
+export interface WorkingSheet {
+  page: number;
+  elevation: string;
+  kind: "plan" | "elevation" | "other";
+  level: LevelId | null;
+  view: ElevationView | null;
+  title: string;
+}
+
+/**
+ * A working-drawing set captions each drawing with its elevation and subject
+ * ("A1 - SECOND FLOOR PLAN (STANDARD)"); décor sets don't. Returns the sheets
+ * when the set is one, otherwise null.
+ */
+export function classifyWorkingDrawings(pages: PageText[]): WorkingSheet[] | null {
+  const sheets = pages.map((p, i) => {
+    // The sheet title in the title block is the largest "X1 - …" text; it names the elevation
+    // even when a shared drawing's own caption names another ("A2 - …" on a B1 sheet).
+    const titled = p.items.filter((t) => /^[A-Z]\d?\s*-\s*\S/.test(t.str.trim())).sort((a, b) => b.h - a.h)[0];
+    const sheetElevation = titled ? titled.str.trim().split(/\s*-/)[0].toUpperCase() : "";
+    let best: { sheet: WorkingSheet; h: number } | null = null;
+    for (const t of p.items) {
+      const s = t.str.trim();
+      const plan = WD_PLAN_RE.exec(s);
+      const elev = plan ? null : WD_ELEVATION_RE.exec(s);
+      if (!plan && !elev) continue;
+      if (best && best.h >= t.h) continue;
+      const elevation = sheetElevation || (plan ?? elev)![1].toUpperCase();
+      best = {
+        h: t.h,
+        sheet: plan
+          ? { page: i + 1, elevation, kind: "plan", level: levelOf(plan[2]), view: null, title: s }
+          : { page: i + 1, elevation, kind: "elevation", level: null, view: elev![2].toLowerCase() as ElevationView, title: s },
+      };
+    }
+    const big = [...p.items].sort((a, b) => b.h - a.h)[0];
+    return best ?? { sheet: { page: i + 1, elevation: "", kind: "other" as const, level: null, view: null, title: big?.str.trim() ?? `Page ${i + 1}` }, h: 0 };
+  });
+  // Cover sheets list every drawing in small type; per drawing keep the sheet that captions it largest.
+  for (const x of sheets) {
+    if (x.sheet.kind === "other") continue;
+    const same = sheets.filter((y) => y.sheet.kind === x.sheet.kind && y.sheet.elevation === x.sheet.elevation && y.sheet.level === x.sheet.level && y.sheet.view === x.sheet.view);
+    if (same.some((y) => y.h > x.h)) x.sheet = { ...x.sheet, kind: "other", level: null, view: null };
+  }
+  const out = sheets.map((x) => x.sheet);
+  return out.filter((s) => s.kind === "plan").length >= 2 ? out : null;
 }

@@ -1,4 +1,4 @@
-import type { Floor, HouseModel } from "./house";
+import type { CladdingZone, ExteriorStyle, Floor, HouseModel } from "./house";
 import { finalizeHouseModel } from "./finalize";
 import { defaultFloors } from "./templates";
 
@@ -33,8 +33,28 @@ export interface FloorVariant {
   confidence: number;
   warnings: string[];
   reviewed: boolean;
+  /** Which drawing set the geometry came from, when the set combines two. */
+  source?: "redline" | "decor";
   /** Sheet raster + mapping, so the editor can show the drawing under the geometry. */
   sheet: { rasterKey: string; width: number; height: number; metresPerPixel: number; originPx: { x: number; y: number } };
+}
+
+/** What an elevation's front-elevation sheet states about the exterior (working drawings). */
+export interface ElevationSpec {
+  page: number;
+  /** Datums in metres, relative to the finished ground floor. */
+  levels: {
+    groundUnderside?: number;
+    secondFloor?: number;
+    secondUnderside?: number;
+    thirdFloor?: number;
+    thirdUnderside?: number;
+    topOfPlate?: number;
+    basementSlab?: number;
+  };
+  /** Rise over run; null when not shown. */
+  pitches: { main: number | null; gable: number | null; lower: number | null };
+  cladding: { ground: CladdingZone | null; upper: CladdingZone | null };
 }
 
 export interface UnmodeledSheet {
@@ -57,6 +77,12 @@ export interface PlanSet {
   unmodeled: UnmodeledSheet[];
   defaultElevationId: string;
   pageCount: number;
+  /** "working" for architectural working drawings (redlines), "decor" for décor plans. */
+  format?: "working" | "decor";
+  /** Combined sets: the redline geometry and décor options/openings came from these drawings. */
+  sources?: { redlineDrawingId: string; decorDrawingId: string };
+  /** Exterior read from elevation sheets, per elevation id. */
+  exterior?: Record<string, ElevationSpec>;
 }
 
 export interface PlanSelection {
@@ -125,24 +151,66 @@ export function composeHouseModel(set: PlanSet, selection: PlanSelection, base: 
       belowGrade: levelId === "basement",
     });
   }
+  const spec = set.exterior?.[sel.elevationId];
+  if (spec) applyElevationHeights(floors, spec);
   const unreviewed = used.filter((v) => !v.reviewed).length;
   const confidence = used.length ? Math.min(...used.map((v) => v.confidence)) : 0;
   const elevation = set.elevations.find((e) => e.id === sel.elevationId);
   const model: HouseModel = {
     ...base,
     floors,
-    exterior: { roofs: [], autoRoof: true },
+    exterior: { roofs: [], autoRoof: true, style: spec ? exteriorStyle(spec) : undefined },
     provenance: {
       source: unreviewed ? "interpreted" : "manual-trace",
       confidence: Math.round(confidence * 100) / 100,
       notes: [
         `Generated automatically from the drawing set${elevation ? ` (${elevation.label})` : ""}.`,
+        ...(spec ? [`Storey heights, roof pitches and cladding read from the front elevation (redline sheet ${spec.page}).`] : []),
         ...(unreviewed ? [`${unreviewed} floor(s) have not been reviewed by a person — dimensions are approximate.`] : []),
       ],
     },
   };
   const { model: finalized, notes } = finalizeHouseModel(model);
   return { ...finalized, provenance: { ...finalized.provenance, notes: [...finalized.provenance.notes, ...notes] } };
+}
+
+function exteriorStyle(spec: ElevationSpec): ExteriorStyle {
+  return {
+    mainPitch: spec.pitches.main ?? undefined,
+    gablePitch: spec.pitches.gable ?? undefined,
+    lowerPitch: spec.pitches.lower ?? undefined,
+    groundCladding: spec.cladding.ground ?? undefined,
+    upperCladding: spec.cladding.upper ?? undefined,
+  };
+}
+
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+/** Storey heights from the elevation's datums (metres above the finished ground floor), when plausible. */
+function applyElevationHeights(floors: Floor[], spec: ElevationSpec) {
+  const L = spec.levels;
+  const within = (v: number | undefined, lo: number, hi: number): v is number => v !== undefined && Number.isFinite(v) && v >= lo && v <= hi;
+  for (const f of floors) {
+    if (f.id === "basement") {
+      const h = L.groundUnderside !== undefined && L.basementSlab !== undefined ? L.groundUnderside - L.basementSlab : undefined;
+      if (within(h, 1.9, 3.2)) f.ceilingHeight = round3(h);
+    } else if (f.id === "ground") {
+      if (within(L.secondUnderside, 2.2, 3.8)) f.ceilingHeight = round3(L.secondUnderside);
+      else if (L.secondFloor === undefined && within(L.topOfPlate, 2.2, 4)) f.ceilingHeight = round3(L.topOfPlate);
+      if (within(L.groundUnderside, -0.6, -0.15)) f.floorThickness = round3(-L.groundUnderside);
+    } else if (f.id === "second" && L.secondFloor !== undefined) {
+      const t = L.secondUnderside !== undefined ? L.secondFloor - L.secondUnderside : undefined;
+      if (within(t, 0.15, 0.6)) f.floorThickness = round3(t);
+      const top = L.thirdUnderside ?? L.topOfPlate;
+      const h = top !== undefined ? top - L.secondFloor : undefined;
+      if (within(h, 2.1, 3.8)) f.ceilingHeight = round3(h);
+    } else if (f.id === "third" && L.thirdFloor !== undefined) {
+      const t = L.thirdUnderside !== undefined ? L.thirdFloor - L.thirdUnderside : undefined;
+      if (within(t, 0.15, 0.6)) f.floorThickness = round3(t);
+      const h = L.topOfPlate !== undefined ? L.topOfPlate - L.thirdFloor : undefined;
+      if (within(h, 2.1, 3.8)) f.ceilingHeight = round3(h);
+    }
+  }
 }
 
 export interface PlanSetSummary {

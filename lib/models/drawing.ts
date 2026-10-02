@@ -72,6 +72,8 @@ export interface DrawingAnalysis {
   done: number;
   total: number;
   planSetId?: string;
+  /** Combined redline + décor analysis: the other drawing of the pair. */
+  partnerDrawingId?: string;
   error?: string;
   startedAt: string;
   finishedAt?: string;

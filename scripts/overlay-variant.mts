@@ -9,9 +9,12 @@ const [slug, variantId, out] = process.argv.slice(2);
 const fromFile = slug.endsWith(".json");
 const set = fromFile
   ? JSON.parse(fs.readFileSync(slug, "utf8"))
-  : (() => {
-      const db = JSON.parse(fs.readFileSync(".data/db.json", "utf8"));
-      return db.planSets[db.projects.find((p: { slug: string }) => p.slug === slug).planSetId];
+  : await (async () => {
+      const { getDb, schema } = await import("@/lib/db/client");
+      const { eq } = await import("drizzle-orm");
+      const project = getDb().select().from(schema.projects).where(eq(schema.projects.slug, slug)).get();
+      if (!project?.planSetId) throw new Error(`No drawing set for project ${slug}`);
+      return getDb().select().from(schema.planSets).where(eq(schema.planSets.id, project.planSetId)).get()!.data;
     })();
 const v = set.variants.find((x: { id: string }) => x.id === variantId);
 const raster = fromFile ? path.join(path.dirname(slug), `sheet-${v.page}.png`) : path.join(".data/uploads", v.sheet.rasterKey);

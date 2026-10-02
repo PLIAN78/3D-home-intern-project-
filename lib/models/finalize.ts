@@ -1,4 +1,7 @@
-import type { Floor, HouseModel, Point2D, RoofSection, Wall } from "./house";
+import type { Floor, HouseModel, Point2D, Wall } from "./house";
+import { findPorch, generateAutoRoofs, LOWER_PITCH, porchFixtures } from "./autoExterior";
+
+export { generateAutoRoofs };
 import { clipRoomToFootprint, rasterFootprint } from "./footprint";
 import { sortedFloors, wallLength } from "./house";
 
@@ -68,69 +71,6 @@ function wallBounds(floor: Floor): Rect | null {
   return pts.length ? bounds(pts) : null;
 }
 
-/** Sutherland–Hodgman clip of a polygon to an axis-aligned rectangle. */
-function clipToRect(poly: Point2D[], r: Rect): Point2D[] {
-  const edges: [(p: Point2D) => boolean, (a: Point2D, b: Point2D) => Point2D][] = [
-    [(p) => p.x >= r.minX, (a, b) => ({ x: r.minX, y: a.y + ((b.y - a.y) * (r.minX - a.x)) / (b.x - a.x) })],
-    [(p) => p.x <= r.maxX, (a, b) => ({ x: r.maxX, y: a.y + ((b.y - a.y) * (r.maxX - a.x)) / (b.x - a.x) })],
-    [(p) => p.y >= r.minY, (a, b) => ({ x: a.x + ((b.x - a.x) * (r.minY - a.y)) / (b.y - a.y), y: r.minY })],
-    [(p) => p.y <= r.maxY, (a, b) => ({ x: a.x + ((b.x - a.x) * (r.maxY - a.y)) / (b.y - a.y), y: r.maxY })],
-  ];
-  let out = poly;
-  for (const [inside, cut] of edges) {
-    const input = out;
-    out = [];
-    for (let i = 0; i < input.length; i++) {
-      const cur = input[i];
-      const prev = input[(i + input.length - 1) % input.length];
-      if (inside(cur)) {
-        if (!inside(prev)) out.push(cut(prev, cur));
-        out.push(cur);
-      } else if (inside(prev)) out.push(cut(prev, cur));
-    }
-    if (!out.length) break;
-  }
-  return out;
-}
-
-/**
- * Simple roofs: a hip roof over the top floor's outline bounds, plus shed roofs
- * over parts of lower floors that stick out beyond the floor above (garages,
- * bump-outs), sloping away from the taller wall.
- */
-export function generateAutoRoofs(floors: Floor[]): RoofSection[] {
-  const above = floors.filter((f) => !f.belowGrade && f.walls.length);
-  const roofs: RoofSection[] = [];
-  above.forEach((floor, i) => {
-    const fp = floor.footprint ?? [];
-    if (fp.length < 3) return;
-    const b = bounds(fp);
-    const upper = above[i + 1];
-    if (!upper?.footprint?.length) {
-      const w = b.maxX - b.minX;
-      const d = b.maxY - b.minY;
-      if (w > 1 && d > 1) roofs.push({ id: `auto-${floor.id}-hip`, name: `${floor.name} Roof`, type: "hip", baseFloorId: floor.id, x: b.minX, y: b.minY, width: w, depth: d, pitch: 6 / 12, overhang: 0.4 });
-      return;
-    }
-    const u = bounds(upper.footprint);
-    const strips: { rect: Rect; highSide: RoofSection["highSide"] }[] = [
-      { rect: { minX: b.minX, maxX: b.maxX, minY: u.maxY, maxY: b.maxY }, highSide: "-y" },
-      { rect: { minX: b.minX, maxX: b.maxX, minY: b.minY, maxY: u.minY }, highSide: "+y" },
-      { rect: { minX: b.minX, maxX: u.minX, minY: Math.max(b.minY, u.minY), maxY: Math.min(b.maxY, u.maxY) }, highSide: "+x" },
-      { rect: { minX: u.maxX, maxX: b.maxX, minY: Math.max(b.minY, u.minY), maxY: Math.min(b.maxY, u.maxY) }, highSide: "-x" },
-    ];
-    strips.forEach(({ rect, highSide }, k) => {
-      if (rect.maxX - rect.minX < 0.6 || rect.maxY - rect.minY < 0.6) return;
-      const clipped = clipToRect(fp, rect);
-      if (clipped.length < 3) return;
-      const c = bounds(clipped);
-      if (c.maxX - c.minX < 0.6 || c.maxY - c.minY < 0.6) return;
-      roofs.push({ id: `auto-${floor.id}-shed-${k}`, name: `${floor.name} Lower Roof`, type: "shed", baseFloorId: floor.id, x: c.minX, y: c.minY, width: c.maxX - c.minX, depth: c.maxY - c.minY, pitch: 4 / 12, overhang: 0.3, highSide });
-    });
-  });
-  return roofs;
-}
-
 export function finalizeHouseModel(model: HouseModel): { model: HouseModel; notes: string[] } {
   const notes: string[] = [];
   const floors = sortedFloors(structuredClone(model));
@@ -152,7 +92,8 @@ export function finalizeHouseModel(model: HouseModel): { model: HouseModel; note
     const upper = floors[i + 1];
     for (const w of f.walls) {
       w.height = round(w.exterior ? f.ceilingHeight + (upper ? (upper.floorThickness ?? 0.3) : 0) : f.ceilingHeight);
-      if (w.exterior && !w.cladding) w.cladding = f.belowGrade ? "foundation" : aboveIndex === 0 ? "brick" : "siding";
+      const style = model.exterior.style;
+      if (w.exterior && !w.cladding) w.cladding = f.belowGrade ? "foundation" : aboveIndex === 0 ? (style?.groundCladding ?? "brick") : (style?.upperCladding ?? "siding");
     }
     if (!f.belowGrade && f.walls.length) aboveIndex++;
     // Drop openings that no longer sit on a wall, or that run off its ends.
@@ -201,10 +142,23 @@ export function finalizeHouseModel(model: HouseModel): { model: HouseModel; note
     }
   }
 
-  // 4. Roofs
+  // 4. Roofs and the front porch, inferred from the floor outlines.
   if (exterior.autoRoof) {
-    exterior.roofs = generateAutoRoofs(floors);
-    if (exterior.roofs.length) notes.push("Roofs were generated automatically from floor outlines — roof shape is approximate.");
+    exterior.roofs = generateAutoRoofs(floors, exterior.style);
+    const aboveGrade = floors.filter((f) => !f.belowGrade && f.walls.length);
+    const ground = aboveGrade[0];
+    if (ground) {
+      ground.fixtures = (ground.fixtures ?? []).filter((x) => !x.id.startsWith("auto-porch"));
+      const porch = findPorch(ground, aboveGrade[1]);
+      if (porch) {
+        ground.fixtures.push(...porchFixtures(ground, porch));
+        if (!porch.covered) {
+          const r = porch.rect;
+          exterior.roofs.push({ id: "auto-porch-roof", name: "Porch Roof", type: "shed", baseFloorId: ground.id, x: r.x0, y: r.y0, width: r.x1 - r.x0, depth: r.y1 - r.y0, pitch: exterior.style?.lowerPitch ?? LOWER_PITCH, overhang: 0.25, highSide: "-y" });
+        }
+      }
+    }
+    if (exterior.roofs.length) notes.push("Roofs and porch were generated from the floor outlines — their shape is approximate.");
   }
 
   return { model: { ...model, floors, exterior }, notes };

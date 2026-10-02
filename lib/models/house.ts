@@ -139,6 +139,17 @@ export interface ExteriorConfig {
   drivewayWidth?: number;
   /** Regenerate simple roofs from floor outlines when the model is saved (traced models). */
   autoRoof?: boolean;
+  /** Exterior stated on the drawings (front elevation); auto roofs and cladding follow it. */
+  style?: ExteriorStyle;
+}
+
+export interface ExteriorStyle {
+  mainPitch?: number;
+  gablePitch?: number;
+  lowerPitch?: number;
+  /** Cladding of the first above-grade storey and of the storeys above it. */
+  groundCladding?: CladdingZone;
+  upperCladding?: CladdingZone;
 }
 
 export interface ModelProvenance {

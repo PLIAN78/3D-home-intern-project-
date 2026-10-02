@@ -1,19 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { Download, Eye, EyeOff, Focus, PencilRuler, ShieldAlert } from "lucide-react";
+import { ArrowRight, Download, Eye, EyeOff, Focus, PencilRuler, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CutawayControls } from "@/components/configurator/CutawayControls";
 import { useState } from "react";
 import { DrawingList } from "@/components/drawings/DrawingList";
-import { DrawingSetDialog } from "@/components/drawings/DrawingSetDialog";
+import { DrawingSetDialog, type DrawingSetRequest } from "@/components/drawings/DrawingSetDialog";
+import { DrawingSetUpload } from "@/components/drawings/DrawingSetUpload";
 import { DrawingUploader } from "@/components/drawings/DrawingUploader";
+import { LotHomesList } from "@/components/catalog/LotHomesList";
+import { PhotoLightbox } from "@/components/catalog/PhotoGallery";
+import { RemotePhoto } from "@/components/catalog/RemotePhoto";
 import type { Drawing } from "@/lib/models/drawing";
+import type { ProjectStatus } from "@/lib/models/project";
 import type { ProjectBundle } from "@/lib/data/repository";
 import { floorArea, isLivingRoom, polygonArea, sortedFloors, SQ_M_TO_SQ_FT, type Floor, type GeometrySource } from "@/lib/models/house";
 import { cn } from "@/lib/utils";
@@ -44,10 +48,12 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 const SOURCE_LABEL: Record<GeometrySource, string> = {
-  "demo-seed": "demo seed data",
-  interpreted: "interpreted drawing",
-  "manual-trace": "traced from drawings",
+  "demo-seed": "Demo data",
+  interpreted: "Traced automatically",
+  "manual-trace": "Traced by hand",
 };
+
+const STATUS_LABEL: Record<ProjectStatus, string> = { draft: "Draft", "in-review": "In review", "ready-for-sales": "Ready for sales" };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h3 className="mb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{children}</h3>;
@@ -141,8 +147,8 @@ function ModelTab({ bundle }: { bundle: ProjectBundle }) {
     <div className="space-y-5">
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
         <div className="flex items-center gap-1.5 text-xs font-semibold">
-          <ShieldAlert className="size-3.5" /> Geometry source: {SOURCE_LABEL[house.provenance.source]}
-          {house.provenance.source !== "demo-seed" && <span className="ml-auto font-normal">confidence {Math.round(house.provenance.confidence * 100)}%</span>}
+          <ShieldAlert className="size-3.5" /> {SOURCE_LABEL[house.provenance.source]}
+          {house.provenance.source !== "demo-seed" && <span className="ml-auto font-normal whitespace-nowrap">{Math.round(house.provenance.confidence * 100)}% confidence</span>}
         </div>
         <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[11px] leading-snug">
           {house.provenance.notes.map((n) => (
@@ -187,21 +193,81 @@ function ModelTab({ bundle }: { bundle: ProjectBundle }) {
 function DrawingsTab({ bundle, drawings }: { bundle: ProjectBundle; drawings: Drawing[] }) {
   const floors = sortedFloors(bundle.house);
   const toReview = drawings.filter((d) => d.processingStatus === "needs-review").length;
-  const [setDialog, setSetDialog] = useState<string | null>(null);
+  const [request, setRequest] = useState<DrawingSetRequest | null>(null);
+  const [single, setSingle] = useState(false);
+  // Reopen an analysed drawing: follow its pair's analysis, which the redline carries.
+  const openSet = (id: string) => {
+    const d = drawings.find((x) => x.id === id);
+    const partner = d?.analysis?.partnerDrawingId;
+    if (!d) return;
+    const redlineId = partner && d.category !== "redline" ? partner : d.id;
+    setRequest({ pollId: redlineId, names: [d.fileName] });
+  };
   return (
     <div className="space-y-4">
-      <DrawingUploader projectId={bundle.project.id} floors={floors} onSetUploaded={(d) => setSetDialog(d.id)} />
-      <DrawingSetDialog projectId={bundle.project.id} projectSlug={bundle.project.slug} drawingId={setDialog} onOpenChange={(open) => !open && setSetDialog(null)} />
+      <DrawingSetUpload
+        projectId={bundle.project.id}
+        drawings={drawings}
+        onBuild={({ redline, decor }) => setRequest({ pollId: redline.id, start: { redlineId: redline.id, decorId: decor.id }, names: [redline.fileName, decor.fileName] })}
+      />
+      <DrawingSetDialog projectId={bundle.project.id} projectSlug={bundle.project.slug} request={request} onOpenChange={(open) => !open && setRequest(null)} />
+      <div>
+        <button type="button" onClick={() => setSingle((v) => !v)} className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+          {single ? "Hide" : "Or trace single floor plans by hand"}
+        </button>
+        {single && (
+          <div className="mt-2">
+            <DrawingUploader projectId={bundle.project.id} floors={floors} />
+          </div>
+        )}
+      </div>
       <div>
         <div className="mb-1 flex items-center justify-between">
           <SectionTitle>Drawings ({drawings.length})</SectionTitle>
           {toReview > 0 && <span className="text-[10px] font-medium text-amber-700">{toReview} need review</span>}
         </div>
-        <DrawingList drawings={drawings} floors={floors} projectSlug={bundle.project.slug} onOpenSet={setSetDialog} />
+        <DrawingList drawings={drawings} floors={floors} projectSlug={bundle.project.slug} onOpenSet={openSet} />
       </div>
-      <p className="text-[10px] leading-snug text-muted-foreground">
-        Plans are traced automatically and marked as unreviewed. You can generate straight away and fine-tune any floor later in the editor.
-      </p>
+      <p className="text-[10px] leading-snug text-muted-foreground">Auto-traced plans stay marked unreviewed until saved from the editor.</p>
+    </div>
+  );
+}
+
+/** Real homes for the project's lot and a strip of community photos. */
+function RealHomes({ bundle }: { bundle: ProjectBundle }) {
+  const homes = bundle.homes!;
+  const [open, setOpen] = useState<number | null>(null);
+  const strip = homes.photos.slice(0, 6);
+  return (
+    <div className="space-y-4">
+      {homes.collection && (
+        <div>
+          <SectionTitle>Real homes for this lot</SectionTitle>
+          <p className="mb-2 text-[11px] text-muted-foreground">
+            {homes.collection.name}
+            {homes.collection.priceFrom ? ` · from $${homes.collection.priceFrom.toLocaleString("en-CA")}` : ""}
+          </p>
+          <LotHomesList collection={homes.collection} sourceUrl={homes.community.pageUrl} highlightId={homes.matchedDesignId} />
+        </div>
+      )}
+      {strip.length > 0 && (
+        <div>
+          <div className="mb-1 flex items-center justify-between">
+            <SectionTitle>{homes.community.name} photos</SectionTitle>
+            <Link href={`/communities/${homes.community.id}/homes`} className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground">
+              All {homes.community.photoCount} <ArrowRight className="size-3" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {strip.map((p, i) => (
+              <button key={p.id} type="button" onClick={() => setOpen(i)} className="overflow-hidden rounded-md" aria-label={p.caption ?? "Community photo"}>
+                <RemotePhoto src={p.url} alt={p.caption ?? ""} className="aspect-square" />
+              </button>
+            ))}
+          </div>
+          <PhotoLightbox photos={strip} index={open} onIndexChange={setOpen} />
+        </div>
+      )}
     </div>
   );
 }
@@ -209,6 +275,7 @@ function DrawingsTab({ bundle, drawings }: { bundle: ProjectBundle; drawings: Dr
 function ProjectTab({ bundle }: { bundle: ProjectBundle }) {
   const { project, community } = bundle;
   const lot = community.lots.find((l) => l.id === project.lotId);
+  const m = (v: number) => `${v.toFixed(1)} m (${Math.round(v * 3.281)} ft)`;
   return (
     <div className="space-y-5">
       <div>
@@ -219,19 +286,21 @@ function ProjectTab({ bundle }: { bundle: ProjectBundle }) {
           <Field label="Lot" value={project.lotNumber} />
           <Field label="Model" value={project.modelName} />
           <Field label="Floors" value={project.floorCount} />
-          <Field label="Status" value={<Badge variant="outline">In review</Badge>} />
+          <Field label="Status" value={<Badge variant="outline">{STATUS_LABEL[project.status]}</Badge>} />
         </div>
       </div>
       {lot && (
         <div>
           <SectionTitle>Lot</SectionTitle>
           <div className="divide-y">
-            <Field label="Frontage" value={`${lot.width} m (${Math.round(lot.width * 3.281)} ft)`} />
-            <Field label="Depth" value={`${lot.depth} m (${Math.round(lot.depth * 3.281)} ft)`} />
-            <Field label="Front setback" value={`${lot.frontSetback} m`} />
+            {lot.collection && <Field label="Collection" value={lot.collection} />}
+            <Field label="Frontage" value={m(lot.width)} />
+            <Field label="Depth" value={m(lot.depth)} />
+            <Field label="Front setback" value={`${lot.frontSetback.toFixed(1)} m`} />
           </div>
         </div>
       )}
+      {bundle.homes && <RealHomes bundle={bundle} />}
     </div>
   );
 }
@@ -248,7 +317,8 @@ export function ProjectSidebar({ bundle, drawings, initialTab = "floors" }: { bu
           <TabsTrigger value="model">Model</TabsTrigger>
         </TabsList>
       </div>
-      <ScrollArea className="min-h-0 flex-1">
+      {/* Radix wraps content in a display:table div that grows to fit long file names; keep it to the sidebar width. */}
+      <ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:!block">
         <div className="p-4">
           <TabsContent value="project">
             <ProjectTab bundle={bundle} />
@@ -264,8 +334,6 @@ export function ProjectSidebar({ bundle, drawings, initialTab = "floors" }: { bu
           </TabsContent>
         </div>
       </ScrollArea>
-      <Separator />
-      <div className="px-4 py-2.5 text-[10px] text-muted-foreground">Home Studio · MVP</div>
     </Tabs>
   );
 }

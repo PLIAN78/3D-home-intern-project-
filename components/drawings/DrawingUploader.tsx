@@ -119,8 +119,8 @@ export function DrawingUploader({ projectId, floors, onSetUploaded }: { projectI
         )}
       >
         <FileUp className="mb-1.5 size-5 text-muted-foreground" />
-        <div className="text-sm font-medium">Drop your décor / plan set PDF</div>
-        <div className="text-[11px] text-muted-foreground">We read every floor, elevation and option and build the 3D home. PNG/JPG plans work too.</div>
+        <div className="text-sm font-medium">Drop floor plan sheets</div>
+        <div className="text-[11px] text-muted-foreground">PDF, PNG or JPG plans to trace by hand in the editor, one floor each.</div>
         <input
           ref={input}
           type="file"

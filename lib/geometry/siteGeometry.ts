@@ -3,8 +3,9 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import type { Lot } from "@/lib/models/community";
 import type { SiteContext } from "@/lib/community/siteContext";
 import { buildState, type BuildState, type LotProgress } from "@/lib/models/construction";
-import { placeholderFor, type PlaceholderSurface } from "./placeholderHouse";
+import { placeholderFor, storeysFor, type PlaceholderSurface } from "./placeholderHouse";
 import { addBox, AXIS_FRAME, MeshBuilder } from "./meshBuilder";
+import { generateRoofSection } from "./generateRoof";
 
 /**
  * Geometry for real-world communities: OpenStreetMap surroundings and the
@@ -28,6 +29,46 @@ function clean(pts: P2[]): P2[] {
   const out = pts.slice();
   if (out.length > 1 && out[0][0] === out[out.length - 1][0] && out[0][1] === out[out.length - 1][1]) out.pop();
   return out;
+}
+
+/**
+ * A hip roof for a house-sized, nearly rectangular OpenStreetMap footprint:
+ * fitted to the rectangle along its longest edge, at 6:12. Null for other
+ * shapes (they keep a flat top).
+ */
+function pitchedRoof(pts: P2[], wallTop: number): THREE.BufferGeometry[] | null {
+  const area = Math.abs(signedArea(pts));
+  if (area < 40 || area > 450 || wallTop > 11) return null;
+  let best = { len: 0, ux: 1, uy: 0 };
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const c = pts[(i + 1) % pts.length];
+    const len = Math.hypot(c[0] - a[0], c[1] - a[1]);
+    if (len > best.len) best = { len, ux: (c[0] - a[0]) / len, uy: (c[1] - a[1]) / len };
+  }
+  // Local frame: u along the longest edge, v across it.
+  const us = pts.map((p) => p[0] * best.ux + p[1] * best.uy);
+  const vs = pts.map((p) => -p[0] * best.uy + p[1] * best.ux);
+  const [u0, u1, v0, v1] = [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)];
+  if (area < (u1 - u0) * (v1 - v0) * 0.85) return null;
+  const roof = generateRoofSection({ id: "osm", name: "", type: "hip", baseFloorId: "", x: u0, y: v0, width: u1 - u0, depth: v1 - v0, pitch: 0.5, overhang: 0.35 }, wallTop);
+  // Roof-frame (x = u, z = v) → world (x east, z = −north).
+  const m = new THREE.Matrix4().set(best.ux, 0, -best.uy, 0, 0, 1, 0, 0, -best.uy, 0, -best.ux, 0, 0, 0, 0, 1);
+  return roof
+    .toSurfaces()
+    .filter((p) => p.surface === "roof")
+    .map((p) => {
+      const g = p.geometry.index ? p.geometry.toNonIndexed() : p.geometry;
+      g.applyMatrix4(m);
+      // The map's z = −north is a reflection: restore the triangles' winding.
+      for (const attr of Object.values(g.attributes) as THREE.BufferAttribute[]) {
+        const n = attr.itemSize;
+        const arr = attr.array as Float32Array;
+        for (let t = 0; t < attr.count; t += 3)
+          for (let k = 0; k < n; k++) [arr[(t + 1) * n + k], arr[(t + 2) * n + k]] = [arr[(t + 2) * n + k], arr[(t + 1) * n + k]];
+      }
+      return g;
+    });
 }
 
 /** Flat polygon at height y, plan coordinates (y north). */
@@ -148,6 +189,7 @@ export function buildContextGeometry(ctx: SiteContext, lots: Lot[], blocks: { po
   for (const b of blocks) lotPolys.push(b.points.map(([x, z]) => [x, -z] as P2));
   const buildings = new MeshBuilder();
   const roofs = new MeshBuilder();
+  const pitched: THREE.BufferGeometry[] = [];
   for (const bd of ctx.buildings) {
     const pts = clean(bd.points);
     if (pts.length < 3) continue;
@@ -174,7 +216,9 @@ export function buildContextGeometry(ctx: SiteContext, lots: Lot[], blocks: { po
         [nx, 0, -ny],
       );
     }
-    addFlatPolygon(roofs, pts, bd.height);
+    const hip = pitchedRoof(pts, bd.height);
+    if (hip) pitched.push(...hip);
+    else addFlatPolygon(roofs, pts, bd.height);
   }
 
   // Trees through woods (density capped so huge forests stay cheap).
@@ -212,10 +256,22 @@ export function buildContextGeometry(ctx: SiteContext, lots: Lot[], blocks: { po
     roads: roads.toGeometry(),
     paths: paths.toGeometry(),
     buildings: buildings.toGeometry(),
-    roofs: roofs.toGeometry(),
+    roofs: mergeRoofs(roofs.toGeometry(), pitched),
     trees,
     streetLabels: [...labelSeen.entries()].filter(([, v]) => v.len > 40).map(([name, v]) => ({ name, position: v.position })),
   };
+}
+
+function mergeRoofs(flat: THREE.BufferGeometry, pitched: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  if (!pitched.length) return flat;
+  const parts = [flat, ...pitched].map((g) => {
+    const n = g.index ? g.toNonIndexed() : g;
+    for (const name of Object.keys(n.attributes)) if (!["position", "normal", "uv"].includes(name)) n.deleteAttribute(name);
+    return n;
+  });
+  const merged = mergeGeometries(parts, false) ?? flat;
+  for (const p of parts) if (p !== merged) p.dispose();
+  return merged;
 }
 
 // ---------------------------------------------------------------------------
@@ -346,9 +402,10 @@ export function buildSiteHomes(lots: Lot[], progress: Record<string, LotProgress
     }
     if (state === "framing") {
       push("dirt", footprint(-0.01, 0.02, 1.6), m);
-      const key = `${lot.placeholder.storeys}`;
+      const storeys = storeysFor(lot);
+      const key = `${storeys}:${W}:${D}`;
       let f = framingCache.get(key);
-      if (!f) framingCache.set(key, (f = framingGeometry(W, D, lot.placeholder.storeys)));
+      if (!f) framingCache.set(key, (f = framingGeometry(W, D, storeys)));
       push("lumber", f.lumber, m);
       push("sheathing", f.deck, m);
       continue;

@@ -8,22 +8,33 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { analyzeDrawingSet, applyPlanSetRequest, fetchDrawing, fetchPlanSetSummary } from "@/lib/drawings/api";
+import { applyPlanSetRequest, fetchDrawing, fetchPlanSetSummary, startDrawingSet } from "@/lib/drawings/api";
 import type { Drawing } from "@/lib/models/drawing";
 import type { PlanSetSummary } from "@/lib/models/planSet";
+
+/** What the dialog follows: the drawing carrying the analysis, and the pair to (re)start it with. */
+export interface DrawingSetRequest {
+  /** Drawing whose analysis progress is polled (the redline of a pair). */
+  pollId: string;
+  /** Start a combined analysis of this redline + décor pair (omit to only follow an existing one). */
+  start?: { redlineId: string; decorId: string };
+  /** File names to show. */
+  names?: string[];
+}
 
 interface Props {
   projectId: string;
   projectSlug: string;
-  drawingId: string | null;
+  request: DrawingSetRequest | null;
   onOpenChange: (open: boolean) => void;
 }
 
 /**
- * One-step flow for décor / plan sets: read every sheet automatically, show a
+ * One-step flow for drawing sets: read the redline and décor sets, show a
  * short summary, then ask once — generate the 3D home now, or review first.
  */
-export function DrawingSetDialog({ projectId, projectSlug, drawingId, onOpenChange }: Props) {
+export function DrawingSetDialog({ projectId, projectSlug, request, onOpenChange }: Props) {
+  const drawingId = request?.pollId ?? null;
   const router = useRouter();
   const [drawing, setDrawing] = useState<Drawing | null>(null);
   const [summary, setSummary] = useState<PlanSetSummary | null>(null);
@@ -40,9 +51,12 @@ export function DrawingSetDialog({ projectId, projectSlug, drawingId, onOpenChan
     const tick = async () => {
       try {
         let d = await fetchDrawing(drawingId);
-        if (!d.analysis && started.current !== drawingId) {
+        const pair = request?.start;
+        if (pair && started.current !== drawingId) {
           started.current = drawingId;
-          d = await analyzeDrawingSet(drawingId);
+          // A finished analysis of this exact pair is reused; anything else starts afresh.
+          const same = d.analysis?.partnerDrawingId === pair.decorId && d.analysis.status !== "failed";
+          if (!same) d = await startDrawingSet(projectId, pair.redlineId, pair.decorId);
         }
         if (stop) return;
         setDrawing(d);
@@ -63,7 +77,8 @@ export function DrawingSetDialog({ projectId, projectSlug, drawingId, onOpenChan
       stop = true;
       clearTimeout(timer);
     };
-  }, [drawingId, projectId, nonce]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `request` identity changes with each open; the ids drive the effect
+  }, [drawingId, projectId, nonce, request?.start?.decorId]);
 
   const reset = () => {
     setDrawing(null);
@@ -72,10 +87,15 @@ export function DrawingSetDialog({ projectId, projectSlug, drawingId, onOpenChan
   };
 
   const retry = async () => {
-    if (!drawingId) return;
+    const pair = request?.start ?? (drawing?.analysis?.partnerDrawingId && drawingId ? { redlineId: drawingId, decorId: drawing.analysis.partnerDrawingId } : null);
+    if (!drawingId || !pair) return;
     setSummary(null);
     started.current = drawingId;
-    setDrawing(await analyzeDrawingSet(drawingId));
+    try {
+      setDrawing(await startDrawingSet(projectId, pair.redlineId, pair.decorId));
+    } catch (e) {
+      toast.error("Couldn't start reading the drawings", { description: e instanceof Error ? e.message : undefined });
+    }
     setNonce((n) => n + 1);
   };
 
@@ -102,10 +122,12 @@ export function DrawingSetDialog({ projectId, projectSlug, drawingId, onOpenChan
   const a = drawing?.analysis;
   const running = !summary && (!a || a.status === "running");
   const pct = a && a.total ? Math.round((a.done / a.total) * 100) : 0;
+  // Combined analyses report one 0–2000 scale across both sets; single-set ones report per stage.
+  const progress = a && a.total >= 1000 ? Math.max(3, pct) : a?.stage === "Reading sheets" ? pct * 0.1 : a?.stage === "Measuring scale" ? 10 + pct * 0.25 : a?.stage?.startsWith("Tracing") ? 35 + pct * 0.6 : 3;
 
   return (
     <Dialog
-      open={!!drawingId}
+      open={!!request}
       onOpenChange={(v) => {
         if (!v) reset();
         onOpenChange(v);
@@ -115,19 +137,19 @@ export function DrawingSetDialog({ projectId, projectSlug, drawingId, onOpenChan
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Layers className="size-4.5 text-brand" />
-            {summary ? "Your drawing set is ready" : a?.status === "failed" ? "We couldn't read this drawing set" : "Reading your drawing set…"}
+            {summary ? "Your drawings are ready" : a?.status === "failed" ? "We couldn't read these drawings" : "Reading your drawings…"}
           </DialogTitle>
-          <DialogDescription className="truncate">{drawing?.fileName ?? "Preparing…"}</DialogDescription>
+          <DialogDescription className="truncate">{request?.names?.join(" + ") ?? drawing?.fileName ?? "Preparing…"}</DialogDescription>
         </DialogHeader>
 
         {running && (
           <div className="space-y-2 py-2">
-            <Progress value={a?.stage === "Reading sheets" ? pct * 0.1 : a?.stage === "Measuring scale" ? 10 + pct * 0.25 : a?.stage?.startsWith("Tracing") ? 35 + pct * 0.6 : 3} className="h-2" />
+            <Progress value={progress} className="h-2" />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-3.5 animate-spin" />
-              <span className="truncate">{a?.stage ?? "Starting"}{a && a.total > 1 ? ` · ${a.done}/${a.total}` : ""}</span>
+              <span className="truncate">{a?.stage ?? "Starting"}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Finding every floor, elevation and layout option, reading room sizes for scale, and tracing walls, doors and windows. This takes about a minute for a large set.</p>
+            <p className="text-xs text-muted-foreground">Walls and exterior from the redlines; options and openings from the décor plans. Large sets take a few minutes.</p>
           </div>
         )}
 
@@ -165,12 +187,11 @@ export function DrawingSetDialog({ projectId, projectSlug, drawingId, onOpenChan
             </div>
 
             <p className="text-sm">
-              We&apos;ll start with the <b>standard plan</b> for <b>{summary.elevations[0]?.label}</b> and default exterior and interior finishes. Elevations and layout options can be switched any time in the <b>Plan</b> tab.
+              Starts on the <b>standard plan</b> of <b>{summary.elevations[0]?.label}</b> with default finishes — switch any time in the <b>Plan</b> tab.
             </p>
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[12px] text-amber-900">
-              Plans were traced automatically (about {Math.round(summary.confidence * 100)}% confidence
-              {summary.scale.source === "room-dimensions" ? ", scale read from room sizes" : ""}). Dimensions are approximate until reviewed.
+              Traced automatically · ~{Math.round(summary.confidence * 100)}% confidence. Dimensions are approximate until reviewed.
             </div>
 
             {summary.unmodeled.length > 0 && (
