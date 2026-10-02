@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowRight, ExternalLink, Loader2, MapPinned, Upload } from "lucide-react";
+import { AlertTriangle, ArrowRight, ExternalLink, Images, Loader2, MapPinned, Upload } from "lucide-react";
+import { RemotePhoto } from "@/components/catalog/RemotePhoto";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,10 @@ import type { CommunityImportJob } from "@/lib/models/communityImport";
 import type { CatalogCommunity } from "@/lib/sample/caivanCommunities";
 
 export interface CatalogEntry extends CatalogCommunity {
+  heroUrl: string | null;
+  photoCount: number;
+  designCount: number;
+  priceFrom: number | null;
   stats: { lots: number; sold: number; available: number; building: number; rmsMetres: number } | null;
   job: CommunityImportJob | null;
 }
@@ -119,7 +124,22 @@ function CommunityCard({ entry, onUpload }: { entry: CatalogEntry; onUpload: (e:
   };
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col overflow-hidden pt-0">
+      <Link href={`/communities/${entry.id}/homes`} className="group relative block" aria-label={`${entry.name} homes and photos`}>
+        {entry.heroUrl ? (
+          <RemotePhoto src={entry.heroUrl} alt={entry.name} className="aspect-[16/9]" imgClassName="transition-transform duration-500 group-hover:scale-105" />
+        ) : (
+          <div className="aspect-[16/9] bg-gradient-to-br from-sky-200 via-sky-100 to-emerald-100" />
+        )}
+        {(entry.designCount > 0 || entry.photoCount > 1) && (
+          <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
+            <Images className="size-3" />
+            {entry.designCount > 0 ? `${entry.designCount} home designs · ` : ""}
+            {entry.photoCount} photos
+          </span>
+        )}
+        {entry.priceFrom && <span className="absolute right-2 bottom-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-foreground">From ${entry.priceFrom.toLocaleString("en-CA")}</span>}
+      </Link>
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -174,12 +194,19 @@ function CommunityCard({ entry, onUpload }: { entry: CatalogEntry; onUpload: (e:
             {running ? <Loader2 className="animate-spin" /> : <MapPinned />} Place on real map
           </Button>
         ) : null}
+        {entry.heroUrl && (
+          <Button asChild size="sm" variant="outline">
+            <Link href={`/communities/${entry.id}/homes`}>
+              <Images /> Homes &amp; photos
+            </Link>
+          </Button>
+        )}
         <Button size="sm" variant="outline" onClick={() => onUpload(entry)} disabled={running}>
           <Upload /> {s ? "Re-import" : "Upload site plan"}
         </Button>
         {s && entry.sitePlanPdf && (
           <Button size="sm" variant="ghost" onClick={runImport} disabled={running}>
-            Refresh from caivan.com
+            Refresh site plan
           </Button>
         )}
         {entry.url && (

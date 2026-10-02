@@ -5,6 +5,11 @@
  * Plan metres: x = east, y = north. The 3D world uses x = east, z = −north.
  */
 
+/** Google Street View at a point (opens the nearest panorama). */
+export function streetViewUrl(p: LatLng): string {
+  return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
+}
+
 export interface LatLng {
   lat: number;
   lng: number;

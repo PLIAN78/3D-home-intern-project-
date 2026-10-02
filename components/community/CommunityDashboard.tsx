@@ -4,14 +4,17 @@ import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, ExternalLink, Home, MapPin, Move, Plus, Search, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, ExternalLink, Footprints, Home, Images, MapPin, Move, Plus, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { BrandMark } from "@/components/studio/BrandMark";
 import { adjustPlacement, NO_DELTA, type PlacementDelta } from "@/lib/community/adjustPlacement";
-import { googleMapsUrl } from "@/lib/community/geo";
+import { LotHomesList } from "@/components/catalog/LotHomesList";
+import { googleMapsUrl, streetViewUrl } from "@/lib/community/geo";
+import { collectionKey } from "@/lib/catalog/match";
+import type { CollectionView } from "@/lib/catalog/types";
 import type { Community, Lot } from "@/lib/models/community";
 import { BUILD_STATE_LABEL, buildState, progressPercent, type BuildState, type LotProgress } from "@/lib/models/construction";
 import { cn } from "@/lib/utils";
@@ -46,9 +49,11 @@ interface Props {
   initialProgress: Record<string, LotProgress>;
   lotProjects: Record<string, { slug: string; name: string }>;
   initialLotId: string | null;
+  /** Real homes and photos published for the community (property catalogue). */
+  catalog: { pageUrl: string; collections: CollectionView[]; photoCount: number } | null;
 }
 
-export function CommunityDashboard({ community: saved, initialProgress, lotProjects, initialLotId }: Props) {
+export function CommunityDashboard({ community: saved, initialProgress, lotProjects, initialLotId, catalog }: Props) {
   const router = useRouter();
   const [adjusting, setAdjusting] = useState(false);
   const [delta, setDelta] = useState<PlacementDelta>(NO_DELTA);
@@ -99,6 +104,7 @@ export function CommunityDashboard({ community: saved, initialProgress, lotProje
   const selected = community.lots.find((l) => l.id === selectedId) ?? null;
   const selProgress = selected ? progress[selected.id] : undefined;
   const project = selected ? lotProjects[selected.id] : undefined;
+  const selCollection = selected?.collection ? catalog?.collections.find((c) => collectionKey(c.name) === collectionKey(selected.collection!)) : undefined;
 
   const filters: { id: Filter; label: string }[] = [
     { id: "all", label: "All" },
@@ -127,6 +133,13 @@ export function CommunityDashboard({ community: saved, initialProgress, lotProje
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {catalog && (
+            <Button asChild variant="ghost" size="sm">
+              <Link href={`/communities/${community.id}/homes`}>
+                <Images /> Homes &amp; photos
+              </Link>
+            </Button>
+          )}
           <Button
             variant={adjusting ? "secondary" : "ghost"}
             size="sm"
@@ -304,11 +317,18 @@ export function CommunityDashboard({ community: saved, initialProgress, lotProje
                 </div>
               </dl>
               {selected.latLng && (
-                <Button asChild variant="outline" size="sm" className="w-full">
-                  <a href={googleMapsUrl(selected.latLng, 19)} target="_blank" rel="noreferrer">
-                    <MapPin /> See this lot on Google Maps
-                  </a>
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button asChild variant="outline" size="sm">
+                    <a href={googleMapsUrl(selected.latLng, 19)} target="_blank" rel="noreferrer">
+                      <MapPin /> Satellite view
+                    </a>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <a href={streetViewUrl(selected.latLng)} target="_blank" rel="noreferrer">
+                      <Footprints /> Street View
+                    </a>
+                  </Button>
+                </div>
               )}
 
               {selected.status === "sold" || selProgress || tracking === selected.id ? (
@@ -329,6 +349,21 @@ export function CommunityDashboard({ community: saved, initialProgress, lotProje
                 </div>
               )}
 
+              {selCollection && catalog && (
+                <div className="space-y-2 border-t pt-4">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="text-xs font-semibold">Homes for this lot</div>
+                    <Link href={`/communities/${community.id}/homes#collection-${selCollection.id.split("/").pop()}`} className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground">
+                      All photos <ArrowRight className="size-3" />
+                    </Link>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {selCollection.designs.length} {selCollection.name} design{selCollection.designs.length === 1 ? "" : "s"}
+                    {selCollection.priceFrom ? ` · from $${selCollection.priceFrom.toLocaleString("en-CA")}` : ""}
+                  </p>
+                  <LotHomesList collection={selCollection} sourceUrl={catalog.pageUrl} />
+                </div>
+              )}
               <div className="border-t pt-4">
                 {project ? (
                   <Button asChild size="sm" className="w-full">

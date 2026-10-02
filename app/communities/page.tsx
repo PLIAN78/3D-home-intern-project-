@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
 import { AppHeader } from "@/components/studio/AppHeader";
 import { CommunityCatalog, type CatalogEntry } from "@/components/community/CommunityCatalog";
-import { listCommunities, listImportJobs, listLotProgress } from "@/lib/data/repository";
+import { listCatalog, listCommunities, listImportJobs, listLotProgress } from "@/lib/data/repository";
 import { progressPercent } from "@/lib/models/construction";
-import { CAIVAN_COMMUNITIES } from "@/lib/sample/caivanCommunities";
 
 export const metadata: Metadata = { title: "Communities · Home Studio" };
 
 export default async function CommunitiesPage() {
-  const [communities, jobs] = await Promise.all([listCommunities(), listImportJobs()]);
+  const [communities, jobs, catalog] = await Promise.all([listCommunities(), listImportJobs(), listCatalog()]);
   const latestJob = (id: string) => jobs.filter((j) => j.communityId === id).sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
 
   const entries: CatalogEntry[] = await Promise.all(
-    CAIVAN_COMMUNITIES.map(async (c) => {
+    catalog.map(async (c) => {
       const imported = communities.find((x) => x.id === c.id && x.geo);
       let stats: CatalogEntry["stats"] = null;
       if (imported) {
@@ -26,7 +25,22 @@ export default async function CommunitiesPage() {
           rmsMetres: imported.geo!.sitePlan.rmsMetres,
         };
       }
-      return { ...c, stats, job: latestJob(c.id) ?? null };
+      return {
+        id: c.id,
+        name: c.name,
+        region: c.region,
+        city: c.city,
+        url: c.pageUrl,
+        sitePlanPdf: c.sitePlanPdf,
+        collections: c.collectionNames,
+        blurb: c.blurb,
+        heroUrl: c.heroUrl,
+        photoCount: c.photoCount,
+        designCount: c.designCount,
+        priceFrom: c.priceFrom,
+        stats,
+        job: latestJob(c.id) ?? null,
+      };
     }),
   );
   // Communities imported by upload that aren't in the published catalog.
@@ -41,6 +55,10 @@ export default async function CommunitiesPage() {
       sitePlanPdf: null,
       collections: (c.collections ?? []).map((x) => x.name),
       blurb: "Imported from an uploaded site plan.",
+      heroUrl: null,
+      photoCount: 0,
+      designCount: 0,
+      priceFrom: null,
       stats: { lots: c.lots.length, sold: c.lots.filter((l) => l.status === "sold").length, available: c.lots.filter((l) => l.status === "available").length, building: 0, rmsMetres: c.geo.sitePlan.rmsMetres },
       job: latestJob(c.id) ?? null,
     });
@@ -52,10 +70,7 @@ export default async function CommunitiesPage() {
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8 max-w-2xl">
           <h1 className="text-2xl font-semibold tracking-tight">Communities</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Caivan communities from caivan.com. Importing a community reads its published site plan, places every lot on the real map (OpenStreetMap streets and buildings), and tracks each
-            home from reservation to keys.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Caivan communities with their published homes and photos. Import a site plan to place every lot on the real map.</p>
         </div>
         <CommunityCatalog entries={entries} />
       </main>

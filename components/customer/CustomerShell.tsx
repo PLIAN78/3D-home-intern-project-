@@ -1,8 +1,10 @@
 "use client";
 
-import { Download, Heart, Share2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Download, Heart, Images, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PhotoLightbox } from "@/components/catalog/PhotoGallery";
 import { MaterialPanel } from "@/components/configurator/MaterialPanel";
 import { BrandMark } from "@/components/studio/BrandMark";
 import { buildConfiguration, customerUrl, downloadJson } from "@/components/studio/StudioHeader";
@@ -19,6 +21,16 @@ export function CustomerShell({ bundle: saved, encoded, planEncoded }: { bundle:
   const { bundle, selection, setSelection } = useActiveHouse(saved);
   const selections = useSelections(project.id);
   const markSaved = useProjectStore((s) => s.markSaved);
+  const [photoIndex, setPhotoIndex] = useState<number | null>(null);
+  // Renderings of this home's design (or its collection), then the community.
+  const photos = useMemo(() => {
+    const homes = saved.homes;
+    if (!homes) return [];
+    const designs = homes.collection?.designs ?? [];
+    const own = designs.find((d) => d.id === homes.matchedDesignId);
+    const designPhotos = own ? own.photos : designs.flatMap((d) => d.photos.slice(0, 1));
+    return [...designPhotos, ...homes.photos];
+  }, [saved.homes]);
 
   const share = async () => {
     const url = customerUrl(project.slug, encodeSelections(selections), selection);
@@ -45,6 +57,11 @@ export function CustomerShell({ bundle: saved, encoded, planEncoded }: { bundle:
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {photos.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => setPhotoIndex(0)}>
+              <Images /> <span className="hidden sm:inline">Real photos</span>
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={() => downloadJson(`${project.slug}-my-selections.json`, { ...buildConfiguration(bundle, selections), plan: selection ?? undefined })}>
             <Download /> <span className="hidden sm:inline">Summary</span>
           </Button>
@@ -71,6 +88,7 @@ export function CustomerShell({ bundle: saved, encoded, planEncoded }: { bundle:
           <MaterialPanel key={bundle.planSet?.id ?? "materials"} projectId={project.id} modelName={project.modelName} variant="customer" planSet={bundle.planSet} planSelection={selection} onPlanChange={setSelection} />
         </aside>
       </div>
+      <PhotoLightbox photos={photos} index={photoIndex} onIndexChange={setPhotoIndex} />
     </div>
   );
 }
