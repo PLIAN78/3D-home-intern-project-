@@ -1,8 +1,11 @@
 import { create } from "zustand";
 import type { MaterialSlotId } from "@/lib/models/materials";
+import { satelliteConfig } from "@/lib/community/satellite";
 
 export type ViewMode = "house" | "community";
 export type CameraView = "perspective" | "front" | "rear" | "left" | "right" | "top";
+/** Satellite ground state for real-world communities ("off" while the map ground is chosen). */
+export type SatelliteState = "off" | "loading" | "ready" | "failed";
 
 /** Special isolation target for the roof level. */
 export const ROOF_LEVEL = "roof";
@@ -24,6 +27,9 @@ interface ViewerState {
   hoveredSlot: MaterialSlotId | null;
   cameraRequest: { view: CameraView; nonce: number };
   screenshotNonce: number;
+  /** Real-world communities: real terrain + aerial imagery instead of the painted map ground. */
+  satellite: boolean;
+  satelliteState: SatelliteState;
 
   setMode: (mode: ViewMode) => void;
   showFullHouse: () => void;
@@ -40,6 +46,8 @@ interface ViewerState {
   hoverSlot: (slot: MaterialSlotId | null) => void;
   requestView: (view: CameraView) => void;
   requestScreenshot: () => void;
+  setSatellite: (v: boolean) => void;
+  setSatelliteState: (v: SatelliteState) => void;
 }
 
 export const DEFAULT_EXPLODE = 55;
@@ -58,6 +66,8 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   hoveredSlot: null,
   cameraRequest: { view: "perspective", nonce: 0 },
   screenshotNonce: 0,
+  satellite: satelliteConfig().enabledByDefault,
+  satelliteState: "off",
 
   // Community mode shows the whole home in context, so clear inspection state.
   setMode: (mode) => set(mode === "community" ? { mode, isolated: null, explode: 0 } : { mode }),
@@ -75,6 +85,8 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   hoverSlot: (slot) => set({ hoveredSlot: slot }),
   requestView: (view) => set((s) => ({ cameraRequest: { view, nonce: s.cameraRequest.nonce + 1 } })),
   requestScreenshot: () => set((s) => ({ screenshotNonce: s.screenshotNonce + 1 })),
+  setSatellite: (v) => set({ satellite: v }),
+  setSatelliteState: (v) => set({ satelliteState: v }),
 }));
 
 /** Is a floor visible given isolation + per-floor toggles? */

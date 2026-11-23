@@ -8,8 +8,10 @@ import { SceneEnvironment } from "@/components/viewer/SceneEnvironment";
 import { useAdaptiveNear } from "@/components/viewer/useAdaptiveNear";
 import type { Community, Lot } from "@/lib/models/community";
 import { BUILD_STATE_LABEL, buildState, progressPercent, type LotProgress } from "@/lib/models/construction";
+import { mapAttribution } from "@/lib/community/satellite";
 import { communityCamera, type V3 } from "@/lib/viewer/placement";
-import { LotLayer, LotTag, OSM_ATTRIBUTION, RealWorldContext, useSiteContext, type LotColouring } from "./RealWorldScene";
+import { useViewerStore } from "@/stores/viewerStore";
+import { LotLayer, LotTag, RealWorldContext, useSiteContext, type LotColouring } from "./RealWorldScene";
 
 interface Props {
   community: Community;
@@ -57,6 +59,8 @@ function DashboardCamera({ selected, initial }: { selected: Lot | null; initial:
 /** Whole-community 3D map: real surroundings, every lot and its build stage. */
 export default function CommunityViewer({ community, progress, colouring, selectedLotId, onSelectLot, showStreetNames }: Props) {
   const context = useSiteContext(community.id);
+  const satellite = useViewerStore((s) => s.satellite);
+  const satelliteState = useViewerStore((s) => s.satelliteState);
   // Framed once: placement previews change the lots but shouldn't move the camera.
   const [initial] = useState(() => overview(community));
   const selected = community.lots.find((l) => l.id === selectedLotId) ?? null;
@@ -76,7 +80,7 @@ export default function CommunityViewer({ community, progress, colouring, select
       >
         <Suspense fallback={null}>
           <SceneEnvironment focus={focus} mode="community" geo />
-          {context && <RealWorldContext context={context} community={community} showStreetNames={showStreetNames} />}
+          {context && <RealWorldContext context={context} community={community} showStreetNames={showStreetNames} satellite={satellite} />}
           <LotLayer community={community} progress={progress} colouring={colouring} selectedLotId={selectedLotId} onSelectLot={onSelectLot} />
           {selected && (
             <LotTag
@@ -88,8 +92,13 @@ export default function CommunityViewer({ community, progress, colouring, select
           <DashboardCamera selected={selected} initial={initial} />
         </Suspense>
       </Canvas>
-      {!context && <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow">Loading surroundings…</div>}
-      <div className="pointer-events-none absolute right-2 bottom-1.5 text-[10px] text-neutral-700/80">{OSM_ATTRIBUTION}</div>
+      {(!context || satelliteState === "loading") && (
+        <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow">{context ? "Loading satellite imagery…" : "Loading surroundings…"}</div>
+      )}
+      {satelliteState === "failed" && (
+        <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow">Satellite imagery unavailable — showing the map</div>
+      )}
+      <div className="pointer-events-none absolute right-2 bottom-1.5 max-w-[70%] text-right text-[10px] leading-tight text-neutral-700/80">{mapAttribution(satelliteState === "ready")}</div>
     </div>
   );
 }

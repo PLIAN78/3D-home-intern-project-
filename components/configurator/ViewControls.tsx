@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, Camera, Rotate3d, ScanEye } from "lucide-react";
+import { ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, Camera, Rotate3d, Satellite, ScanEye } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useViewerStore, type CameraView } from "@/stores/viewerStore";
@@ -35,9 +35,11 @@ function IconButton({ label, onClick, active, children }: { label: string; onCli
   );
 }
 
-/** Floating camera toolbar: reset, elevations, top view, screenshot. */
-export function ViewControls() {
+/** Floating camera toolbar: reset, elevations, top view, satellite ground (real-world lots), screenshot. */
+export function ViewControls({ satelliteAvailable = false }: { satelliteAvailable?: boolean }) {
   const requestView = useViewerStore((s) => s.requestView);
+  const satellite = useViewerStore((s) => s.satellite);
+  const setSatellite = useViewerStore((s) => s.setSatellite);
   const requestScreenshot = useViewerStore((s) => s.requestScreenshot);
   const setMode = useViewerStore((s) => s.setMode);
   const mode = useViewerStore((s) => s.mode);
@@ -59,6 +61,11 @@ export function ViewControls() {
         </IconButton>
       ))}
       <span className="mx-2 my-0.5 h-px bg-border" />
+      {satelliteAvailable && (
+        <IconButton label={satellite ? "Satellite ground on (show map)" : "Satellite ground off (show imagery)"} active={satellite} onClick={() => setSatellite(!satellite)}>
+          <Satellite className="size-4" />
+        </IconButton>
+      )}
       <IconButton label="Save screenshot" onClick={requestScreenshot}>
         <Camera className="size-4" />
       </IconButton>

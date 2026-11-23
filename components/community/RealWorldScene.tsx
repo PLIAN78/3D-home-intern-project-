@@ -5,13 +5,18 @@ import { Line } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import { Trees } from "@/components/viewer/Trees";
+import { flattenArea, OSM_ATTRIBUTION, satelliteConfig } from "@/lib/community/satellite";
 import type { SiteContext } from "@/lib/community/siteContext";
 import { withGroundXray } from "@/lib/materials/groundXray";
 import { buildContextGeometry, buildLotFills, buildSiteHomes, lotOutlineSegments } from "@/lib/geometry/siteGeometry";
 import type { Community, Lot } from "@/lib/models/community";
 import { buildState, type LotProgress } from "@/lib/models/construction";
+import { useViewerStore } from "@/stores/viewerStore";
+import { SatelliteGround, type SatelliteStatus } from "./SatelliteGround";
 import { BUILD_STATE_COLOUR, buildMaterial, contextMaterials, STATUS_COLOUR } from "./siteMaterials";
 import { TextSprite } from "./TextSprite";
+
+const SATELLITE = satelliteConfig();
 
 /** Fetch a community's cached OpenStreetMap surroundings once per id. */
 const contextCache = new Map<string, Promise<SiteContext | null>>();
@@ -35,8 +40,21 @@ export function useSiteContext(communityId: string | null | undefined) {
   return ctx && ctx.id === communityId ? ctx.data : null;
 }
 
-/** Streets, parks, water, woods and existing buildings around the community. */
-export function RealWorldContext({ context, community, showStreetNames }: { context: SiteContext; community: Community; showStreetNames: boolean }) {
+interface RealWorldContextProps {
+  context: SiteContext;
+  community: Community;
+  showStreetNames: boolean;
+  /** Real terrain + aerial imagery instead of the painted ground, parks, water and roads. */
+  satellite?: boolean;
+}
+
+/**
+ * Streets, parks, water, woods and existing buildings around the community.
+ * With `satellite`, the ground is real terrain with aerial imagery (the
+ * painted map layers stay up until it has loaded, and come back if it fails);
+ * buildings, trees and street names stay on top either way.
+ */
+export function RealWorldContext({ context, community, showStreetNames, satellite = false }: RealWorldContextProps) {
   const geo = useMemo(() => buildContextGeometry(context, community.lots, community.blocks ?? []), [context, community]);
   useEffect(
     () => () => {
@@ -44,15 +62,34 @@ export function RealWorldContext({ context, community, showStreetNames }: { cont
     },
     [geo],
   );
+
+  const origin = community.geo?.origin;
+  const useSatellite = satellite && !!origin;
+  const [satelliteStatus, setSatelliteStatus] = useState<SatelliteStatus>("loading");
+  const setSatelliteState = useViewerStore((s) => s.setSatelliteState);
+  useEffect(() => setSatelliteState(useSatellite ? satelliteStatus : "off"), [useSatellite, satelliteStatus, setSatelliteState]);
+  useEffect(() => () => setSatelliteState("off"), [setSatelliteState]);
+  // Each time it is switched on it starts from "loading" (the map ground shows until the tiles are in).
+  const [wasSatellite, setWasSatellite] = useState(useSatellite);
+  if (wasSatellite !== useSatellite) {
+    setWasSatellite(useSatellite);
+    setSatelliteStatus("loading");
+  }
+  const flatten = useMemo(() => flattenArea(community, context.radius), [community, context.radius]);
+  const mapGround = !useSatellite || satelliteStatus !== "ready";
+
   return (
     <group name="RealWorldContext">
+      {useSatellite && origin && <SatelliteGround origin={origin} flatten={flatten} config={SATELLITE} onStatus={setSatelliteStatus} />}
       {/* Fixed draw order: these can all be transparent at once (basement x-ray). */}
-      <mesh geometry={geo.ground} material={contextMaterials.ground()} receiveShadow renderOrder={-4} />
-      <mesh geometry={geo.green} material={contextMaterials.green()} receiveShadow renderOrder={-3} />
-      <mesh geometry={geo.woods} material={contextMaterials.woods()} receiveShadow renderOrder={-3} />
-      <mesh geometry={geo.water} material={contextMaterials.water()} renderOrder={-3} />
-      <mesh geometry={geo.paths} material={contextMaterials.paths()} receiveShadow renderOrder={-2} />
-      <mesh geometry={geo.roads} material={contextMaterials.roads()} receiveShadow renderOrder={-1} />
+      <group visible={mapGround}>
+        <mesh geometry={geo.ground} material={contextMaterials.ground()} receiveShadow renderOrder={-4} />
+        <mesh geometry={geo.green} material={contextMaterials.green()} receiveShadow renderOrder={-3} />
+        <mesh geometry={geo.woods} material={contextMaterials.woods()} receiveShadow renderOrder={-3} />
+        <mesh geometry={geo.water} material={contextMaterials.water()} renderOrder={-3} />
+        <mesh geometry={geo.paths} material={contextMaterials.paths()} receiveShadow renderOrder={-2} />
+        <mesh geometry={geo.roads} material={contextMaterials.roads()} receiveShadow renderOrder={-1} />
+      </group>
       <mesh geometry={geo.buildings} material={contextMaterials.buildings()} castShadow receiveShadow />
       <mesh geometry={geo.roofs} material={contextMaterials.roofs()} receiveShadow />
       <Trees trees={geo.trees} />
@@ -193,7 +230,7 @@ export function LotTag({ lot, text, tone = "neutral" }: { lot: Lot; text: string
   );
 }
 
-export const OSM_ATTRIBUTION = "© OpenStreetMap contributors";
+export { OSM_ATTRIBUTION };
 
 export function centreOf(community: Community): THREE.Vector3 {
   const b = community.geo?.bounds;

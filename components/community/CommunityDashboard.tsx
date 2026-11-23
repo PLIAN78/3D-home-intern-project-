@@ -18,6 +18,7 @@ import type { CollectionView } from "@/lib/catalog/types";
 import type { Community, Lot } from "@/lib/models/community";
 import { BUILD_STATE_LABEL, buildState, progressPercent, type BuildState, type LotProgress } from "@/lib/models/construction";
 import { cn } from "@/lib/utils";
+import { useViewerStore } from "@/stores/viewerStore";
 import { DemoDataBadge, ProgressEditor, ProgressSummary, ProgressTimeline } from "./BuildProgress";
 import { PlacementPanel } from "./PlacementPanel";
 import type { LotColouring } from "./RealWorldScene";
@@ -62,6 +63,8 @@ export function CommunityDashboard({ community: saved, initialProgress, lotProje
   const [progress, setProgress] = useState<Record<string, LotProgress | undefined>>(initialProgress);
   const [selectedId, setSelectedId] = useState<string | null>(initialLotId && community.lots.some((l) => l.id === initialLotId) ? initialLotId : null);
   const [colouring, setColouring] = useState<LotColouring>("status");
+  const satellite = useViewerStore((s) => s.satellite);
+  const setSatellite = useViewerStore((s) => s.setSatellite);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [streetNames, setStreetNames] = useState(true);
@@ -249,6 +252,9 @@ export function CommunityDashboard({ community: saved, initialProgress, lotProje
               ))}
               <label className="flex items-center gap-1.5 border-t pt-1.5">
                 <Switch checked={streetNames} onCheckedChange={setStreetNames} className="scale-75" /> Street names
+              </label>
+              <label className="flex items-center gap-1.5">
+                <Switch checked={satellite} onCheckedChange={setSatellite} className="scale-75" /> Satellite
               </label>
             </div>
           </div>

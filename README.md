@@ -63,7 +63,35 @@ Progress generated at import is marked **Sample data** until someone saves real 
 
 **Known limits:** a placement is only as good as OpenStreetMap's coverage, and brand-new streets are often missing. Of the published plans, The Conservancy places by street names (≈1–2 m). Fox Run uses the lot-shape fit and lands on the right streets, but should be checked. Magnolia, Arbor West and Summer Valley label only two or three arterials and may need *Adjust placement*. Some plans number townhome units without block labels, so those units are listed by number and collection.
 
-**Next step for photoreal context:** Google Photorealistic 3D Tiles can replace the OSM massing through `3d-tiles-renderer`. It needs a Google Maps Platform API key with billing; the georeferenced `origin` and per-lot lat/lng are already in place for it.
+#### Satellite ground (real terrain + aerial imagery)
+
+Real-world communities (the community map, and the studio and customer views of a home on a placed lot) draw the ground as **real terrain with aerial imagery** instead of painted grass. It is free and needs no key to try:
+
+- **Imagery:** Esri World Imagery, draped over the terrain.
+- **Terrain:** AWS Terrain Tiles (Mapzen Terrarium elevation, open data, up to zoom 15).
+- **Renderer:** [`3d-tiles-renderer`](https://github.com/NASA-AMMOS/3DTilesRendererJS) streams both as tiles (`TerrariumMeshPlugin` + `XYZTilesOverlay`).
+
+How it fits together (`components/community/SatelliteGround.tsx`, `lib/community/satellite.ts`, `lib/materials/terrainFlatten.ts`):
+
+1. One elevation tile is read at the community's `geo.origin` to get the ground height there.
+2. The tiles are posed so that point lands on the world origin, in the scene's own frame (x east, z = −north). The lots' lat/lng and the imagery line up without any per-community tuning.
+3. The lots, OSM buildings and trees are modelled flat at y = 0, so a shader patch holds the terrain level under the mapped area (`flattenArea`: the OSM radius, or further if lots reach beyond it) and blends back to the real terrain over a few hundred metres. Hills beyond the community keep their real shape.
+4. Tiles receive the houses' shadows and join the basement x-ray. The painted map ground stays up until most of the view has loaded, and comes back (with a notice) if the tile servers can't be reached.
+5. OSM roads, parks and water are hidden while it is on (the imagery shows them); OSM buildings, trees and street names stay on top.
+
+Toggle it with **Satellite** in the community map's legend, or the satellite button in the studio/customer camera toolbar. Credits for the imagery and terrain show under the viewer while it is on.
+
+Settings (`.env.local`, all optional; restart `npm run dev` after changing them):
+
+| Variable | Effect |
+| --- | --- |
+| `NEXT_PUBLIC_ARCGIS_API_KEY` | Use Esri's keyed imagery endpoint (recommended for anything beyond local testing). Free ArcGIS Location Platform account; create an API key with the Basemaps privilege. The free tier covers 2M tiles/month. |
+| `NEXT_PUBLIC_SATELLITE_GROUND=off` | Start with the map ground (the toggle still works). |
+| `NEXT_PUBLIC_SATELLITE_MAX_ZOOM` | Deepest imagery zoom (default 19, about 0.2 m per pixel in Ottawa). Lower it if a source shows "no data" tiles close up. |
+| `NEXT_PUBLIC_SATELLITE_IMAGERY_URL` + `NEXT_PUBLIC_SATELLITE_ATTRIBUTION` | Any other XYZ imagery source (`{z}/{x}/{y}` placeholders), e.g. Ontario's open orthophotos, with its credit line. |
+| `NEXT_PUBLIC_TERRAIN_TILES_URL` | Any other Terrarium-encoded elevation source. |
+
+**Next step for photoreal context:** Google Photorealistic 3D Tiles can replace the OSM massing through the same `3d-tiles-renderer`. It needs a Google Maps Platform API key with billing; the georeferenced `origin` and per-lot lat/lng are already in place for it.
 
 ### Demo script (Phase 3, drawing sets)
 

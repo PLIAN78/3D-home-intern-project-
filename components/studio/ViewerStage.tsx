@@ -13,7 +13,7 @@ import { useViewerStore } from "@/stores/viewerStore";
 import { usePlanSelectionRaw } from "@/stores/projectStore";
 import { describeSelection, sanitizeSelection } from "@/lib/models/planSet";
 import { LotProgressCard } from "@/components/community/LotProgressCard";
-import { OSM_ATTRIBUTION } from "@/components/community/RealWorldScene";
+import { mapAttribution } from "@/lib/community/satellite";
 
 const HouseViewer = dynamic(() => import("@/components/viewer/HouseViewer"), {
   ssr: false,
@@ -62,6 +62,7 @@ interface ViewerStageProps {
 export function ViewerStage({ bundle, variant }: ViewerStageProps) {
   const { project, house, community } = bundle;
   const hasSelected = useViewerStore((s) => s.selectedSlot !== null);
+  const satelliteState = useViewerStore((s) => s.satelliteState);
   const lot = community.lots.find((l) => l.id === project.lotId);
   const rawPlan = usePlanSelectionRaw(project.id);
   const planLabel = bundle.planSet ? describeSelection(bundle.planSet, sanitizeSelection(bundle.planSet, rawPlan)) : null;
@@ -111,7 +112,7 @@ export function ViewerStage({ bundle, variant }: ViewerStageProps) {
             {lot && community.geo && <LotProgressCard community={community} lot={lot} progress={bundle.lotProgress?.[lot.id]} variant={variant} />}
           </div>
           <CommunityBanner bundle={bundle} />
-          <ViewControls />
+          <ViewControls satelliteAvailable={!!community.geo} />
         </div>
 
         <div className="flex flex-col items-center gap-2">
@@ -129,7 +130,7 @@ export function ViewerStage({ bundle, variant }: ViewerStageProps) {
               <Eye className="size-3" /> For illustration only — finishes and dimensions may vary.
             </div>
           )}
-          {community.geo && <div className="self-end text-[10px] text-neutral-700/80">{OSM_ATTRIBUTION}</div>}
+          {community.geo && <div className="max-w-[70%] self-end text-right text-[10px] leading-tight text-neutral-700/80">{mapAttribution(satelliteState === "ready")}</div>}
         </div>
       </div>
     </div>

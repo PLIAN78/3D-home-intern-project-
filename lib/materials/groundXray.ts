@@ -19,6 +19,8 @@ export function withGroundXray<T extends THREE.Material>(material: T): T {
   if (patched.has(material)) return material;
   patched.add(material);
   material.addEventListener("dispose", () => patched.delete(material));
+  // Keep any earlier patch (e.g. terrain flattening) in the program key so different shaders never share a program.
+  const prevKey = material.customProgramCacheKey();
   const prev = material.onBeforeCompile;
   material.onBeforeCompile = (shader, renderer) => {
     prev?.call(material, shader, renderer);
@@ -34,7 +36,7 @@ export function withGroundXray<T extends THREE.Material>(material: T): T {
       );
   };
   // Same program for every patched material of a type; the uniforms drive it.
-  material.customProgramCacheKey = () => "ground-xray";
+  material.customProgramCacheKey = () => `${prevKey}|ground-xray`;
   return material;
 }
 
