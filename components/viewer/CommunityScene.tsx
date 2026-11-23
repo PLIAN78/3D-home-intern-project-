@@ -23,10 +23,10 @@ function texturedMaterial(key: string, pattern: "grass" | "concrete", color: str
   });
 }
 
-const groundMat = () => texturedMaterial("grass", "grass", "#6f8d4a", "#5c7a3c", [5, 5]);
-const asphaltMat = () => texturedMaterial("asphalt", "concrete", "#4a4c50", "#3a3c40", [4, 4], { roughness: 0.9 });
-const concreteMat = () => texturedMaterial("sidewalk", "concrete", "#cfccc5", "#b9b6af", [2, 2], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-const curbMat = () => getSiteMaterial("curb", () => withGroundXray(new THREE.MeshStandardMaterial({ color: "#bdbab3", roughness: 0.9 })));
+export const groundMat = () => texturedMaterial("grass", "grass", "#6f8d4a", "#5c7a3c", [5, 5]);
+export const asphaltMat = () => texturedMaterial("asphalt", "concrete", "#4a4c50", "#3a3c40", [4, 4], { roughness: 0.9 });
+export const concreteMat = () => texturedMaterial("sidewalk", "concrete", "#cfccc5", "#b9b6af", [2, 2], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+export const curbMat = () => getSiteMaterial("curb", () => withGroundXray(new THREE.MeshStandardMaterial({ color: "#bdbab3", roughness: 0.9 })));
 
 function placeholderMaterial(lot: Lot, surface: PlaceholderSurface): THREE.Material {
   const { bodyColor, roofColor } = lot.placeholder;
@@ -52,7 +52,7 @@ function placeholderMaterial(lot: Lot, surface: PlaceholderSurface): THREE.Mater
 // ---------------------------------------------------------------------------
 // Static site geometry
 // ---------------------------------------------------------------------------
-interface DrivewaySpec {
+export interface DrivewaySpec {
   lot: Lot;
   /** Lot-local garage door centre (x, z) and the height of the garage slab. */
   start: [number, number];
@@ -60,7 +60,8 @@ interface DrivewaySpec {
   width: number;
 }
 
-function buildSite(community: Community, driveways: DrivewaySpec[]) {
+/** Ground, roads, curbs, sidewalks and driveways (also used by the Caivan game). */
+export function buildSite(community: Community, driveways: DrivewaySpec[]) {
   const ground = new MeshBuilder();
   ground.flatPolygon([new THREE.Vector2(-450, -450), new THREE.Vector2(450, -450), new THREE.Vector2(450, 450), new THREE.Vector2(-450, 450)], [], 0, "up");
 

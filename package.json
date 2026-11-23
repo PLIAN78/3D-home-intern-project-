@@ -6,6 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "game": "vite game",
+    "game:build": "vite build game",
+    "game:preview": "vite preview game",
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -49,12 +52,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^6.3.0",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
+    "vite": "^8.3.8",
     "vitest": "^5.0.3"
   }
 }

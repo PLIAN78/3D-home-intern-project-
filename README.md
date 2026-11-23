@@ -10,6 +10,7 @@ Internal tool that turns architectural drawings into an interactive, configurabl
 - **Phase 4, real communities and build progress:** the Caivan communities from caivan.com are listed under **Communities**. *Place on real map* reads a community's published site plan and finds every lot, its collection and its sales status. It then locates the community from its street names and lines the plan up with real streets from OpenStreetMap (≈2 m error on The Conservancy). The community opens as a 3D map of the real neighbourhood, with every home drawn at its construction stage. Each lot has a progress bar and a stage timeline; the construction team updates them, and customers see them in their home view.
 - **Database and real photos:** data lives in SQLite through Drizzle ORM (`.data/home-studio.db`). A property catalogue links every Caivan community to its published photography, collections and home designs on caivan.com: elevation renderings, interiors, aerials, floorplan PDFs and 360° tours. Photos appear on community cards, a **Homes & photos** page per community, the lot panel (*Homes for this lot*, Street View), the studio's **Project** tab, and the customer view's **Real photos**.
 - **Phase 3, one-step drawing sets:** upload a builder's décor or plan-set PDF and the app reads every sheet. It finds each floor, elevation and layout option, works out the scale from the room sizes, traces and stacks the floors, and asks one question: generate now, or review first. The home opens on the standard plan with default finishes, and the configurator's **Plan** tab switches elevations and layouts.
+- **Caivan: Build It! (game):** a separate, family-friendly open-world game built from the same code. You play a new Caivan site coordinator: stake out a lot, help a family choose their home, reset the panel factory, pour a foundation and hand over keys. Story pay and side jobs buy a horse, a sports car and a jetpack. See [The game](#the-game-caivan-build-it).
 
 ## Run
 
@@ -132,6 +133,42 @@ Dev tools: `npx tsx scripts/build-set.mts <set.pdf> [outDir]` prints what the pi
 5. **Save & view 3D:** walls, openings and auto-generated roofs appear on the lot.
 
 Sample drawings live in `public/samples/`. They are rendered from the Plan 36 model by `lib/drawings/samplePlanSvg.ts` (served as SVG at `/api/samples/[floorId]`).
+
+## The game: Caivan: Build It!
+
+A separate app (its own Vite dev server and build, outside Next.js) that reuses Home Studio's code through the same `@/` imports: the site builder from `CommunityScene`, the construction-stage houses, the Plan 36 model, trees, materials and labels.
+
+```bash
+npm run game           # http://localhost:5180
+npm run game:build     # static build in dist-game/ (relative paths: host it from any folder)
+npm run game:preview   # serve the build on http://localhost:5181
+```
+
+**Controls:** WASD move or drive · drag or ←/→ to look, wheel to zoom · Space jump (hold to fly with the jetpack) · Shift sprint · E talk / use · 1–5 switch gear (walk, truck, horse, car, jetpack) · H show or hide the controls.
+
+**Story (5 chapters and a finale):**
+
+| Chapter | Job | Pays |
+| --- | --- | --- |
+| 1. First Day on Site | Meet Maya at the Sales Centre, drive to Lot 113, check three survey stakes | $600 |
+| 2. The Patels | Meet a family at the Lot 204 model home and answer their questions (honest answers earn a $100 bonus each) | $900 |
+| 3. Factory Floor | Drive to the panel factory, talk to Raj, reset three machines (timing mini-game) | $1,200 |
+| 4. Pour Day | Pour the foundation at Lot 207 (hold-and-release mini-game); the lot changes stage | $1,500 |
+| 5. Grand Opening | The finished Plan 36 home appears on Lot 42; hand the Nguyens their keys | $1,000 |
+| Finale | Buy the SkyHopper jetpack, fly to the top of the water tower for the community photo | — |
+
+The story pays $5,200 (up to $5,500 with bonuses). The horse ($1,200), sports car ($2,500) and jetpack ($3,000) cost $6,700, so getting all three needs side jobs: 12 lost blueprints ($100 each, some only reachable by jetpack) and 3 runaway goats to lead back to Gail's farm ($300 each). After the ending you keep exploring.
+
+**Code (`game/src/`):**
+
+| Folder | What's in it |
+| --- | --- |
+| `world/` | `map.ts` is the world as pure data (streets, lots, landmarks, collision boxes, tree placement, spawn). `World.tsx` draws it with the shared site and house builders; `Landmarks.tsx` and `Environment.tsx` add the sales centre, factory, water tower, farm, park, sky and light. |
+| `player/` | `physics.ts` is pure arcade physics (each mode's speed, steering, jump, jetpack fuel, collisions). `input.ts` handles keyboard and mouse. `Player.tsx`, `FollowCamera.tsx` and `models.tsx` handle the low-poly character, vehicles and horse. |
+| `game/` | `missions.ts` (the story as data), `dialogs.ts`, `economy.ts` (gear and prices), `collectibles.ts`, `store.ts` (zustand game state), `Director.tsx` (per-frame rules: reach, talk, mini-games, goats, pickups), `sfx.ts` (synthesised sounds) |
+| `npc/`, `ui/` | NPCs, goats, blueprints and the objective beacon; the HUD, minimap, dialogs, mini-games, shop, title and ending |
+
+Rules live in pure modules (`map`, `physics`, `missions`, `economy`). `tests/game.test.ts` checks them: every objective is reachable, the story plays through to the ending, and the money covers the gear. In `npm run game`, `window.__game` exposes the runtime and store for debugging. Production builds leave it out.
 
 ## Architecture
 
