@@ -144,9 +144,9 @@ npm run game:build     # static build in dist-game/ (relative paths: host it fro
 npm run game:preview   # serve the build on http://localhost:5181
 ```
 
-**Controls:** WASD move, drive or fly · drag or ←/→ to look, wheel to zoom · Space jump, jetpack thrust, handbrake, helicopter climb · Shift sprint, gallop, helicopter descend · E talk / use · F get in or out · 1–9 your gear (1 on foot, 2 company pickup, 3 horse, 4 sports car, 5 jetpack on/off, 6 helicopter, 7 Ridgeback 4x4, 8 Haul HD, 9 Peanut the elephant): close by, you get straight in; further away, it comes to you · M full map (drag to pan, scroll or +/− to zoom) · G graphics quality · H show or hide the controls.
+**Controls:** WASD move, drive or fly · drag or ←/→ to look, wheel to zoom · Space jump, jetpack thrust, handbrake, helicopter climb · Shift sprint, gallop, helicopter descend · E talk / use · F get in or out · 1–6 your gear (1 on foot, 2 your car (press again to switch between the cars you own), 3 horse, 4 jetpack on/off, 5 helicopter, 6 Peanut the elephant): close by, you get straight in; further away, it comes to you · M full map (drag to pan, scroll or +/− to zoom) · G graphics quality · H show or hide the controls.
 
-**The world.** Caivan Ridge is a 900 m square community with homes at every construction stage, a water tower, a park, the Sales Centre and the panel factory. Market Street, at the south end, has the Ridge Corner Market, Caivan Ridge Public School (with its sports field) and the Ridge Centre mall; they are exteriors for now. Traffic drives the streets in its lane, slows for corners and stops for you; people walk the sidewalks and step aside. Street lights line every road and snap off if you hit them. Beyond the town, hills rise to the edge of a 2 km playable area. Cottage Road climbs from the end of Market Street to Rosa's log cottage, about 26 m up, and the hills are wooded with real (breakable) trees.
+**The world.** Caivan Ridge is a 900 m square community with homes at every construction stage, a water tower, a park, the Sales Centre and the panel factory. Market Street, at the south end, has the Ridge Corner Market, Caivan Ridge Public School (with its sports field), the Ridge Centre mall, Ridge Savings Bank, Northline Outfitters, Crossroads Subs and Flat Top Burgers. Ridge Motors sells cars on Caivan Boulevard, and the Caivan office stands beside the panel factory. You walk into the office; the other places open from their front door (press E). All names and designs are original. Traffic drives the streets in its lane, slows for corners and stops for you; people walk the sidewalks and step aside. Street lights line every road and snap off if you hit them. Beyond the town, hills rise to the edge of a 2 km playable area. Cottage Road climbs from the end of Market Street to Rosa's log cottage, about 26 m up, and the hills are wooded with real (breakable) trees.
 
 **Story (5 chapters and a finale):**
 
@@ -159,16 +159,21 @@ npm run game:preview   # serve the build on http://localhost:5181
 | 5. Grand Opening | The finished Plan 36 home appears on Lot 42; hand the Nguyens their keys | $1,000 |
 | Finale | Have the SkyHopper jetpack (bought now, or earlier with side-job money), fly to the top of the water tower for the community photo | — |
 
-**Side jobs (any time):**
+**Side jobs and places (any time):**
 
-| Job | How | Pays |
+| Where | What you do | Pays or costs |
 | --- | --- | --- |
-| Peanut the elephant | Drive Cottage Road to Rosa's cottage and talk to her. Search the circle she marks on your map, find Peanut in a clearing and press E. She is yours to ride (key 9). | $1,500 |
-| Delivery runs | Bring a pickup (company truck, Ridgeback or Haul HD) to the factory dock and press E to load panels. Drive to the drop on your map (a job site, the mall's loading bay, the school, the market or the cottage). | $400, +$150 on time |
-| Lost blueprints | 12 around the map, some only reachable by jetpack | $100 each |
-| Runaway goats | Lead 3 goats back to Gail's pen | $300 each |
+| Caivan office | Sit at your desk (E) for three kinds of task: estimating math, a homebuilding trivia lunch-and-learn, and putting the build schedule in order. Talk to the staff; after 3, 8 and 15 tasks, ask Daniel, the operations manager, for a promotion (pay ×1.25, ×1.5, ×2). | $45–$200 a task |
+| Rosa's cottage | Find Peanut the elephant in the hills; she's yours to ride (key 6) | $1,500 |
+| Factory dock | Delivery runs in a pickup (company truck, Ridgeback or Haul HD) | $400, +$150 on time |
+| Crossroads Subs, Flat Top Burgers | Buy a meal for a 3-minute boost (run 35% faster, or jetpack fuel lasts 60% longer), or work a shift: build five orders in sequence before each ticket runs out | Meal $12–$14; shift $35 an order plus tips |
+| Ridge Savings Bank | Savings earn 2% every 2 minutes of play. Borrow up to $2,000 plus a quarter of what you've earned (10% fee); 30% of your pay repays it automatically. | Interest, or a loan |
+| Northline Outfitters | Change your look: skin tone, hair, shirt, trousers, shoes, hat, safety vest, previewed on your character | $25–$40 an item |
+| Around the map | 12 lost blueprints ($100 each), 3 runaway goats for Gail ($300 each) | |
 
-**Gear Garage:** horse $1,200 · Ridgeback 4x4 $1,800 · Haul HD $2,200 · Volt GT $2,500 · SkyHopper jetpack $3,000 · Skylark helicopter $6,500. The story pays $5,200 (up to $5,500 with bonuses), enough for the jetpack finale; everything in the garage takes the side jobs, about 15 on-time delivery runs on top of the collectibles. After the ending you keep exploring.
+**Ridge Motors:** Commuter LX sedan $1,500 · Ridgeback 4x4 $1,800 · Haul HD $2,200 · Breeze RS roadster $2,800 · Trailhead SUV $3,200 · Volt GT $3,500 · Sterling 88 coupe $4,500 · Apex V12 supercar $12,000. New cars wait on its forecourt. **Gear Garage** (Sales Centre): horse $1,200 · SkyHopper jetpack $3,000 · Skylark helicopter $6,500. The story pays $5,200 (up to $5,500 with bonuses), enough for the jetpack finale; the rest takes side jobs. After the ending you keep exploring.
+
+**3D models.** People, animals and vehicles are currently built in code. Realistic replacements (rigged people from Mixamo, cars and animals from Sketchfab under CC0 or CC-BY) will load from `game/public/models/` once supplied; the physics stays the same.
 
 ### Tech stack
 
@@ -212,11 +217,11 @@ The simulation (`game/src/sim/`) is plain TypeScript over a Rapier world, indepe
 | `entities/` | Things that move: the player rig, vehicles, animals, helicopter and debris, traffic and pedestrians, NPCs and goats |
 | `models/` | Procedural models: people (jointed, animated), vehicles (beveled bodies, separate wheels), helicopter, horse, elephant and goats, jetpack |
 | `render/` | Procedural textures, PBR and architectural materials, post-processing, quality settings, the follow camera, text decals |
-| `world/` | Map data (`map.ts`), terrain and Cottage Road (`terrain.ts`), ground and houses, Market Street (`District.tsx`), the cottage, street lights, trees, grass, countryside, water, landmarks and signage, sky and light |
-| `story/` | Missions, side jobs (`sidequests.ts`), dialogs, economy, collectibles, the game store and the Director |
-| `ui/` | HUD, minimap and full map with legend (`MapView.tsx`, `mapRender.ts`), icons, dialogs, mini-games, shop, title and ending |
+| `world/` | Map data (`map.ts`), terrain and Cottage Road (`terrain.ts`), the office layout (`office.ts`), ground and houses, Market Street (`District.tsx`), the office, dealership, bank, clothing store and restaurants (`Places.tsx`), the cottage, street lights, trees, grass, countryside, water, landmarks and signage, sky and light |
+| `story/` | Missions, side jobs (`sidequests.ts`), office and restaurant work (`work.ts`), the bank (`bank.ts`), places (`places.ts`), dialogs, economy, collectibles, the game store and the Director |
+| `ui/` | HUD, minimap and full map with legend (`MapView.tsx`, `mapRender.ts`), icons, place panels (`PlacePanels.tsx`), work mini-games (`WorkGames.tsx`), dialogs, mini-games, shop, title and ending |
 
-`tests/game.test.ts` checks the rules: every objective is reachable, the story plays through to the ending, the money covers the gear, a jetpack bought early skips the "buy it" step, the new district sits clear of homes, traffic loops follow real roads, Cottage Road never gets steeper than 11 %, and Peanut is inside the search circle. `tests/sim.test.ts` runs the real Rapier physics on the game map: walking, jumping, walls, jetpack flight, vehicles, the horse and the elephant, helicopter flight and landing, standing on the hills, driving up Cottage Road, traffic and pedestrians, breaking trees, poles and frames, and camera collision. In `npm run game`, `window.__game` exposes the runtime, store, simulation and a `teleport(x, z)` helper for debugging. Production builds leave it out.
+`tests/game.test.ts` checks the rules: every objective is reachable, the story plays through to the ending, the money covers the gear, a jetpack bought early skips the "buy it" step, the new district sits clear of homes, traffic loops follow real roads, Cottage Road never gets steeper than 11 %, and Peanut is inside the search circle, the bank's interest and loan rules, the estimating answers, trivia shuffling, the schedule order, restaurant orders, key 2 cycling through your cars, every shop door being reachable, and walking into the office to your desk. `tests/sim.test.ts` runs the real Rapier physics on the game map: walking, jumping, walls, jetpack flight, vehicles (every dealership car drives; the supercar is fastest), meal boosts, the horse and the elephant, helicopter flight and landing, standing on the hills, driving up Cottage Road, traffic and pedestrians, breaking trees, poles and frames, and camera collision. In `npm run game`, `window.__game` exposes the runtime, store, simulation and a `teleport(x, z)` helper for debugging. Production builds leave it out.
 
 ### References
 

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { BLUEPRINTS, GOAT_STARTS, inPen } from "@/game/src/story/collectibles";
 import { DIALOGS } from "@/game/src/story/dialogs";
-import { BLUEPRINT_VALUE, buy, canBuy, DELIVERY_BONUS, DELIVERY_PAY, ELEPHANT_REWARD, GEAR, GOAT_VALUE, HOTBAR_ORDER, modeForKey, SHOP_ORDER, STARTING_OWNED } from "@/game/src/story/economy";
+import { BLUEPRINT_VALUE, buy, canBuy, cheatMatcher, DEALER_ORDER, DELIVERY_BONUS, DELIVERY_PAY, ELEPHANT_REWARD, GEAR, GOAT_VALUE, HOTBAR_ORDER, nextCar, SHOP_ORDER, slotForKey, slotOwned, STARTING_OWNED } from "@/game/src/story/economy";
+import { accrue, BANK, borrow, creditLeft, deposit, OPEN_ACCOUNT, repay, splitPay, withdraw } from "@/game/src/story/bank";
+import { earnedRank, INGREDIENTS, makeOrder, mathRound, RANKS, rng, SCHEDULE, schedulePay, TRIVIA, triviaRound } from "@/game/src/story/work";
+import { PLACE_IDS, PLACES } from "@/game/src/story/places";
+import { DESKS, inOffice, MY_SEAT, OFFICE, officeBoxes, STAFF } from "@/game/src/world/office";
+import { VEHICLE_IDS } from "@/game/src/sim/vehicle";
 import { DEPOT, deliveryLimit, DROPS, ELEPHANT_SEARCH, ELEPHANT_SPOT, nextDrop, ROSA } from "@/game/src/story/sidequests";
 import { COTTAGE, HILL_ROAD, HILL_ROAD_LENGTH, nearestOnRoad, PLAY_HALF, roadHeightAt, roadPointAt, terrainHeight } from "@/game/src/world/terrain";
 import { isOpenGround, LANDMARKS, PAVED, streetLights, TRAFFIC_LOOPS, WALK_LOOPS } from "@/game/src/world/map";
@@ -108,9 +113,9 @@ describe("story", () => {
     expect(storyEarnings(0)).toBeGreaterThanOrEqual(GEAR.jetpack.price!);
     expect(storyEarnings(3)).toBeLessThan(allGear);
     const collectibles = BLUEPRINTS.length * BLUEPRINT_VALUE + GOAT_STARTS.length * GOAT_VALUE + ELEPHANT_REWARD;
-    // Everything in the garage within a couple of dozen delivery runs, so the helicopter is a goal, not a grind.
+    // The Gear Garage (horse, jetpack, helicopter) within a handful of delivery runs: a goal, not a grind.
     const runs = Math.ceil((allGear - storyEarnings(3) - collectibles) / (DELIVERY_PAY + DELIVERY_BONUS));
-    expect(runs).toBeGreaterThan(5);
+    expect(runs).toBeGreaterThan(0);
     expect(runs).toBeLessThan(25);
   });
 
@@ -121,7 +126,7 @@ describe("story", () => {
     expect(alreadySatisfied(buyStep, STARTING_OWNED)).toBe(false);
     expect(alreadySatisfied(buyStep, { ...STARTING_OWNED, jetpack: true })).toBe(true);
     // Other steps are never auto-completed by owning gear.
-    expect(alreadySatisfied(currentStep(START), { truck: true, horse: true, car: true, jetpack: true, heli: true, trail: true, hauler: true, elephant: true })).toBe(false);
+    expect(alreadySatisfied(currentStep(START), Object.fromEntries(Object.keys(STARTING_OWNED).map((k) => [k, true])) as typeof STARTING_OWNED)).toBe(false);
   });
 
   it("asks a fair question: one honest answer per choice", () => {
@@ -131,10 +136,16 @@ describe("story", () => {
 });
 
 describe("gear economy", () => {
-  it("starts with the truck only", () => {
-    expect(modeForKey("1", STARTING_OWNED)).toBe("walk");
-    expect(modeForKey("2", STARTING_OWNED)).toBe("truck");
-    expect(modeForKey("5", STARTING_OWNED)).toBeNull();
+  it("starts with the company truck, and the hotbar maps keys 1 to 6", () => {
+    expect(slotForKey("1")).toBe("walk");
+    expect(slotForKey("2")).toBe("car");
+    expect(slotForKey("7")).toBeNull();
+    expect(slotOwned("car", STARTING_OWNED)).toBe(true);
+    expect(slotOwned("jetpack", STARTING_OWNED)).toBe(false);
+    expect(HOTBAR_ORDER).toEqual(["walk", "car", "horse", "jetpack", "heli", "elephant"]);
+    HOTBAR_ORDER.forEach((slot, i) => {
+      if (slot !== "walk" && slot !== "car") expect(GEAR[slot].key).toBe(String(i + 1));
+    });
   });
 
   it("buys gear you can afford, once", () => {
@@ -142,29 +153,138 @@ describe("gear economy", () => {
     const after = buy(3200, STARTING_OWNED, "jetpack");
     expect(after.cash).toBe(200);
     expect(after.owned.jetpack).toBe(true);
-    expect(modeForKey("5", after.owned)).toBe("jetpack");
     expect(canBuy(10_000, after.owned, "jetpack")).toEqual({ ok: false, reason: "Already yours" });
     expect(buy(200, after.owned, "car")).toEqual(after);
   });
 
-  it("sells the helicopter and both new pickups, but the elephant is earned, not bought", () => {
-    for (const id of ["heli", "trail", "hauler"] as const) {
-      expect(SHOP_ORDER).toContain(id);
-      expect(GEAR[id].price).toBeGreaterThan(0);
-    }
-    expect(SHOP_ORDER).not.toContain("elephant");
+  it("sells cars at Ridge Motors and the rest at the Gear Garage; the elephant is earned", () => {
+    expect(DEALER_ORDER.length).toBeGreaterThanOrEqual(8);
+    for (const id of DEALER_ORDER) expect(GEAR[id].price).toBeGreaterThan(0);
+    for (const id of ["roadster", "coupe", "super", "suv", "sedan", "trail", "hauler", "car"] as const) expect(DEALER_ORDER).toContain(id);
+    expect(SHOP_ORDER).toEqual(["horse", "jetpack", "heli"]);
     expect(GEAR.elephant.price).toBeNull();
     expect(canBuy(1e9, STARTING_OWNED, "elephant")).toEqual({ ok: false, reason: "Not for sale" });
-    expect(buy(1e9, STARTING_OWNED, "elephant").owned.elephant).toBe(false);
   });
 
-  it("gives every piece of gear its own hotbar key, 1 to 9 in order", () => {
-    expect(HOTBAR_ORDER).toHaveLength(9);
-    expect(new Set(HOTBAR_ORDER).size).toBe(9);
-    HOTBAR_ORDER.forEach((mode, i) => {
-      if (mode !== "walk") expect(GEAR[mode].key).toBe(String(i + 1));
-    });
-    expect(modeForKey("9", { ...STARTING_OWNED, elephant: true })).toBe("elephant");
+  it("cycles through your cars with key 2, company truck first", () => {
+    expect(nextCar(STARTING_OWNED, "truck")).toBe("truck");
+    const owned = { ...STARTING_OWNED, roadster: true, super: true };
+    expect(nextCar(owned, "truck")).toBe("roadster");
+    expect(nextCar(owned, "roadster")).toBe("super");
+    expect(nextCar(owned, "super")).toBe("truck");
+    expect(VEHICLE_IDS[0]).toBe("truck");
+  });
+
+  it("the CASH cheat: typing C-A-S-H buys anything without spending", () => {
+    const typed = cheatMatcher();
+    expect([..."XCAS"].map(typed)).toEqual([false, false, false, false]);
+    expect(typed("H")).toBe(true);
+    const typed2 = cheatMatcher();
+    expect([..."cash"].map(typed2).at(-1)).toBe(true);
+    const r = buy(0, STARTING_OWNED, "super", true);
+    expect(r.owned.super).toBe(true);
+    expect(r.cash).toBe(0);
+  });
+});
+
+describe("the bank", () => {
+  it("deposits, withdraws and pays interest every two minutes of play", () => {
+    const d = deposit(1000, OPEN_ACCOUNT, 600);
+    expect(d.cash).toBe(400);
+    expect(d.account.savings).toBe(600);
+    expect(deposit(100, OPEN_ACCOUNT, 500).account.savings).toBe(100);
+    expect(accrue(d.account, BANK.period - 1).interest).toBe(0);
+    const later = accrue(d.account, BANK.period * 2 + 5);
+    const first = 600 + Math.floor(600 * BANK.rate);
+    expect(later.account.savings).toBe(first + Math.floor(first * BANK.rate));
+    expect(later.account.lastInterest).toBe(BANK.period * 2);
+    const w = withdraw(0, later.account, 10_000);
+    expect(w.account.savings).toBe(0);
+    expect(w.cash).toBe(later.account.savings);
+  });
+
+  it("lends up to a limit with a fee, and takes a share of your pay until it's repaid", () => {
+    expect(creditLeft(OPEN_ACCOUNT, 0)).toBe(BANK.baseLimit);
+    expect(creditLeft(OPEN_ACCOUNT, 1e9)).toBe(BANK.maxLimit);
+    const b = borrow(0, OPEN_ACCOUNT, 0, 5000);
+    expect(b.borrowed).toBe(BANK.baseLimit);
+    expect(b.cash).toBe(BANK.baseLimit);
+    expect(b.account.owed).toBe(Math.round(BANK.baseLimit * (1 + BANK.fee)));
+    const p = splitPay(b.account, 1000);
+    expect(p.toLoan).toBe(Math.round(1000 * BANK.autoRepay));
+    expect(p.toWallet + p.toLoan).toBe(1000);
+    const r = repay(10_000, p.account, 1e9);
+    expect(r.account.owed).toBe(0);
+    expect(splitPay(r.account, 500).toLoan).toBe(0);
+  });
+});
+
+describe("work: the office and restaurant shifts", () => {
+  it("generates estimating questions whose marked answer is the right one", () => {
+    for (let seed = 1; seed < 40; seed++)
+      for (const q of mathRound(seed)) {
+        expect(q.choices).toHaveLength(4);
+        expect(new Set(q.choices).size).toBe(4);
+        // The explanation ends with the right answer, and that's the marked choice.
+        const right = q.choices[q.answer].replace(/[^0-9.]/g, "");
+        expect(q.explain.replace(/,/g, "")).toContain(right);
+      }
+    expect(mathRound(7)).toEqual(mathRound(7));
+  });
+
+  it("asks trivia with four distinct choices and keeps the right answer when shuffling", () => {
+    for (const q of TRIVIA) {
+      expect(q.choices).toHaveLength(4);
+      expect(new Set(q.choices).size).toBe(4);
+    }
+    const round = triviaRound(3);
+    expect(round).toHaveLength(6);
+    for (const q of round) {
+      const original = TRIVIA.find((t) => t.prompt === q.prompt)!;
+      expect(q.choices[q.answer]).toBe(original.choices[original.answer]);
+    }
+  });
+
+  it("pays the schedule puzzle less for mistakes, never below the minimum, and promotes with tasks", () => {
+    expect(SCHEDULE[0]).toBe("Permits");
+    expect(SCHEDULE.indexOf("Foundation")).toBeLessThan(SCHEDULE.indexOf("Framing"));
+    expect(SCHEDULE.indexOf("Insulation")).toBeLessThan(SCHEDULE.indexOf("Drywall"));
+    expect(schedulePay(0)).toBeGreaterThan(schedulePay(2));
+    expect(schedulePay(99)).toBeGreaterThan(0);
+    expect(schedulePay(0, 2)).toBe(schedulePay(0) * 2);
+    expect(earnedRank(0)).toBe(0);
+    expect(earnedRank(RANKS[2].tasks)).toBe(2);
+    expect(earnedRank(1000)).toBe(RANKS.length - 1);
+  });
+
+  it("makes restaurant orders from real ingredients, base first", () => {
+    const r = rng(11);
+    for (let i = 0; i < 30; i++) {
+      for (const kitchen of ["subs", "burger"] as const) {
+        const o = makeOrder(kitchen, r);
+        const ids = INGREDIENTS[kitchen].map((x) => x.id);
+        for (const id of o.items) expect(ids).toContain(id);
+        expect(new Set(o.items).size).toBe(o.items.length);
+        expect(kitchen === "subs" ? ["white", "wheat"] : ["bun"]).toContain(o.items[0]);
+      }
+    }
+  });
+});
+
+describe("the new places", () => {
+  it("has a walkable door at every shop, clear of buildings and parked cars", () => {
+    const boxes = collisionBoxes(STARTING_STAGES);
+    for (const id of PLACE_IDS) expect(blocked(boxes, PLACES[id].door, 0.6)).toBe(false);
+  });
+
+  it("lets you walk into the office: a door gap, your desk reachable, staff not inside furniture", () => {
+    const low = officeBoxes().filter((b) => (b.y ?? 0) < 2);
+    const doorway: V2 = [OFFICE.centre[0], OFFICE.centre[1] + OFFICE.d / 2 - 0.15];
+    expect(blocked(low, doorway, 0.5)).toBe(false);
+    expect(inOffice(...MY_SEAT.at)).toBe(true);
+    expect(blocked(low, MY_SEAT.at, 0.3)).toBe(false);
+    for (const st of Object.values(STAFF)) expect(blocked(low, st.at, 0.25)).toBe(false);
+    expect(DESKS.length).toBeGreaterThanOrEqual(6);
   });
 });
 

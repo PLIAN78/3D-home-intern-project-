@@ -5,7 +5,9 @@ import { host, useSim } from "../core/simHost";
 import { useSimVersion } from "../core/simVersion";
 import { ElephantModel, HorseModel } from "../models/animals";
 import { HeliModel } from "../models/heli";
-import { Human, OUTFITS } from "../models/human";
+import { ModelCar } from "../models/cars";
+import { Human } from "../models/human";
+import { useGame } from "../story/store";
 import { BODY_COLORS, BODY_SCALE, CarBody, DRIVER_SEAT, TruckBody, Wheel } from "../models/vehicles";
 import { chrome, lumber, mat } from "../render/materials";
 import type { AnimalId } from "../sim/animal";
@@ -83,7 +85,10 @@ function Extras({ id }: { id: VehicleId }) {
   return null;
 }
 
+const RIMS: Record<VehicleId, string> = { truck: "#9aa1aa", trail: "#1b1c1f", hauler: "#d8dbe0", car: "#2b2d31", roadster: "#c9ccd1", coupe: "#d8dbe0", super: "#1b1c1f", suv: "#8f959c", sedan: "#b4b9bf" };
+
 function VehicleEntity({ id }: { id: VehicleId }) {
+  const outfit = useGame((g) => g.outfit);
   const root = useRef<THREE.Group>(null);
   const wheels = useRef<(THREE.Group | null)[]>([]);
   const driver = useRef<THREE.Group>(null);
@@ -120,11 +125,11 @@ function VehicleEntity({ id }: { id: VehicleId }) {
     if (driver.current) driver.current.visible = s.control.kind === "vehicle" && s.control.id === id;
   });
 
-  const pickup = id !== "car";
+  const pickup = id === "truck" || id === "trail" || id === "hauler";
   return (
     <group ref={root} name={`vehicle-${id}`}>
       <group scale={BODY_SCALE[id]}>
-        {pickup ? <TruckBody color={BODY_COLORS[id]} livery={id === "truck"} /> : <CarBody color={BODY_COLORS.car} />}
+        {pickup ? <TruckBody color={BODY_COLORS[id]} livery={id === "truck"} /> : id === "car" ? <CarBody color={BODY_COLORS.car} /> : <ModelCar id={id} color={BODY_COLORS[id]} />}
         <Extras id={id} />
       </group>
       {hubs.map((_, i) => (
@@ -136,11 +141,11 @@ function VehicleEntity({ id }: { id: VehicleId }) {
           radius={spec.wheelRadius}
           width={pickup ? (id === "trail" ? 0.38 : 0.32) : 0.3}
           side={i % 2 === 0 ? 1 : -1}
-          rimColor={id === "truck" ? "#9aa1aa" : id === "trail" ? "#1b1c1f" : id === "hauler" ? "#d8dbe0" : "#2b2d31"}
+          rimColor={RIMS[id]}
         />
       ))}
       <group ref={driver} position={DRIVER_SEAT[id]} visible={false}>
-        <Human outfit={OUTFITS.player} pose="sit" />
+        <Human outfit={outfit} pose="sit" />
       </group>
     </group>
   );
@@ -150,6 +155,7 @@ function VehicleEntity({ id }: { id: VehicleId }) {
 const SADDLE: Record<AnimalId, [number, number, number]> = { horse: [0.02, 0.9, 0], elephant: [0.3, 2.68, 0] };
 
 function AnimalEntity({ id }: { id: AnimalId }) {
+  const outfit = useGame((g) => g.outfit);
   const root = useRef<THREE.Group>(null);
   const rider = useRef<THREE.Group>(null);
   useFrame(() => {
@@ -166,7 +172,7 @@ function AnimalEntity({ id }: { id: AnimalId }) {
       {id === "horse" ? <HorseModel speed={speed} /> : <ElephantModel speed={speed} />}
       <group ref={rider} visible={false}>
         <group position={SADDLE[id]}>
-          <Human outfit={OUTFITS.player} pose="ride" motion={{ speed }} />
+          <Human outfit={outfit} pose="ride" motion={{ speed }} />
         </group>
       </group>
     </group>
@@ -175,6 +181,7 @@ function AnimalEntity({ id }: { id: AnimalId }) {
 
 /** The Skylark, banking and pitching with the controls; the pilot shows through the canopy. */
 function HeliEntity() {
+  const outfit = useGame((g) => g.outfit);
   const root = useRef<THREE.Group>(null);
   const tilt = useRef<THREE.Group>(null);
   const pilot = useRef<THREE.Group>(null);
@@ -195,7 +202,7 @@ function HeliEntity() {
       <group ref={tilt}>
         <HeliModel rotor={rotor} />
         <group ref={pilot} position={[0.55, 0.62, -0.32]} visible={false}>
-          <Human outfit={OUTFITS.player} pose="sit" />
+          <Human outfit={outfit} pose="sit" />
         </group>
       </group>
     </group>

@@ -292,7 +292,7 @@ export function Title() {
           <kbd>W</kbd>
           <kbd>A</kbd>
           <kbd>S</kbd>
-          <kbd>D</kbd> move · <kbd>E</kbd> talk · <kbd>F</kbd> get in · <kbd>1</kbd>–<kbd>9</kbd> your gear · <kbd>M</kbd> map
+          <kbd>D</kbd> move · <kbd>E</kbd> talk · <kbd>F</kbd> get in · <kbd>1</kbd>–<kbd>6</kbd> your gear · <kbd>M</kbd> map
         </p>
       </div>
     </div>

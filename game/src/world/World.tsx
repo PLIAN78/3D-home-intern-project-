@@ -18,6 +18,7 @@ import { Vegetation } from "./Vegetation";
 import { CottageScene } from "./Cottage";
 import { District } from "./District";
 import { StreetLights } from "./StreetLights";
+import { Places } from "./Places";
 
 /** Lawns, roads, curbs, sidewalks and driveways from Home Studio's community site builder, with PBR surfaces. */
 function Ground() {
@@ -124,6 +125,7 @@ export function World() {
       <Grass />
       <Landmarks />
       <District />
+      <Places />
       <CottageScene />
       <StreetLights />
     </group>

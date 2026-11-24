@@ -78,7 +78,7 @@ const LEGEND: { group: string; items: [string, string][] }[] = [
       ["objective", "Story objective"],
       ["side", "Side job"],
       ["search", "Search area"],
-      ["shop", "Gear Garage"],
+      ["shop", "Shops and services"],
       ["vehicle", "Your rides"],
       ["goat", "Runaway goat"],
     ],

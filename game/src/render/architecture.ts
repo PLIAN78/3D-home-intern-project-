@@ -105,3 +105,14 @@ export function windowGlass() {
   }
   return m;
 }
+
+/** See-through glass for storefronts and partitions you can look into. */
+export function clearGlass() {
+  const k = "clearGlass";
+  let m = cache.get(k);
+  if (!m) {
+    m = new THREE.MeshPhysicalMaterial({ color: "#a9bcc6", transparent: true, opacity: 0.22, roughness: 0.04, metalness: 0.1, envMapIntensity: 1.6, depthWrite: false, side: THREE.DoubleSide });
+    cache.set(k, m);
+  }
+  return m;
+}

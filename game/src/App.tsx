@@ -12,9 +12,12 @@ import { PostFX } from "./render/PostFX";
 import { useQuality } from "./render/quality";
 import { Director } from "./story/Director";
 import { useGame } from "./story/store";
+import { cheatMatcher } from "./story/economy";
 import { DialogBox, Ending, MiniGame, Shop, Title } from "./ui/Overlays";
 import { Hud } from "./ui/Hud";
 import { FullMap } from "./ui/MapView";
+import { PlacePanel } from "./ui/PlacePanels";
+import { JobOverlay } from "./ui/WorkGames";
 import { GameEnvironment } from "./world/Environment";
 import { World } from "./world/World";
 
@@ -28,12 +31,18 @@ export function App() {
     const el = wrap.current;
     if (!el) return;
     const unbind = bindInput(el);
+    const cheat = cheatMatcher();
     const onKey = (e: KeyboardEvent) => {
       if (useGame.getState().phase !== "playing") return;
+      // Typing C-A-S-H during play toggles unlimited money. Not listed anywhere in the game.
+      if (/^Key[A-Z]$/.test(e.code) && cheat(e.code.slice(3))) {
+        useGame.getState().toggleCheat();
+        return; // the last letter (H) shouldn't also hide the controls
+      }
       if (e.code === "KeyH") toggleHelp();
       if (e.code === "KeyM") {
         const g = useGame.getState();
-        if (!g.dialog && !g.minigame && !g.shopOpen) g.toggleMap();
+        if (!g.dialog && !g.minigame && !g.shopOpen && !g.panel && !g.job) g.toggleMap();
       }
       if (e.code === "KeyG") {
         useQuality.getState().toggle();
@@ -81,6 +90,8 @@ export function App() {
       <MiniGame />
       <Shop />
       <FullMap />
+      <PlacePanel />
+      <JobOverlay />
       <Ending />
       {phase === "title" && <Title />}
     </div>

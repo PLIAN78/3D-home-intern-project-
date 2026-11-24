@@ -2,6 +2,7 @@ import type { StageId } from "@/lib/models/construction";
 import { HERO_LOT_ID, LANDMARKS, lotFront, MODEL_HOME_LOT_ID, onLot, POUR_LOT_ID, SURVEY_LOT_ID, TOWER, type V2 } from "../world/map";
 import type { DialogId } from "./dialogs";
 import type { GearId, Owned } from "./economy";
+import type { VehicleId } from "../sim/vehicle";
 
 /**
  * The story: five jobs that mirror what Caivan's people actually do, then the
@@ -31,11 +32,17 @@ export const POUR_SPOT: V2 = onLot(POUR_LOT_ID, [0, 4]);
 export const GEAR_GARAGE: V2 = [-156, 25];
 
 /** Where vehicles wait: the pickup from day one, bought gear is delivered next to it. */
-export const VEHICLE_SPOTS: Record<"truck" | "car" | "trail" | "hauler" | "horse" | "heli", { position: V2; heading: number }> = {
+export const VEHICLE_SPOTS: Record<VehicleId | "horse" | "heli", { position: V2; heading: number }> = {
   truck: { position: [-166, 17], heading: -Math.PI / 2 },
-  car: { position: [-150, 17], heading: -Math.PI / 2 },
   trail: { position: [-182, 17], heading: -Math.PI / 2 },
   hauler: { position: [-190, 17], heading: -Math.PI / 2 },
+  // Cars bought at Ridge Motors wait on its forecourt, behind the display row.
+  sedan: { position: [176, 30.5], heading: -Math.PI / 2 },
+  roadster: { position: [185, 30.5], heading: -Math.PI / 2 },
+  suv: { position: [194, 30.5], heading: -Math.PI / 2 },
+  car: { position: [203, 30.5], heading: -Math.PI / 2 },
+  coupe: { position: [212, 30.5], heading: -Math.PI / 2 },
+  super: { position: [221, 30.5], heading: -Math.PI / 2 },
   horse: { position: [-141, 23], heading: Math.PI },
   // The helipad on the lawn west of the Sales Centre.
   heli: { position: [-214, 30], heading: 0 },

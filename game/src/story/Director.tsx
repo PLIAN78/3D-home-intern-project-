@@ -9,7 +9,10 @@ import { endFrame, wasPressed } from "../core/input";
 import { host } from "../core/simHost";
 import { VEHICLES } from "../sim/vehicle";
 import type { Ride } from "../sim/simulation";
-import { gearOfRide } from "../entities/Player";
+import { gearOfRide, isBusy } from "../entities/Player";
+import { PLACE_IDS, PLACES } from "./places";
+import { MY_SEAT, STAFF, type StaffId } from "../world/office";
+import type { DialogId } from "./dialogs";
 import { DEPOT, DROP_RADIUS, PICKUPS, ROSA } from "./sidequests";
 
 function rideName(r: Ride) {
@@ -24,6 +27,21 @@ function dist2d(x: number, z: number, p: [number, number]) {
   return Math.hypot(x - p[0], z - p[1]);
 }
 
+/** Office conversations: a first chat (some with a question), then short lines; Daniel handles promotions. */
+function talkToStaff(id: StaffId) {
+  const g = useGame.getState();
+  if (id === "daniel") {
+    const promoted = g.promote();
+    g.openDialog(promoted ? "daniel_promote" : g.office.rank >= 3 ? "daniel_top" : "daniel_hello");
+    return;
+  }
+  const first: Record<Exclude<StaffId, "daniel">, DialogId> = { jordan: "jordan_welcome", mei: "mei_tips", lucas: "lucas_chat", sofia: "sofia_chat" };
+  const again: Record<Exclude<StaffId, "daniel">, DialogId> = { jordan: "jordan_again", mei: "mei_again", lucas: "lucas_again", sofia: "sofia_again" };
+  const met = g.office.met.includes(id);
+  g.meetStaff(id);
+  g.openDialog(met ? again[id] : first[id]);
+}
+
 /**
  * Per-frame game rules: mission steps, the "Press E" prompt, pickups and
  * goats. Runs after the player and camera each frame (frame priority −10) and
@@ -33,7 +51,8 @@ export function Director() {
   useFrame(() => {
     const g = useGame.getState();
     const b = runtime.body;
-    const busy = g.phase !== "playing" || g.dialog !== null || g.minigame !== null || g.shopOpen || g.mapOpen;
+    const busy = isBusy(g);
+    if (host.sim) g.tickBank(host.sim.time);
     if (busy) {
       endFrame();
       return;
@@ -83,6 +102,22 @@ export function Director() {
         });
       }
     }
+
+    // Shops and services: walk up to the door.
+    const onFoot0 = b.control.kind === "foot";
+    if (onFoot0)
+      for (const id of PLACE_IDS) {
+        const p = PLACES[id];
+        if (dist2d(b.x, b.z, p.door) < REACH + 0.8) offer(p.verb, () => g.setPanel(id));
+      }
+
+    // The Caivan office: your desk, and the people who work there.
+    if (onFoot0 && dist2d(b.x, b.z, MY_SEAT.at) < 1.5) offer("Sit at your desk", () => g.setPanel("desk"));
+    if (onFoot0)
+      for (const id of Object.keys(STAFF) as StaffId[]) {
+        const st = STAFF[id];
+        if (dist2d(b.x, b.z, st.at) < (st.sitting ? 2.0 : 2.6)) offer(`Talk to ${st.name}`, () => talkToStaff(id));
+      }
 
     // Rosa and Peanut, up in the hills
     const sim = host.sim;

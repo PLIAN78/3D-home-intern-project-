@@ -4,6 +4,8 @@ import { placeholderFor, storeysFor } from "@/lib/geometry/placeholderHouse";
 import { placeholderScale } from "@/lib/geometry/siteGeometry";
 import { lotToWorld } from "@/lib/viewer/placement";
 import { COTTAGE, COTTAGE_Y, HILL_ROAD_WIDTH, nearestOnRoad } from "./terrain";
+import { OFFICE, officeBoxes } from "./office";
+import type { VehicleId } from "../sim/vehicle";
 
 /**
  * Caivan Ridge: the game's open world, generated from Home Studio's own
@@ -62,7 +64,7 @@ export interface Box {
   y?: number;
 }
 
-export type LandmarkId = "sales" | "factory" | "tower" | "farm" | "park" | "shop" | "school" | "mall" | "cottage";
+export type LandmarkId = "sales" | "factory" | "tower" | "farm" | "park" | "shop" | "school" | "mall" | "cottage" | "office" | "dealer" | "bank" | "clothing" | "subs" | "burger";
 
 export interface Landmark {
   id: LandmarkId;
@@ -82,6 +84,12 @@ export const LANDMARKS: Record<LandmarkId, Landmark> = {
   school: { id: "school", name: "Caivan Ridge Public School", position: [-130, 350], size: [56, 30, 9] },
   mall: { id: "mall", name: "Ridge Centre Mall", position: [215, 372], size: [100, 56, 14] },
   cottage: { id: "cottage", name: "Rosa's Cottage", position: COTTAGE.position, size: [12, 9, 6.5] },
+  office: { id: "office", name: "Caivan Office", position: OFFICE.centre, size: [OFFICE.w, OFFICE.d, OFFICE.height] },
+  dealer: { id: "dealer", name: "Ridge Motors", position: [200, 46], size: [36, 20, 7] },
+  bank: { id: "bank", name: "Ridge Savings Bank", position: [150, 279], size: [20, 16, 8] },
+  clothing: { id: "clothing", name: "Northline Outfitters", position: [186, 280], size: [22, 14, 6] },
+  subs: { id: "subs", name: "Crossroads Subs", position: [-30, 321], size: [14, 12, 5] },
+  burger: { id: "burger", name: "Flat Top Burgers", position: [105, 322], size: [18, 14, 6] },
 };
 
 /** Paved areas (parking lots, yards): no trees or grass there. */
@@ -91,6 +99,10 @@ export const PAVED: { x0: number; z0: number; x1: number; z1: number; kind: "par
   { x0: 20, z0: 309.5, x1: 60, z1: 320, kind: "parking" },
   { x0: -98, z0: 318, x1: -62, z1: 344, kind: "parking" },
   { x0: -232, z0: 318, x1: -166, z1: 384, kind: "field" },
+  { x0: 176, z0: -34, x1: 214, z1: -12, kind: "parking" },
+  { x0: 172, z0: 12, x1: 228, z1: 34, kind: "parking" },
+  { x0: -46, z0: 309.5, x1: -14, z1: 314, kind: "parking" },
+  { x0: 84, z0: 309.5, x1: 126, z1: 314.5, kind: "parking" },
 ];
 
 /** Cars parked at the mall, nose-in to the stalls (solid: you bump into them). */
@@ -104,6 +116,15 @@ export const PARKED_CARS: { x: number; z: number; heading: number; color: string
 ];
 export const SCHOOL_BUS = { x: -76, z: 331, heading: 0 };
 
+/** Cars on display on the Ridge Motors forecourt, nose to the boulevard. */
+export const DISPLAY_CARS: { id: VehicleId; x: number; z: number; heading: number; color: string }[] = [
+  { id: "roadster", x: 179, z: 22, heading: -Math.PI / 2, color: "#b3261e" },
+  { id: "coupe", x: 189.5, z: 22, heading: -Math.PI / 2, color: "#1f4d3a" },
+  { id: "super", x: 200, z: 22, heading: -Math.PI / 2, color: "#e8a31a" },
+  { id: "suv", x: 210.5, z: 22, heading: -Math.PI / 2, color: "#2f3e52" },
+  { id: "sedan", x: 221, z: 22, heading: -Math.PI / 2, color: "#b9bcc0" },
+];
+
 /** Monument signs at the street (game heading = the way the lettering faces). */
 export const SIGNS: { text: string; sub?: string; x: number; z: number; heading: number; width: number }[] = [
   { text: "CAIVAN SALES CENTRE", sub: "Model homes open daily", x: -150, z: 8.5, heading: -Math.PI / 2, width: 5.5 },
@@ -113,6 +134,8 @@ export const SIGNS: { text: string; sub?: string; x: number; z: number; heading:
   { text: "CAIVAN RIDGE PUBLIC SCHOOL", sub: "Kindergarten to Grade 8", x: -146, z: 323, heading: -Math.PI / 2, width: 6 },
   { text: "RIDGE CENTRE", sub: "Shops, dining, services", x: 159, z: 309.5, heading: -Math.PI / 2, width: 5.5 },
   { text: "COTTAGE ROAD", sub: "Rosa's Cottage, 0.6 km", x: -246, z: 300, heading: 0, width: 4.6 },
+  { text: "RIDGE MOTORS", sub: "New cars, every day", x: 168, z: 9, heading: -Math.PI / 2, width: 5 },
+  { text: "CAIVAN", sub: "Head office", x: 172, z: -9, heading: Math.PI / 2, width: 4 },
 ];
 
 /** Water tower: tank radius and the walkable deck on top. */
@@ -336,15 +359,17 @@ export function collisionBoxes(stages: Record<string, StageId>): Box[] {
     const b = houseBox(lot, stage);
     if (b) boxes.push({ ...b, kind: stage === "framing" ? "frame" : "house", id: lot.id });
   }
+  // The office is walk-in: walls, a door, furniture and the floor above (see office.ts).
+  boxes.push(...officeBoxes());
   for (const m of Object.values(LANDMARKS)) {
-    if (m.id === "park" || m.id === "tower") continue;
+    if (m.id === "park" || m.id === "tower" || m.id === "office") continue;
     const [w, d, h] = m.size;
     boxes.push({ x0: m.position[0] - w / 2, z0: m.position[1] - d / 2, x1: m.position[0] + w / 2, z1: m.position[1] + d / 2, h, kind: "landmark", id: m.id, y: m.id === "cottage" ? COTTAGE_Y : 0 });
   }
   // Rosa's porch: a low deck you can step up onto.
   const [cx, cz] = COTTAGE.position;
   boxes.push({ x0: cx - 6, z0: cz - 4.5 - 2.4, x1: cx + 6, z1: cz - 4.5, h: 0.45, kind: "landmark", id: "porch", y: COTTAGE_Y });
-  for (const c of PARKED_CARS) boxes.push({ x0: c.x - 0.95, z0: c.z - 2.3, x1: c.x + 0.95, z1: c.z + 2.3, h: 1.4, kind: "landmark", id: "parked" });
+  for (const c of [...PARKED_CARS, ...DISPLAY_CARS]) boxes.push({ x0: c.x - 0.95, z0: c.z - 2.3, x1: c.x + 0.95, z1: c.z + 2.3, h: 1.4, kind: "landmark", id: "parked" });
   boxes.push({ x0: SCHOOL_BUS.x - 6.4, z0: SCHOOL_BUS.z - 1.25, x1: SCHOOL_BUS.x + 6.4, z1: SCHOOL_BUS.z + 1.25, h: 3, kind: "landmark", id: "bus" });
   for (const g of SIGNS) {
     const along = Math.abs(Math.cos(g.heading)) < 0.5;

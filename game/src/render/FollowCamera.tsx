@@ -21,6 +21,11 @@ const RIG = {
   trail: { dist: 9.8, lift: 2.3, fov: 56 },
   hauler: { dist: 10.5, lift: 2.3, fov: 56 },
   car: { dist: 8.5, lift: 1.5, fov: 57 },
+  roadster: { dist: 7.8, lift: 1.4, fov: 57 },
+  coupe: { dist: 8.4, lift: 1.5, fov: 57 },
+  super: { dist: 8.6, lift: 1.4, fov: 58 },
+  suv: { dist: 9.6, lift: 2.0, fov: 56 },
+  sedan: { dist: 9, lift: 1.7, fov: 56 },
   heli: { dist: 17, lift: 2.4, fov: 58 },
 };
 

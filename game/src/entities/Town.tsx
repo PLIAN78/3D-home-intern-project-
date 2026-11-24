@@ -5,10 +5,13 @@ import { runtime } from "../core/runtime";
 import { useSim } from "../core/simHost";
 import { Human, OUTFITS, TOWNSFOLK } from "../models/human";
 import { CarBody, TruckBody, Wheel } from "../models/vehicles";
+import { ModelCar } from "../models/cars";
 import { angleDelta } from "../sim/math";
 import type { TrafficCar, Walker } from "../sim/town";
-import { VEHICLES } from "../sim/vehicle";
+import { VEHICLES, type VehicleId } from "../sim/vehicle";
 import { ROSA } from "../story/sidequests";
+import type { Outfit } from "../models/human";
+import { STAFF, type StaffId } from "../world/office";
 
 /**
  * Town life: traffic on the streets and people on the sidewalks. Their motion
@@ -20,7 +23,7 @@ const DRAW_CAR = 260;
 const DRAW_WALKER = 140;
 
 /** Height of the chassis origin above the road at rest, and each wheel hub's offset from it. */
-function rig(model: "car" | "truck") {
+function rig(model: VehicleId) {
   const spec = VEHICLES[model];
   const sag = spec.suspensionRest * 0.72;
   return {
@@ -35,13 +38,17 @@ function rig(model: "car" | "truck") {
   };
 }
 
-const RIGS = { car: rig("car"), truck: rig("truck") };
+/** Traffic is a mix of everyday cars; the physics box is the same, only the look changes. */
+const LOOKS: VehicleId[] = ["sedan", "suv", "car", "sedan", "coupe", "suv", "roadster", "sedan"];
+const lookOf = (car: TrafficCar): VehicleId => (car.model === "truck" ? "truck" : LOOKS[car.id % LOOKS.length]);
+const RIGS = Object.fromEntries((["truck", ...new Set(LOOKS)] as VehicleId[]).map((id) => [id, rig(id)])) as Record<VehicleId, ReturnType<typeof rig>>;
 
 function TrafficCarView({ car }: { car: TrafficCar }) {
   const root = useRef<THREE.Group>(null);
   const wheels = useRef<(THREE.Group | null)[]>([]);
   const camera = useThree((s) => s.camera);
-  const r = RIGS[car.model];
+  const look = lookOf(car);
+  const r = RIGS[look];
   useFrame(() => {
     const g = root.current;
     if (!g) return;
@@ -54,7 +61,7 @@ function TrafficCarView({ car }: { car: TrafficCar }) {
   });
   return (
     <group ref={root}>
-      {car.model === "truck" ? <TruckBody color={car.color} livery={false} /> : <CarBody color={car.color} />}
+      {look === "truck" ? <TruckBody color={car.color} livery={false} /> : look === "car" ? <CarBody color={car.color} /> : <ModelCar id={look} color={car.color} />}
       {r.hubs.map((h, i) => (
         <group key={i} position={h}>
           <Wheel
@@ -63,7 +70,7 @@ function TrafficCarView({ car }: { car: TrafficCar }) {
             }}
             radius={r.radius}
             side={i % 2 === 0 ? 1 : -1}
-            rimColor={car.model === "truck" ? "#9aa1aa" : "#c9ccd1"}
+            rimColor={look === "truck" ? "#9aa1aa" : "#c9ccd1"}
           />
         </group>
       ))}
@@ -103,6 +110,9 @@ export function Town() {
         <WalkerView key={w.id} walker={w} />
       ))}
       <Rosa />
+      {(Object.keys(STAFF) as StaffId[]).map((id) => (
+        <Staff key={id} id={id} />
+      ))}
     </group>
   );
 }
@@ -126,6 +136,37 @@ function Rosa() {
     <group position={[ROSA.position[0], ROSA.y, ROSA.position[1]]}>
       <group ref={ref} rotation={[0, -ROSA.facing, 0]}>
         <Human outfit={OUTFITS.rosa} pose={() => (near.current ? "wave" : "auto")} />
+      </group>
+    </group>
+  );
+}
+
+const STAFF_LOOKS: Record<StaffId, Outfit> = {
+  jordan: { skin: "#8d5a3b", shirt: "#e9e4da", pants: "#2c2f36", shoes: "#1f1f22", hair: "#151010", longHair: true },
+  daniel: { skin: "#5c3b28", shirt: "#2c3440", pants: "#2a2d33", shoes: "#1a1a1a", hair: "#0f0c0a" },
+  mei: { skin: "#e8c4a0", shirt: "#56705a", pants: "#3a3f4a", shoes: "#2a2a2a", hair: "#121010", longHair: true },
+  lucas: { skin: "#e0b08f", shirt: "#8a4a5c", pants: "#4a5160", shoes: "#3a2a20", hair: "#7a5432" },
+  sofia: { skin: "#c68863", shirt: "#d8d2c4", pants: "#1f3a5f", shoes: "#2a2a2a", hair: "#2b1d14", longHair: true },
+};
+
+/** People at work in the Caivan office. Standing staff turn to face you as you come over. */
+function Staff({ id }: { id: StaffId }) {
+  const st = STAFF[id];
+  const ref = useRef<THREE.Group>(null);
+  useFrame((_, dt) => {
+    const g = ref.current;
+    if (!g || st.sitting) return;
+    const b = runtime.body;
+    const dx = b.x - st.at[0];
+    const dz = b.z - st.at[1];
+    const want = Math.hypot(dx, dz) < 7 ? Math.atan2(dz, dx) : st.facing;
+    const cur = -g.rotation.y;
+    g.rotation.y = -(cur + angleDelta(cur, want) * Math.min(1, dt * 4));
+  });
+  return (
+    <group position={[st.at[0], 0, st.at[1]]}>
+      <group ref={ref} rotation={[0, -st.facing, 0]}>
+        <Human outfit={STAFF_LOOKS[id]} pose={st.sitting ? "sit" : "auto"} />
       </group>
     </group>
   );

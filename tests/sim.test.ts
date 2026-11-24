@@ -137,6 +137,31 @@ describe("vehicles are separate from the character", () => {
     expect(await top("car")).toBeGreaterThan((await top("truck")) + 5);
   });
 
+  it("every dealership car drives, and the supercar is the fastest", async () => {
+    const top = async (id: "sedan" | "roadster" | "suv" | "coupe" | "super") => {
+      const s = await sim();
+      s.spawnVehicle(id, -55, 0, 0);
+      run(s, 0.5);
+      s.enterVehicle(id);
+      run(s, 6, { forward: 1 });
+      const v = s.vehicles[id]!;
+      expect(Math.abs(v.rotation.x) + Math.abs(v.rotation.z)).toBeLessThan(0.3); // still upright
+      return v.speed;
+    };
+    const speeds = { sedan: await top("sedan"), roadster: await top("roadster"), suv: await top("suv"), coupe: await top("coupe"), super: await top("super") };
+    for (const v of Object.values(speeds)) expect(v).toBeGreaterThan(15);
+    expect(speeds.super).toBeGreaterThan(Math.max(speeds.sedan, speeds.suv, speeds.roadster, speeds.coupe));
+  });
+
+  it("a meal boost makes you run faster", async () => {
+    const plain = await sim();
+    run(plain, 2, { forward: 1, sprint: true, cameraYaw: 0 });
+    const boosted = await sim();
+    boosted.player.runBoost = 1.35;
+    run(boosted, 2, { forward: 1, sprint: true, cameraYaw: 0 });
+    expect(boosted.player.x - plain.player.x).toBeGreaterThan(3);
+  });
+
   it("can be called to the player", async () => {
     const s = await sim();
     s.call("car");

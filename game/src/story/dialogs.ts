@@ -1,6 +1,6 @@
 /** Every line of dialogue in the game. Family friendly, a little silly, and true to what Caivan's teams do. */
 
-export type Speaker = "Maya" | "You" | "Priya Patel" | "Arjun Patel" | "Raj" | "Gail" | "The Nguyens" | "Rosa" | "Phone";
+export type Speaker = "Maya" | "You" | "Priya Patel" | "Arjun Patel" | "Raj" | "Gail" | "The Nguyens" | "Rosa" | "Jordan" | "Daniel" | "Mei" | "Lucas" | "Sofia" | "Phone";
 
 export interface Choice {
   text: string;
@@ -34,7 +34,18 @@ export type DialogId =
   | "rosa_elephant"
   | "rosa_thanks"
   | "peanut_found"
-  | "depot_intro";
+  | "depot_intro"
+  | "jordan_welcome"
+  | "jordan_again"
+  | "daniel_hello"
+  | "daniel_promote"
+  | "daniel_top"
+  | "mei_tips"
+  | "mei_again"
+  | "lucas_chat"
+  | "lucas_again"
+  | "sofia_chat"
+  | "sofia_again";
 
 export const DIALOGS: Record<DialogId, Line[]> = {
   maya_welcome: [
@@ -138,4 +149,56 @@ export const DIALOGS: Record<DialogId, Line[]> = {
     { speaker: "Raj", text: "Got a pickup? Good. Back up to the dock and I'll load a pallet of wall panels." },
     { speaker: "Raj", text: "Deliveries pay $400, plus $150 if you're quick. Drive carefully, but not too carefully." },
   ],
+  jordan_welcome: [
+    { speaker: "Jordan", text: "Welcome to the Caivan office! You must be the new site coordinator. Your desk is the first one on the left." },
+    { speaker: "Jordan", text: "Sit down and pick a task: estimating, the lunch-and-learn quiz, or a build schedule. Every task pays, and Daniel notices hard work." },
+  ],
+  jordan_again: [{ speaker: "Jordan", text: "Coffee's fresh in the kitchen. Daniel's in the glass office if you need him." }],
+  daniel_hello: [
+    { speaker: "Daniel", text: "Good to see you. Keep finishing tasks at your desk and we'll talk about a promotion." },
+  ],
+  daniel_promote: [
+    { speaker: "Daniel", text: "I've seen your work this week: accurate estimates and schedules that hold. That's exactly what we need." },
+    { speaker: "Daniel", text: "Congratulations, you're promoted. Your desk work pays more from today." },
+  ],
+  daniel_top: [{ speaker: "Daniel", text: "Operations manager already. Honestly, I should be asking you for advice." }],
+  mei_tips: [
+    { speaker: "Mei", text: "Estimating tip: studs go every 400 mm, and don't forget the one at the end." },
+    {
+      speaker: "Mei",
+      text: "Quick check. If a wall needs 9.6 sheets of drywall, how many do you order?",
+      choices: [
+        { text: "Ten. You always round up, and a little extra covers waste.", good: true, reply: "Exactly. Nobody wants to stop work for one sheet." },
+        { text: "Nine. Round to the nearest.", good: false, reply: "Then the last bit of wall stays bare!" },
+        { text: "9.6. The supplier can cut one.", good: false, reply: "Ha. They won't, trust me." },
+      ],
+    },
+  ],
+  mei_again: [{ speaker: "Mei", text: "Measure twice, order once." }],
+  lucas_chat: [
+    { speaker: "Lucas", text: "I design the floor plans buyers preview in 3D at the Design Studio." },
+    {
+      speaker: "Lucas",
+      text: "A family asks for a bigger kitchen. What's the best first step?",
+      choices: [
+        { text: "Ask how they cook and live, then show options in 3D.", good: true, reply: "Yes. Start with how they live, not with the walls." },
+        { text: "Knock down a wall and see what happens.", good: false, reply: "The engineers would faint." },
+        { text: "Tell them kitchens are all the same size.", good: false, reply: "That's not the Caivan way." },
+      ],
+    },
+  ],
+  lucas_again: [{ speaker: "Lucas", text: "Plan 36 is still my favourite. That roofline!" }],
+  sofia_chat: [
+    { speaker: "Sofia", text: "I help families choose their home and lot. Honest answers sell homes." },
+    {
+      speaker: "Sofia",
+      text: "A buyer asks when their home will be ready, and the schedule isn't confirmed. What do you say?",
+      choices: [
+        { text: "Give the current estimate, say it can change, and promise updates.", good: true, reply: "That's how you earn trust." },
+        { text: "Pick an early date so they're happy.", good: false, reply: "And unhappy later. Never do that." },
+        { text: "Change the subject to countertops.", good: false, reply: "They'll notice!" },
+      ],
+    },
+  ],
+  sofia_again: [{ speaker: "Sofia", text: "Three closings this week. The neighbourhood is filling up!" }],
 };

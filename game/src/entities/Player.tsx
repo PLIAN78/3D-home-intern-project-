@@ -6,14 +6,21 @@ import { runtime } from "../core/runtime";
 import { sfx } from "../core/sfx";
 import { host, useSim } from "../core/simHost";
 import { useSimVersion } from "../core/simVersion";
-import { Human, OUTFITS } from "../models/human";
+import { Human } from "../models/human";
 import { JetpackModel } from "../models/jetpack";
 import type { AnimalId } from "../sim/animal";
 import { IDLE_INPUT, type Ride, type Simulation } from "../sim/simulation";
-import type { VehicleId } from "../sim/vehicle";
-import { GEAR, HOTBAR_ORDER, type GearId, type ModeId, type Owned } from "../story/economy";
+import { VEHICLE_IDS } from "../sim/vehicle";
+import { GEAR, HOTBAR_ORDER, isVehicle, nextCar, slotOwned, type GearId, type ModeId, type Owned } from "../story/economy";
 import { VEHICLE_SPOTS } from "../story/missions";
-import { useGame } from "../story/store";
+import { useGame, type GameState } from "../story/store";
+import { BOOST } from "../story/work";
+import { MY_SEAT } from "../world/office";
+
+/** Anything that takes over the screen (dialogs, panels, mini-games, the map) pauses the controls. */
+export function isBusy(g: GameState) {
+  return g.phase !== "playing" || g.dialog !== null || g.minigame !== null || g.shopOpen || g.mapOpen || g.panel !== null || g.job !== null;
+}
 
 /** What the hotbar shows as active, from what the player is controlling. */
 export function modeOf(sim: Simulation): ModeId {
@@ -28,7 +35,6 @@ export function gearOfRide(r: Ride): GearId {
   return r.kind === "heli" ? "heli" : r.id;
 }
 
-const VEHICLE_IDS: VehicleId[] = ["truck", "car", "trail", "hauler"];
 const ANIMAL_IDS: AnimalId[] = ["horse", "elephant"];
 
 /**
@@ -51,7 +57,7 @@ export function Player() {
     const dt = Math.min(rawDt, 0.25);
     runtime.time += dt;
     const g = useGame.getState();
-    const busy = g.phase !== "playing" || g.dialog !== null || g.minigame !== null || g.shopOpen || g.mapOpen;
+    const busy = isBusy(g);
 
     // Bought gear is delivered to the Sales Centre lot.
     for (const id of VEHICLE_IDS) {
@@ -73,6 +79,15 @@ export function Player() {
     }
 
     if (!busy) handleControls(s, g, bump);
+
+    // Meal boosts change how fast you run and how long the jetpack lasts.
+    const boost = g.boost && s.time < g.boost.until ? g.boost.kind : null;
+    s.player.runBoost = boost === "run" ? BOOST.run : 1;
+    s.player.fuelBurn = boost === "fuel" ? BOOST.fuelBurn : 1;
+    g.tickBoost(s.time);
+
+    // Sitting at your desk in the office: stay in the chair, facing the screen.
+    if (g.panel === "desk" && s.control.kind === "foot") s.player.place(MY_SEAT.at[0], MY_SEAT.at[1], 0, MY_SEAT.heading);
 
     host.alpha = s.step(dt, busy ? { ...IDLE_INPUT, cameraYaw: runtime.cameraYaw } : simInput(runtime.cameraYaw));
     runtime.body = s.focus();
@@ -103,6 +118,7 @@ export function Player() {
     if (jetVisible.current) jetVisible.current.visible = s.player.jetpack;
   }, -30);
 
+  const outfit = useGame((g) => g.outfit);
   if (!sim) return null;
   const p = sim.player;
   return (
@@ -110,7 +126,11 @@ export function Player() {
       <group position={[0, 1, 0]}>
         <group ref={tilt}>
           <group position={[0, -1, 0]}>
-            <Human outfit={OUTFITS.player} motion={{ speed: () => (p.grounded ? p.speed : 0), airborne: () => !p.grounded }} />
+            <Human
+              outfit={outfit}
+              pose={() => (useGame.getState().panel === "desk" ? "sit" : "auto")}
+              motion={{ speed: () => (p.grounded ? p.speed : 0), airborne: () => !p.grounded }}
+            />
             <group ref={jetVisible} visible={false}>
               <JetpackModel thrust={() => (p.thrusting ? 1 : 0)} />
             </group>
@@ -124,7 +144,7 @@ export function Player() {
 function rideFor(id: GearId): Ride | null {
   if (id === "heli") return { kind: "heli" };
   if ((ANIMAL_IDS as string[]).includes(id)) return { kind: "animal", id: id as AnimalId };
-  if ((VEHICLE_IDS as string[]).includes(id)) return { kind: "vehicle", id: id as VehicleId };
+  if (isVehicle(id)) return { kind: "vehicle", id };
   return null;
 }
 
@@ -157,27 +177,39 @@ function handleControls(s: Simulation, g: ReturnType<typeof useGame.getState>, b
     }
   }
 
-  HOTBAR_ORDER.forEach((mode, i) => {
+  HOTBAR_ORDER.forEach((slot, i) => {
     if (!wasPressed(`Digit${i + 1}`)) return;
-    if (mode === "walk") {
+    if (slot === "walk") {
       if (c.kind !== "foot") s.exit();
       s.setJetpack(false);
       bump();
       return;
     }
-    const gear = GEAR[mode];
-    if (!owned[mode]) {
+    if (!slotOwned(slot, owned)) {
+      const gear = GEAR[slot];
       g.toast(gear.price === null ? `Find ${gear.name} first` : `Buy the ${gear.name} at the Gear Garage first`);
       return;
     }
-    if (mode === "jetpack") {
+    if (slot === "jetpack") {
       if (c.kind !== "foot") s.exit();
       s.setJetpack(!s.player.jetpack);
       sfx("switch");
       bump();
       return;
     }
-    const ride = rideFor(mode);
+    // Cars: 2 gets you into your selected car; pressing it again in a car switches to your next one.
+    let gearId: GearId = slot === "car" ? g.car : slot;
+    if (slot === "car" && c.kind === "vehicle") {
+      const next = nextCar(owned, c.id);
+      if (next === c.id) {
+        g.toast("That's your only car. Ridge Motors on Caivan Boulevard sells more.");
+        return;
+      }
+      g.selectCar(next);
+      gearId = next;
+    }
+    if (slot === "car" && !owned[gearId]) gearId = "truck";
+    const ride = rideFor(gearId);
     if (!ride) return;
     const already = (c.kind === "vehicle" || c.kind === "animal") && ride.kind !== "heli" && c.id === ride.id;
     if (already || (c.kind === "heli" && ride.kind === "heli")) return;
@@ -185,10 +217,11 @@ function handleControls(s: Simulation, g: ReturnType<typeof useGame.getState>, b
     // Close by? Just get in. Otherwise it comes to you.
     const at = positionOf(s, ride);
     const near = at && Math.hypot(at.x - s.player.x, at.z - s.player.z) < (ride.kind === "heli" ? 12 : 7);
+    const name = GEAR[gearId].name;
     if (!near) {
       s.call(ride.kind === "heli" ? "heli" : ride.id);
-      g.toast(ride.kind === "animal" ? `${gear.name.split(" ")[0]} comes over` : `Your ${gear.name} is here`);
-    }
+      g.toast(ride.kind === "animal" ? `${name.split(" ")[0]} comes over` : `Your ${name} is here`);
+    } else if (slot === "car") g.toast(name);
     s.board(ride);
     sfx("switch");
     bump();

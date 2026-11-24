@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { host } from "../core/simHost";
 import { runtime } from "../core/runtime";
 import { BLUEPRINTS } from "../story/collectibles";
-import { GEAR, HOTBAR_ORDER, money, type ModeId } from "../story/economy";
+import { GEAR, HOTBAR_ORDER, money, slotOf, slotOwned, type ModeId } from "../story/economy";
 import { currentStep, stepTarget } from "../story/missions";
 import { DEPOT } from "../story/sidequests";
 import { objective, useGame } from "../story/store";
@@ -40,6 +40,28 @@ function Gauge() {
         <span>km/h</span>
       </div>
       {mode === "heli" && <div className="gauge-sub">Altitude {Math.round(v.alt)} m</div>}
+    </div>
+  );
+}
+
+/** A meal boost, while it lasts. */
+function Boost() {
+  const boost = useGame((s) => s.boost);
+  const [left, setLeft] = useState(0);
+  useEffect(() => {
+    if (!boost) return;
+    const tick = () => setLeft(Math.max(0, boost.until - (host.sim?.time ?? 0)));
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [boost]);
+  if (!boost) return null;
+  return (
+    <div className="boost panel">
+      <span className="eyebrow">{boost.kind === "run" ? "Energy" : "Jetpack fuel"}</span>
+      <span>
+        {Math.floor(left / 60)}:{String(Math.floor(left % 60)).padStart(2, "0")}
+      </span>
     </div>
   );
 }
@@ -103,6 +125,8 @@ export function Hud() {
   const blueprints = useGame((s) => s.blueprints.length);
   const goats = useGame((s) => s.goatsHome.length);
   const deliveries = useGame((s) => s.deliveries);
+  const car = useGame((s) => s.car);
+  const unlimited = useGame((s) => s.unlimited);
   const delivery = useGame((s) => s.delivery);
   const obj = objective(progress);
   const step = currentStep(progress);
@@ -137,7 +161,7 @@ export function Hud() {
       </div>
 
       <div className="top-right">
-        <div className="cash panel">{money(cash)}</div>
+        <div className="cash panel">{unlimited ? "$ ∞" : money(cash)}</div>
         <Minimap />
         <div className="counters panel">
           <span>
@@ -175,12 +199,14 @@ export function Hud() {
         )}
         <div className="mode-name">{NAMES[mode]}</div>
         <div className="hotbar">
-          {HOTBAR_ORDER.map((m, i) => {
-            const locked = m !== "walk" && !owned[m];
+          {HOTBAR_ORDER.map((slot, i) => {
+            const locked = !slotOwned(slot, owned);
+            const icon: ModeId = slot === "car" ? car : slot;
+            const name = slot === "car" ? `${NAMES[car]} (2, press again to switch car)` : `${NAMES[slot]} (${i + 1})`;
             return (
-              <div key={m} className={`slot ${mode === m ? "active" : ""} ${locked ? "locked" : ""}`} title={`${NAMES[m]} (${i + 1})`}>
+              <div key={slot} className={`slot ${slotOf(mode) === slot ? "active" : ""} ${locked ? "locked" : ""}`} title={name}>
                 <span className="num">{i + 1}</span>
-                <GearIcon mode={m} />
+                <GearIcon mode={icon} />
                 {locked && (
                   <span className="lock">
                     <LockIcon size={11} />
@@ -192,6 +218,7 @@ export function Hud() {
         </div>
       </div>
       <div className="bottom-left">
+        <Boost />
         <Gauge />
       </div>
 
@@ -223,9 +250,9 @@ export function Hud() {
             </dt>
             <dd>Talk or use, get in or out</dd>
             <dt>
-              <kbd>1</kbd>–<kbd>9</kbd>
+              <kbd>1</kbd>–<kbd>6</kbd>
             </dt>
-            <dd>Call your gear</dd>
+            <dd>Your gear (2 again switches car)</dd>
             <dt>
               <kbd>M</kbd> <kbd>G</kbd> <kbd>H</kbd>
             </dt>

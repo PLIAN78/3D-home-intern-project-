@@ -3,6 +3,8 @@ import { host, TREES } from "../core/simHost";
 import type { Owned } from "../story/economy";
 import { currentStep, GEAR_GARAGE, stepTarget, type Progress } from "../story/missions";
 import { DEPOT, ELEPHANT_SEARCH, ROSA, type Delivery, type ElephantQuest } from "../story/sidequests";
+import { PLACE_IDS, PLACES } from "../story/places";
+import { OFFICE } from "../world/office";
 import { CAIVAN_RIDGE, collisionBoxes, LANDMARKS, PAVED, PEN, STREETS, type V2 } from "../world/map";
 import { COTTAGE, FLAT_HALF, HILL_ROAD, HILL_ROAD_WIDTH, PLAY_HALF, terrainHeight } from "../world/terrain";
 
@@ -135,13 +137,17 @@ function paintBase(stages: Record<string, string>) {
 
   // Buildings: homes, frames under construction, landmarks.
   for (const b of collisionBoxes(stages as never)) {
-    if (b.id === "parked" || b.id === "sign" || b.id === "porch") continue;
+    if (b.id === "parked" || b.id === "sign" || b.id === "porch" || b.id === "office") continue;
     ctx.fillStyle = b.kind === "frame" ? PALETTE.construction : b.kind === "landmark" || b.kind === "post" ? PALETTE.landmark : PALETTE.building;
     ctx.strokeStyle = PALETTE.buildingEdge;
     ctx.lineWidth = 0.8 * PPM;
     ctx.fillRect(wx(b.x0), wx(b.z0), (b.x1 - b.x0) * PPM, (b.z1 - b.z0) * PPM);
     ctx.strokeRect(wx(b.x0), wx(b.z0), (b.x1 - b.x0) * PPM, (b.z1 - b.z0) * PPM);
   }
+  // The office is drawn by its footprint (its physics is walls and furniture).
+  ctx.fillStyle = PALETTE.landmark;
+  ctx.fillRect(wx(OFFICE.centre[0] - OFFICE.w / 2), wx(OFFICE.centre[1] - OFFICE.d / 2), OFFICE.w * PPM, OFFICE.d * PPM);
+  ctx.strokeRect(wx(OFFICE.centre[0] - OFFICE.w / 2), wx(OFFICE.centre[1] - OFFICE.d / 2), OFFICE.w * PPM, OFFICE.d * PPM);
   // Dig sites (excavation and foundation stages have no building yet).
   ctx.fillStyle = PALETTE.construction;
   for (const lot of CAIVAN_RIDGE.lots) {
@@ -278,6 +284,12 @@ const LABELS: { text: string; at: V2; minScale?: number }[] = [
   { text: "Public School", at: [LANDMARKS.school.position[0], LANDMARKS.school.position[1] + 22] },
   { text: "Ridge Centre Mall", at: [LANDMARKS.mall.position[0], LANDMARKS.mall.position[1] + 36] },
   { text: "Rosa's Cottage", at: [COTTAGE.position[0], COTTAGE.position[1] + 16] },
+  { text: "Caivan Office", at: [OFFICE.centre[0], OFFICE.centre[1] - 16] },
+  { text: "Ridge Motors", at: [LANDMARKS.dealer.position[0], LANDMARKS.dealer.position[1] + 15] },
+  { text: "Bank", at: [LANDMARKS.bank.position[0], LANDMARKS.bank.position[1] - 12] },
+  { text: "Outfitters", at: [LANDMARKS.clothing.position[0], LANDMARKS.clothing.position[1] - 11] },
+  { text: "Subs", at: [LANDMARKS.subs.position[0], LANDMARKS.subs.position[1] + 10] },
+  { text: "Burgers", at: [LANDMARKS.burger.position[0], LANDMARKS.burger.position[1] + 11] },
 ];
 
 const STREET_LABELS: { text: string; at: V2; vertical?: boolean }[] = [
@@ -372,6 +384,8 @@ export function drawMap(ctx: CanvasRenderingContext2D, w: number, h: number, v: 
 
   // Side jobs and the Gear Garage.
   marker(ctx, ...P(...GEAR_GARAGE), "shop", 6);
+  for (const id of PLACE_IDS) marker(ctx, ...P(...PLACES[id].door), "shop", 6);
+  marker(ctx, ...P(OFFICE.centre[0], OFFICE.centre[1] + OFFICE.d / 2 + 1), "shop", 6);
   if (st.delivery) marker(ctx, ...P(...st.delivery.drop.at), "side", 7);
   else marker(ctx, ...P(...DEPOT), "side", 6);
   if (st.elephant === "none") marker(ctx, ...P(...ROSA.position), "side", 6);

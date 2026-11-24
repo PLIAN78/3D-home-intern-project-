@@ -73,6 +73,9 @@ export class CharacterController {
   grounded = true;
   jetpack = false;
   fuel = JETPACK.fuel;
+  /** Meal boosts: run speed multiplier and jetpack fuel burn multiplier (1 = normal). */
+  runBoost = 1;
+  fuelBurn = 1;
   thrusting = false;
   /** Body lean for rendering (radians): forward pitch and sideways roll while flying or running. */
   pitch = 0;
@@ -157,7 +160,7 @@ export class CharacterController {
       this.vel.x = nx;
       this.vel.z = nz;
     } else {
-      const top = intent.sprint ? FOOT.run : FOOT.walk;
+      const top = (intent.sprint ? FOOT.run : FOOT.walk) * this.runBoost;
       const accel = (this.grounded ? FOOT.groundAccel : FOOT.airAccel) * dt;
       const tx = dirX * top * mag;
       const tz = dirZ * top * mag;
@@ -180,7 +183,7 @@ export class CharacterController {
     if (canThrust) {
       this.thrusting = true;
       this.vel.y = Math.min(JETPACK.maxRise, this.vel.y + (JETPACK.thrust - FOOT.gravity) * dt);
-      this.fuel = Math.max(0, this.fuel - dt * (intent.sprint && mag > 0 ? 2 : 1));
+      this.fuel = Math.max(0, this.fuel - dt * (intent.sprint && mag > 0 ? 2 : 1) * this.fuelBurn);
       this.grounded = false;
     } else if (!this.grounded) {
       this.vel.y = Math.max(-FOOT.terminal, this.vel.y - FOOT.gravity * dt);

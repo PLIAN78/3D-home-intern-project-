@@ -3,7 +3,13 @@ import type { StageId } from "@/lib/models/construction";
 import type { ModeId } from "./economy";
 import { STARTING_STAGES } from "../world/map";
 import { DIALOGS, type DialogId } from "./dialogs";
-import { BLUEPRINT_VALUE, buy, canBuy, DELIVERY_BONUS, DELIVERY_PAY, ELEPHANT_REWARD, GEAR, GOAT_VALUE, money, STARTING_OWNED, type GearId, type Owned } from "./economy";
+import { BLUEPRINT_VALUE, buy, canBuy, DELIVERY_BONUS, DELIVERY_PAY, ELEPHANT_REWARD, GEAR, GOAT_VALUE, isVehicle, money, STARTING_OWNED, type GearId, type Owned } from "./economy";
+import { accrue, borrow, deposit, OPEN_ACCOUNT, repay, splitPay, withdraw, type Account } from "./bank";
+import { BOOST_SECONDS, earnedRank, MEALS, RANKS, type BoostKind, type Kitchen } from "./work";
+import type { PlaceId } from "./places";
+import type { StaffId } from "../world/office";
+import type { VehicleId } from "../sim/vehicle";
+import { OUTFITS, type Outfit } from "../models/human";
 import { deliveryLimit, nextDrop, type Delivery, type ElephantQuest } from "./sidequests";
 import { advance, currentMission, currentStep, START, type MinigameKind, type Progress } from "./missions";
 import { resetRuntime } from "../core/runtime";
@@ -27,7 +33,18 @@ interface DialogState {
   completesStep: boolean;
 }
 
-interface GameState {
+/** A full-screen panel: one of the town's places, or your desk at the office. */
+export type PanelId = PlaceId | "desk";
+
+export type JobKind = "math" | "trivia" | "schedule" | "orders";
+
+export interface Job {
+  kind: JobKind;
+  kitchen?: Kitchen;
+  seed: number;
+}
+
+export interface GameState {
   phase: Phase;
   cash: number;
   earned: number;
@@ -49,6 +66,17 @@ interface GameState {
   /** The delivery run in progress, if any, and how many are done. */
   delivery: Delivery | null;
   deliveries: number;
+  /** Your selected car (key 2). */
+  car: VehicleId;
+  /** The CASH cheat. */
+  unlimited: boolean;
+  account: Account;
+  outfit: Outfit;
+  boost: { kind: BoostKind; until: number } | null;
+  panel: PanelId | null;
+  job: Job | null;
+  /** Office career: finished tasks, current rank, staff you've met. */
+  office: { tasks: number; rank: number; met: StaffId[] };
   prompt: string | null;
   toasts: Toast[];
   showHelp: boolean;
@@ -71,6 +99,25 @@ interface GameState {
   startDelivery: (now: number) => void;
   finishDelivery: (now: number) => void;
   cancelDelivery: () => void;
+  selectCar: (id: VehicleId) => void;
+  toggleCheat: () => void;
+  setPanel: (panel: PanelId | null) => void;
+  startJob: (kind: JobKind, kitchen?: Kitchen) => void;
+  /** Ends a job; pays (already scaled) and counts office tasks. */
+  finishJob: (pay: number, why: string, done?: boolean) => void;
+  bankDeposit: (amount: number) => void;
+  bankWithdraw: (amount: number) => void;
+  bankBorrow: (amount: number) => void;
+  bankRepay: (amount: number) => void;
+  tickBank: (now: number) => void;
+  buyMeal: (kitchen: Kitchen, now: number) => void;
+  tickBoost: (now: number) => void;
+  setOutfit: (outfit: Outfit, cost: number) => void;
+  meetStaff: (id: StaffId) => void;
+  /** Talk to the manager: promotes you if you've earned it. Returns true if promoted. */
+  promote: () => boolean;
+  /** Spend money (respects the cheat). Returns false if you can't afford it. */
+  spend: (amount: number) => boolean;
   buyGear: (id: GearId) => void;
   collectBlueprint: (id: string) => void;
   goatHome: (id: string) => void;
@@ -101,6 +148,14 @@ const initial = () => ({
   elephant: "none" as ElephantQuest,
   delivery: null as Delivery | null,
   deliveries: 0,
+  car: "truck" as VehicleId,
+  unlimited: false,
+  account: { ...OPEN_ACCOUNT },
+  outfit: { ...OUTFITS.player } as Outfit,
+  boost: null as { kind: BoostKind; until: number } | null,
+  panel: null as PanelId | null,
+  job: null as Job | null,
+  office: { tasks: 0, rank: 0, met: [] as StaffId[] },
   prompt: null,
   toasts: [] as Toast[],
   showHelp: true,
@@ -123,8 +178,10 @@ export const useGame = create<GameState>((set, get) => ({
   pay: (amount, why) => {
     if (amount <= 0) return;
     sfx("cash");
-    set((s) => ({ cash: s.cash + amount, earned: s.earned + amount }));
-    get().toast(`+${money(amount)} · ${why}`, "cash");
+    // Part of every payment repays the loan, if you have one.
+    const { toWallet, toLoan, account } = splitPay(get().account, amount);
+    set((s) => ({ cash: s.cash + toWallet, earned: s.earned + amount, account }));
+    get().toast(`+${money(amount)} · ${why}${toLoan > 0 ? ` (${money(toLoan)} to your loan)` : ""}`, "cash");
   },
 
   toast: (text, tone = "info") => {
@@ -248,16 +305,16 @@ export const useGame = create<GameState>((set, get) => ({
 
   buyGear: (id) => {
     const s = get();
-    const check = canBuy(s.cash, s.owned, id);
+    const check = canBuy(s.cash, s.owned, id, s.unlimited);
     if (!check.ok) {
       sfx("bad");
       get().toast(check.reason ?? "Can't buy that yet");
       return;
     }
-    const next = buy(s.cash, s.owned, id);
+    const next = buy(s.cash, s.owned, id, s.unlimited);
     sfx("fanfare");
-    set({ cash: next.cash, owned: next.owned });
-    get().toast(`${GEAR[id].name} bought. Press ${GEAR[id].key} to use it.`);
+    set({ cash: next.cash, owned: next.owned, ...(isVehicle(id) ? { car: id } : {}) });
+    get().toast(isVehicle(id) ? `${GEAR[id].name} bought. It's waiting on the Ridge Motors forecourt; press 2 to drive it.` : `${GEAR[id].name} bought. Press ${GEAR[id].key} to use it.`);
     // "Buy the jetpack" story step completes itself.
     const step = currentStep(get().progress);
     if (step?.kind === "own" && step.gear === id) get().completeStep();
@@ -284,6 +341,116 @@ export const useGame = create<GameState>((set, get) => ({
   toggleHelp: () => set((s) => ({ showHelp: !s.showHelp })),
 
   keepExploring: () => set({ phase: "playing" }),
+
+  selectCar: (id) => set({ car: id }),
+
+  toggleCheat: () => {
+    const on = !get().unlimited;
+    set({ unlimited: on });
+    sfx(on ? "fanfare" : "switch");
+    get().toast(on ? "Cheat on: unlimited money." : "Cheat off.");
+  },
+
+  spend: (amount) => {
+    const s = get();
+    if (s.unlimited) return true;
+    if (s.cash < amount) {
+      sfx("bad");
+      get().toast(`You need ${money(amount - s.cash)} more`);
+      return false;
+    }
+    set({ cash: s.cash - amount });
+    return true;
+  },
+
+  setPanel: (panel) => set({ panel, prompt: null }),
+
+  startJob: (kind, kitchen) => set({ job: { kind, kitchen, seed: Math.floor(Math.random() * 1e9) } }),
+
+  finishJob: (amount, why, done = true) => {
+    const job = get().job;
+    set({ job: null });
+    if (!job) return;
+    if (done && job.kind !== "orders") set((s) => ({ office: { ...s.office, tasks: s.office.tasks + 1 } }));
+    if (amount > 0) get().pay(amount, why);
+    const o = get().office;
+    if (job.kind !== "orders" && earnedRank(o.tasks) > o.rank) get().toast("You've earned a promotion. Go and see Daniel.");
+  },
+
+  bankDeposit: (amount) => {
+    const s = get();
+    const r = deposit(s.unlimited ? Math.max(s.cash, amount) : s.cash, s.account, amount);
+    set({ cash: s.unlimited ? s.cash : r.cash, account: r.account });
+    sfx("blip");
+  },
+  bankWithdraw: (amount) => {
+    const s = get();
+    const r = withdraw(s.cash, s.account, amount);
+    set({ cash: r.cash, account: r.account });
+    sfx("cash");
+  },
+  bankBorrow: (amount) => {
+    const s = get();
+    const r = borrow(s.cash, s.account, s.earned, amount);
+    if (r.borrowed <= 0) {
+      sfx("bad");
+      get().toast("The bank can't lend you more yet. Earn more, or pay down your loan.");
+      return;
+    }
+    set({ cash: r.cash, account: r.account });
+    sfx("cash");
+    get().toast(`Borrowed ${money(r.borrowed)}. You owe ${money(r.account.owed)}.`);
+  },
+  bankRepay: (amount) => {
+    const s = get();
+    const r = repay(s.unlimited ? Math.max(s.cash, amount) : s.cash, s.account, amount);
+    set({ cash: s.unlimited ? s.cash : r.cash, account: r.account });
+    sfx("blip");
+    if (r.account.owed === 0 && s.account.owed > 0) get().toast("Loan paid off.");
+  },
+  tickBank: (now) => {
+    const { account, interest } = accrue(get().account, now);
+    if (account === get().account) return;
+    set({ account });
+    if (interest > 0) get().toast(`Savings interest +${money(interest)}`, "cash");
+  },
+
+  buyMeal: (kitchen, now) => {
+    const meal = MEALS[kitchen];
+    if (!get().spend(meal.price)) return;
+    sfx("pickup");
+    set({ boost: { kind: meal.boost, until: now + BOOST_SECONDS } });
+    get().toast(`${meal.name}: ${meal.blurb}`);
+  },
+  tickBoost: (now) => {
+    const b = get().boost;
+    if (b && now >= b.until) {
+      set({ boost: null });
+      get().toast(b.kind === "run" ? "Your energy boost has worn off." : "Your jetpack boost has worn off.");
+    }
+  },
+
+  setOutfit: (outfit, cost) => {
+    if (cost > 0 && !get().spend(cost)) return;
+    set({ outfit });
+    sfx("fanfare");
+    get().toast(cost > 0 ? `New look: ${money(cost)}. Looking sharp.` : "New look saved.");
+  },
+
+  meetStaff: (id) => {
+    if (get().office.met.includes(id)) return;
+    set((s) => ({ office: { ...s.office, met: [...s.office.met, id] } }));
+  },
+
+  promote: () => {
+    const o = get().office;
+    const next = earnedRank(o.tasks);
+    if (next <= o.rank) return false;
+    set({ office: { ...o, rank: next } });
+    sfx("fanfare");
+    get().toast(`Promoted to ${RANKS[next].title}. Desk work now pays ×${RANKS[next].pay}.`);
+    return true;
+  },
 }));
 
 /** Title and chapter of the active mission, for the HUD. */
