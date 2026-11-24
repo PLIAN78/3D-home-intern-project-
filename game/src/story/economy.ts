@@ -5,7 +5,7 @@ import { VEHICLE_IDS } from "../sim/vehicle";
 export type GearId = VehicleId | "horse" | "jetpack" | "heli" | "elephant";
 
 /** What the player is using: on foot, or one piece of gear. */
-export type ModeId = "walk" | GearId;
+export type ModeId = "walk" | "boat" | GearId;
 
 /** Hotbar slots. "car" is whichever of your cars is selected (press 2 again to switch). */
 export type SlotId = "walk" | "car" | "horse" | "jetpack" | "heli" | "elephant";
@@ -36,6 +36,7 @@ export const GEAR: Record<GearId, Gear> = {
   jetpack: { id: "jetpack", name: "SkyHopper jetpack", price: 3000, seller: "garage", key: "4", blurb: "Hold Space to fly. Refuels whenever you land." },
   heli: { id: "heli", name: "Skylark helicopter", price: 6500, seller: "garage", key: "5", blurb: "Space to climb, Shift to descend, W/S to fly, A/D to turn." },
   elephant: { id: "elephant", name: "Peanut the elephant", price: null, seller: "none", key: "6", blurb: "Find her in the hills for Rosa. Slow, strong, unstoppable." },
+  bus: { id: "bus", name: "School bus", price: null, seller: "none", key: "", blurb: "The school lends it for the co-op student run." },
 };
 
 /** Gear Garage stock (at the Sales Centre), in display order. */
@@ -48,11 +49,12 @@ export const DEALER_ORDER: VehicleId[] = VEHICLE_IDS.filter((id) => GEAR[id].sel
 export const HOTBAR_ORDER: SlotId[] = ["walk", "car", "horse", "jetpack", "heli", "elephant"];
 
 export function isVehicle(id: GearId | ModeId): id is VehicleId {
-  return (VEHICLE_IDS as string[]).includes(id);
+  return (VEHICLE_IDS as string[]).includes(id) || id === "bus";
 }
 
 /** The hotbar slot a mode belongs to. */
-export function slotOf(mode: ModeId): SlotId {
+export function slotOf(mode: ModeId): SlotId | null {
+  if (mode === "boat" || mode === "bus") return null;
   return isVehicle(mode) ? "car" : mode;
 }
 
@@ -75,6 +77,7 @@ export const STARTING_OWNED: Owned = {
   jetpack: false,
   heli: false,
   elephant: false,
+  bus: false,
 };
 
 /** Pay for side jobs. */

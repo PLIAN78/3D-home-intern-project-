@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { logs, metricBox, seamRoof } from "../render/architecture";
 import { glass, groundAsphalt, groundDirt, lumber, mat } from "../render/materials";
-import { COTTAGE, COTTAGE_Y, groundAt, HILL_ROAD, HILL_ROAD_LENGTH, HILL_ROAD_WIDTH, roadPointAt } from "./terrain";
+import { COTTAGE, COTTAGE_ROAD, COTTAGE_Y, COUNTRY_ROADS, groundAt, type CountryRoad } from "./terrain";
 import { B } from "./props";
 
 /**
@@ -16,16 +16,16 @@ import { B } from "./props";
 const ALONG = 2;
 const ACROSS = [-1, -0.5, 0, 0.5, 1];
 
-/** A ribbon following the road, `half` metres either side of the centre line, draped on the ground. */
-function ribbon(half: number, lift: number, from = 0, to = HILL_ROAD_LENGTH) {
+/** A ribbon following a road, `half` metres either side of the centre line, draped on the ground. */
+function ribbon(road: CountryRoad, half: number, lift: number, from = 0, to = road.length) {
   const pos: number[] = [];
   const idx: number[] = [];
   const n = Math.ceil((to - from) / ALONG);
   for (let i = 0; i <= n; i++) {
     const s = Math.min(to, from + i * ALONG);
-    const a = roadPointAt(Math.max(0, s - 3));
-    const b = roadPointAt(Math.min(HILL_ROAD_LENGTH, s + 3));
-    const c = roadPointAt(s);
+    const a = road.pointAt(Math.max(0, s - 3));
+    const b = road.pointAt(Math.min(road.length, s + 3));
+    const c = road.pointAt(s);
     const len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
     const nx = -(b.z - a.z) / len;
     const nz = (b.x - a.x) / len;
@@ -49,13 +49,13 @@ function ribbon(half: number, lift: number, from = 0, to = HILL_ROAD_LENGTH) {
   return g;
 }
 
-/** Dashed centre line (and solid white edge lines) along the road. */
-function markings() {
+/** Dashed centre line (and solid white edge lines) along a road. */
+function markings(road: CountryRoad) {
   const parts: THREE.BufferGeometry[] = [];
   const edges: THREE.BufferGeometry[] = [];
-  for (let s = 8; s < HILL_ROAD_LENGTH - 6; s += 1.5) {
-    const p = roadPointAt(s);
-    const q = roadPointAt(s + 1.5);
+  for (let s = 8; s < road.length - 6; s += 1.5) {
+    const p = road.pointAt(s);
+    const q = road.pointAt(s + 1.5);
     const ang = Math.atan2(q.z - p.z, q.x - p.x);
     const nx = -Math.sin(ang);
     const nz = Math.cos(ang);
@@ -68,8 +68,8 @@ function markings() {
       parts.push(g);
     }
     for (const side of [-1, 1]) {
-      const ex = p.x + nx * side * (HILL_ROAD_WIDTH / 2 - 0.35);
-      const ez = p.z + nz * side * (HILL_ROAD_WIDTH / 2 - 0.35);
+      const ex = p.x + nx * side * (road.width / 2 - 0.35);
+      const ez = p.z + nz * side * (road.width / 2 - 0.35);
       const g = new THREE.PlaneGeometry(1.6, 0.11);
       g.rotateX(-Math.PI / 2);
       g.rotateY(-ang);
@@ -80,14 +80,26 @@ function markings() {
   return { centre: mergeGeometries(parts, false), edges: mergeGeometries(edges, false) };
 }
 
-export function HillRoad() {
-  const geo = useMemo(() => ({ road: ribbon(HILL_ROAD_WIDTH / 2, 0.06), shoulder: ribbon(HILL_ROAD_WIDTH / 2 + 1.4, 0.035), lines: markings() }), []);
+/** One country road: gravel shoulders, asphalt and paint. */
+function CountryRoadMesh({ road }: { road: CountryRoad }) {
+  const geo = useMemo(() => ({ road: ribbon(road, road.width / 2, 0.06), shoulder: ribbon(road, road.width / 2 + 1.4, 0.035), lines: markings(road) }), [road]);
   return (
-    <group name="HillRoad">
+    <group name={road.name}>
       <mesh geometry={geo.shoulder} material={groundDirt()} receiveShadow />
       <mesh geometry={geo.road} material={groundAsphalt()} receiveShadow />
       {geo.lines.centre && <mesh geometry={geo.lines.centre} material={mat("#e9b62a", { rough: 0.6 })} />}
       {geo.lines.edges && <mesh geometry={geo.lines.edges} material={mat("#eeeeea", { rough: 0.6 })} />}
+    </group>
+  );
+}
+
+/** Cottage Road, Lake Road and Owawa Road. */
+export function CountryRoads() {
+  return (
+    <group name="CountryRoads">
+      {COUNTRY_ROADS.map((r) => (
+        <CountryRoadMesh key={r.name} road={r} />
+      ))}
     </group>
   );
 }
@@ -251,7 +263,7 @@ function Shelter() {
 /** Split-rail fence around the yard, a gravel turnaround and a mailbox at the end of the road. */
 function Yard() {
   const [cx, cz] = COTTAGE.position;
-  const end = HILL_ROAD[HILL_ROAD.length - 1];
+  const end = COTTAGE_ROAD.points[COTTAGE_ROAD.points.length - 1];
   const rails = useMemo(() => {
     const parts: THREE.BufferGeometry[] = [];
     const R = 25;
@@ -288,7 +300,7 @@ function Yard() {
 export function CottageScene() {
   return (
     <group name="CottageScene">
-      <HillRoad />
+      <CountryRoads />
       <Cottage />
       <Shelter />
       <Yard />

@@ -1,7 +1,10 @@
 import type { Collider, EventQueue, RigidBody, World } from "@dimforge/rapier3d-compat";
 import type { StageId } from "@/lib/models/construction";
 import { collisionBoxes, FLAT_GROUND_HALF, LANDMARKS, ROAD, TOWER, TRAFFIC_LOOPS, WALK_LOOPS, type Box } from "../world/map";
-import { PLAY_HALF, TERRAIN_STEP, terrainHeight } from "../world/terrain";
+import { CITY_Y, inLake, LAKE, LAKE_Y, PLAY_HALF, TERRAIN_STEP, terrainHeight } from "../world/terrain";
+import { CITY_TRAFFIC, CITY_WALKS } from "../world/owawa";
+import { BOAT_SPOT, deckAt } from "../world/lake";
+import { BoatController } from "./boat";
 import { AnimalController, ANIMALS, type AnimalId } from "./animal";
 import { Breakables, BREAK_SPEED, type BreakEvent, type TreeInput } from "./breakables";
 import { CharacterController, JETPACK, NO_INTENT, type MoveIntent } from "./character";
@@ -12,7 +15,7 @@ import { Town, type Obstacle } from "./town";
 import { PARKED, VEHICLES, VehicleController, type VehicleId } from "./vehicle";
 
 /** Who the player is controlling right now. */
-export type Control = { kind: "foot" } | { kind: "vehicle"; id: VehicleId } | { kind: "animal"; id: AnimalId } | { kind: "heli" };
+export type Control = { kind: "foot" } | { kind: "vehicle"; id: VehicleId } | { kind: "animal"; id: AnimalId } | { kind: "heli" } | { kind: "boat" };
 
 /** One frame of player input; the simulation routes it to whatever is being controlled. */
 export interface SimInput extends MoveIntent {
@@ -25,7 +28,8 @@ export const IDLE_INPUT: SimInput = { ...NO_INTENT, handbrake: false };
 export type SimEvent =
   | BreakEvent
   | { kind: "landed-hard"; x: number; z: number; speed: number }
-  | { kind: "crash"; id: VehicleId; speed: number };
+  | { kind: "crash"; id: VehicleId; speed: number }
+  | { kind: "sunk"; id: VehicleId };
 
 /** What the camera, HUD and story follow: the player, or what they're driving, riding or flying. */
 export interface Focus {
@@ -56,7 +60,7 @@ const MAX_STEPS = 8;
 export const BOARD_RANGE = 4;
 
 /** Something you can get in or on. */
-export type Ride = { kind: "vehicle"; id: VehicleId } | { kind: "animal"; id: AnimalId } | { kind: "heli" };
+export type Ride = { kind: "vehicle"; id: VehicleId } | { kind: "animal"; id: AnimalId } | { kind: "heli" } | { kind: "boat" };
 
 export interface SimOptions {
   stages: Record<string, StageId>;
@@ -78,8 +82,12 @@ export class Simulation {
   readonly vehicles: Partial<Record<VehicleId, VehicleController>> = {};
   readonly animals: Partial<Record<AnimalId, AnimalController>> = {};
   heli: HelicopterController | null = null;
+  /** The Heron Lake motorboat (always there, free to use). */
+  readonly boat: BoatController;
   readonly breakables: Breakables;
   readonly town: Town | null;
+  /** Downtown Owawa's traffic and people. */
+  readonly cityTown: Town | null;
   control: Control = { kind: "foot" };
   readonly events: SimEvent[] = [];
   time = 0;
@@ -124,6 +132,13 @@ export class Simulation {
       [0, -H - 1, H + 2, 1],
     ])
       add(R.ColliderDesc.cuboid(hx, 200, hz).setTranslation(x, 100, z));
+    // Heron Lake: a floor a little under the surface that only people and animals stand on (they wade); vehicles sink.
+    this.world.createCollider(
+      R.ColliderDesc.cuboid(LAKE.rx, 0.1, LAKE.rz)
+        .setTranslation(LAKE.centre[0], LAKE_Y - 1.2, LAKE.centre[1])
+        .setCollisionGroups(groups(LAYER.WATER, LAYER.PLAYER | LAYER.ANIMAL)),
+      this.staticBody,
+    );
     // The water tank: a drum you can land on (its deck) and stand under.
     const [tx, tz] = LANDMARKS.tower.position;
     const tankHalf = (TOWER.deckY - TOWER.tankBottom) / 2;
@@ -135,6 +150,8 @@ export class Simulation {
     const [sx, sz] = opts.spawn.position;
     this.player = new CharacterController(R, this.world, sx, sz, opts.spawn.heading);
     this.town = opts.town ? new Town(R, this.world, TRAFFIC_LOOPS, WALK_LOOPS, { carsPerLoop: [3, 3, 2, 5, 2], walkersPerLoop: 3, laneOffset: ROAD.width / 4 }) : null;
+    this.cityTown = opts.town ? new Town(R, this.world, CITY_TRAFFIC, CITY_WALKS, { carsPerLoop: [4, 3], walkersPerLoop: 4, laneOffset: ROAD.width / 4, y: CITY_Y }) : null;
+    this.boat = new BoatController(R, this.world, BOAT_SPOT.at[0], BOAT_SPOT.at[1], BOAT_SPOT.heading, LAKE_Y);
   }
 
   /** Rebuilds house colliders for new construction stages (framing lots become breakable frames). */
@@ -216,6 +233,7 @@ export class Simulation {
     // Big animals are climbed from a little further away (Peanut kneels for you).
     for (const [id, a] of Object.entries(this.animals) as [AnimalId, AnimalController][]) consider({ kind: "animal", id }, Math.hypot(a.x - p.x, a.z - p.z) - a.spec.radius * 1.6 - 0.4);
     if (this.heli) consider({ kind: "heli" }, Math.hypot(this.heli.x - p.x, this.heli.z - p.z) - 2);
+    consider({ kind: "boat" }, Math.hypot(this.boat.x - p.x, this.boat.z - p.z) - 2.4);
     return best;
   }
 
@@ -227,7 +245,7 @@ export class Simulation {
     if (r.kind === "heli" && !this.heli) return false;
     this.player.jetpack = false;
     this.player.setActive(false);
-    this.control = r.kind === "vehicle" ? { kind: "vehicle", id: r.id } : r.kind === "animal" ? { kind: "animal", id: r.id } : { kind: "heli" };
+    this.control = r.kind === "vehicle" ? { kind: "vehicle", id: r.id } : r.kind === "animal" ? { kind: "animal", id: r.id } : r.kind === "boat" ? { kind: "boat" } : { kind: "heli" };
     return true;
   }
 
@@ -243,6 +261,7 @@ export class Simulation {
   exit() {
     const c = this.control;
     if (c.kind === "foot") return false;
+    if (c.kind === "boat") return this.exitBoat();
     let origin: Vec3;
     let heading: number;
     let sides: Vec3[];
@@ -278,11 +297,32 @@ export class Simulation {
     return true;
   }
 
-  /** Is there room to stand at (x, z)? */
-  isFree(x: number, z: number) {
+  /** Steps ashore (or onto a jetty) from the boat, if there's dry footing close by. */
+  private exitBoat() {
+    const b = this.boat;
+    for (const dist of [2.6, 3.6, 4.8, 6]) {
+      for (let k = 0; k < 8; k++) {
+        const a = b.heading + Math.PI / 2 + (k * Math.PI) / 4;
+        const x = b.x + Math.cos(a) * dist;
+        const z = b.z + Math.sin(a) * dist;
+        const ground = deckAt(x, z) ?? terrainHeight(x, z);
+        if (ground < LAKE_Y + 0.15 || !this.isFree(x, z, ground)) continue;
+        b.speed = 0;
+        this.player.setActive(true);
+        this.player.place(x, z, ground, b.heading);
+        this.control = { kind: "foot" };
+        this.snapshot();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Is there room to stand at (x, z), on ground at height y (the terrain by default)? */
+  isFree(x: number, z: number, y = terrainHeight(x, z)) {
     let hit = false;
     this.world.intersectionsWithShape(
-      { x, y: terrainHeight(x, z) + 0.95, z },
+      { x, y: y + 0.95, z },
       { x: 0, y: 0, z: 0, w: 1 },
       new this.R.Capsule(0.55, 0.36),
       () => {
@@ -347,6 +387,7 @@ export class Simulation {
       if (y > 0) v.body.setTranslation({ x, y: ground + y + 1, z }, true);
     } else if (c.kind === "animal") this.animals[c.id]!.place(x, z, heading, ground + y);
     else if (c.kind === "heli") this.heli!.place(x, z, heading, ground + y);
+    else if (c.kind === "boat") this.boat.place(x, z, heading);
     else this.player.place(x, z, ground + y, heading);
     this.snapshot();
   }
@@ -375,10 +416,20 @@ export class Simulation {
     }
     for (const [id, a] of Object.entries(this.animals) as [AnimalId, AnimalController][]) a.step(dt, c.kind === "animal" && c.id === id ? input : null);
     if (this.heli) this.heli.step(dt, c.kind === "heli" ? { forward: input.forward, side: input.side, up: input.jumpHeld, down: input.sprint } : null);
+    this.boat.step(dt, c.kind === "boat" ? input : null);
     if (c.kind === "foot") this.player.step(dt, input);
     else this.syncRider();
 
-    if (this.town) this.town.step(dt, this.obstacles());
+    if (this.town || this.cityTown) {
+      const obstacles = this.obstacles();
+      this.town?.step(dt, obstacles);
+      this.cityTown?.step(dt, obstacles);
+    }
+    // A car driven into the lake sinks; the game tows it out.
+    for (const [id, v] of Object.entries(this.vehicles) as [VehicleId, VehicleController][]) {
+      const t = v.position;
+      if (t.y < LAKE_Y - 1.4 && inLake(t.x, t.z)) this.events.push({ kind: "sunk", id });
+    }
 
     this.world.step(this.queue);
     this.time += dt;
@@ -459,6 +510,7 @@ export class Simulation {
       src = { x: t.x, y: Math.max(0, t.y - 1), z: t.z, heading: v.heading };
     } else if (c.kind === "animal") src = this.animals[c.id]!;
     else if (c.kind === "heli" && this.heli) src = this.heli;
+    else if (c.kind === "boat") src = { x: this.boat.x, y: this.boat.y, z: this.boat.z, heading: this.boat.heading };
     if (src) {
       p.x = src.x;
       p.y = src.y;
@@ -486,6 +538,10 @@ export class Simulation {
       const h = this.heli;
       return { ...base, x: h.x, y: h.y, z: h.z, heading: h.heading, speed: h.speed, vy: h.vel.y, grounded: h.grounded };
     }
+    if (c.kind === "boat") {
+      const b = this.boat;
+      return { ...base, x: b.x, y: b.y, z: b.z, heading: b.heading, speed: b.speed, vy: 0, grounded: true };
+    }
     return { x: p.x, y: p.y, z: p.z, heading: p.heading, speed: p.speed, vy: p.vel.y, grounded: p.grounded, fuel: p.jetpack ? p.fuel : 0, fuelMax: p.jetpack ? JETPACK.fuel : 0, thrusting: p.thrusting, control: c };
   }
 
@@ -496,11 +552,13 @@ export class Simulation {
     for (const id of Object.keys(this.animals)) this.prev.set(id, this.rawPose(id));
     for (const id of Object.keys(this.vehicles)) this.prev.set(id, this.rawPose(id));
     if (this.heli) this.prev.set("heli", this.rawPose("heli"));
+    if (this.boat) this.prev.set("boat", this.rawPose("boat"));
   }
 
   private rawPose(name: string): Pose {
     if (name === "player") return { x: this.player.x, y: this.player.y, z: this.player.z, q: quatFromHeading(this.player.heading) };
     if (name === "heli" && this.heli) return { x: this.heli.x, y: this.heli.y, z: this.heli.z, q: quatFromHeading(this.heli.heading) };
+    if (name === "boat") return { x: this.boat.x, y: this.boat.y, z: this.boat.z, q: quatFromHeading(this.boat.heading) };
     const a = this.animals[name as AnimalId];
     if (a) return { x: a.x, y: a.y, z: a.z, q: quatFromHeading(a.heading) };
     const v = this.vehicles[name as VehicleId];
@@ -522,7 +580,7 @@ export class Simulation {
   /** Name of what the player is controlling, for pose() and the camera. */
   focusName(): string {
     const c = this.control;
-    return c.kind === "vehicle" || c.kind === "animal" ? c.id : c.kind === "heli" ? "heli" : "player";
+    return c.kind === "vehicle" || c.kind === "animal" ? c.id : c.kind === "heli" || c.kind === "boat" ? c.kind : "player";
   }
 
   /** Free distance from `from` toward `to` before hitting solid world (for the camera). */

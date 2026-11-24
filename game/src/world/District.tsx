@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import { brick, metricBox, panel, shopGlass } from "../render/architecture";
 import { Decal } from "../render/decal";
-import { carPaint, chrome, glass, mat } from "../render/materials";
+import { chrome, mat } from "../render/materials";
 import { CarBody, Wheel } from "../models/vehicles";
-import { LANDMARKS, PARKED_CARS, PAVED, SCHOOL_BUS } from "./map";
+import { LANDMARKS, PARKED_CARS, PAVED } from "./map";
 import { B, ParkingLot, Windows } from "./props";
 
 /**
@@ -111,38 +111,6 @@ function track(straight: number, rOuter: number, rInner: number) {
   return g;
 }
 
-function SchoolBus({ at, heading }: { at: [number, number]; heading: number }) {
-  const yellow = carPaint("#f2b01e");
-  return (
-    <group position={[at[0], 0, at[1]]} rotation={[0, -heading, 0]}>
-      <mesh position={[0, 1.75, 0]} material={yellow} castShadow receiveShadow>
-        <boxGeometry args={[10.5, 2.5, 2.45]} />
-      </mesh>
-      <mesh position={[5.75, 1.15, 0]} material={yellow} castShadow>
-        <boxGeometry args={[1.2, 1.3, 2.35]} />
-      </mesh>
-      <B size={[10.6, 0.12, 2.5]} position={[0, 1.25, 0]} color="#1b1c1f" cast={false} />
-      <B size={[10.6, 0.12, 2.5]} position={[0, 2.05, 0]} color="#1b1c1f" cast={false} />
-      {[1, -1].map((side) => (
-        <mesh key={side} position={[0.3, 2.45, side * 1.235]} material={glass("#1a2026")}>
-          <boxGeometry args={[9, 0.75, 0.02]} />
-        </mesh>
-      ))}
-      <mesh position={[5.27, 2.4, 0]} material={glass("#1a2026")}>
-        <boxGeometry args={[0.02, 0.9, 2.2]} />
-      </mesh>
-      <B size={[0.2, 0.35, 2.5]} position={[6.4, 0.75, 0]} color="#1b1c1f" />
-      {[4.1, -3.2].map((wx) =>
-        [1, -1].map((side) => (
-          <group key={`${wx}${side}`} position={[wx, 0.52, side * 1.08]}>
-            <Wheel radius={0.52} side={side as 1 | -1} width={0.34} rimColor="#d8dbe0" />
-          </group>
-        )),
-      )}
-    </group>
-  );
-}
-
 function School() {
   const [x, z] = LANDMARKS.school.position;
   const [w, d, h] = LANDMARKS.school.size;
@@ -203,7 +171,6 @@ function School() {
         ))}
       </group>
       {parking && <ParkingLot x0={parking.x0} z0={parking.z0} x1={parking.x1} z1={parking.z1} rows={[parking.z0 + 4, parking.z1 - 4]} />}
-      <SchoolBus at={[SCHOOL_BUS.x, SCHOOL_BUS.z]} heading={SCHOOL_BUS.heading} />
     </group>
   );
 }

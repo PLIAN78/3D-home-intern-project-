@@ -62,8 +62,108 @@ export function naturalHeight(x: number, z: number) {
 export const COTTAGE: { position: P2; heading: number } = { position: [-720, 662], heading: Math.PI * 0.25 };
 export const ELEPHANT_SPOT: P2 = [-830, 455];
 
+/** Heron Lake in the north-west hills: an ellipse with an island in the middle. */
+export const LAKE = { centre: [-690, -650] as P2, rx: 190, rz: 150, island: 28 };
+/** Where Lake Road meets the shore, and the jetty out into the water. */
+export const DOCK_LAND: P2 = [-556, -529];
+
+/** Owawa: a downtown on a levelled plateau in the north-east hills. */
+export const OWAWA = { centre: [690, -660] as P2, half: 175 };
+
+const PROFILE_STEP = 6;
+const MAX_GRADE = 0.11;
+
+/**
+ * A two-lane country road out of town: a polyline with a smoothed height
+ * profile that never gets steeper than 11 %, flat where it leaves the
+ * community. The terrain is graded to it, so it's drivable everywhere.
+ */
+export class CountryRoad {
+  readonly length: number;
+  private readonly pts: { x: number; z: number; s: number }[];
+  private readonly h: number[];
+  constructor(
+    readonly name: string,
+    readonly points: P2[],
+    readonly width = 7,
+  ) {
+    const pts: { x: number; z: number; s: number }[] = [];
+    let s = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      const [ax, az] = points[i];
+      const [bx, bz] = points[i + 1];
+      const L = Math.hypot(bx - ax, bz - az);
+      const n = Math.max(1, Math.round(L / PROFILE_STEP));
+      for (let k = 0; k < n; k++) pts.push({ x: ax + ((bx - ax) * k) / n, z: az + ((bz - az) * k) / n, s: s + (L * k) / n });
+      s += L;
+    }
+    const last = points[points.length - 1];
+    pts.push({ x: last[0], z: last[1], s });
+    let h = pts.map((p) => naturalHeight(p.x, p.z));
+    for (let pass = 0; pass < 40; pass++) h = h.map((v, i) => (i === 0 ? 0 : i === h.length - 1 ? v : (h[i - 1] + v * 2 + h[i + 1]) / 4));
+    // Level where the road leaves town (the community ground is exactly flat).
+    pts.forEach((p, i) => {
+      if (Math.max(Math.abs(p.x), Math.abs(p.z)) < FLAT_HALF) h[i] = 0;
+    });
+    for (let i = 1; i < h.length; i++) h[i] = Math.min(h[i], h[i - 1] + MAX_GRADE * PROFILE_STEP);
+    for (let i = h.length - 2; i >= 0; i--) h[i] = Math.min(h[i], h[i + 1] + MAX_GRADE * PROFILE_STEP);
+    h[0] = 0;
+    this.pts = pts;
+    this.h = h;
+    this.length = s;
+  }
+
+  /** Height at the far end (where the road arrives). */
+  get endHeight() {
+    return this.h[this.h.length - 1];
+  }
+
+  /** Nearest point on the road: distance from its centre line, and how far along it is (m). */
+  nearest(x: number, z: number) {
+    let best = { d: Infinity, s: 0 };
+    let s0 = 0;
+    for (let i = 0; i < this.points.length - 1; i++) {
+      const [ax, az] = this.points[i];
+      const [bx, bz] = this.points[i + 1];
+      const dx = bx - ax;
+      const dz = bz - az;
+      const L2 = dx * dx + dz * dz;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2));
+      const d = Math.hypot(x - (ax + dx * t), z - (az + dz * t));
+      if (d < best.d) best = { d, s: s0 + Math.sqrt(L2) * t };
+      s0 += Math.sqrt(L2);
+    }
+    return best;
+  }
+
+  /** Road surface height at distance `s` along it. */
+  heightAt(s: number) {
+    const i = Math.min(this.h.length - 2, Math.max(0, Math.floor(s / PROFILE_STEP)));
+    const a = this.pts[i];
+    const b = this.pts[i + 1];
+    const t = Math.min(1, Math.max(0, (s - a.s) / Math.max(1e-6, b.s - a.s)));
+    return this.h[i] + (this.h[i + 1] - this.h[i]) * t;
+  }
+
+  /** A point along the road, with its direction. */
+  pointAt(s: number): { x: number; z: number; heading: number } {
+    let s0 = 0;
+    for (let i = 0; i < this.points.length - 1; i++) {
+      const [ax, az] = this.points[i];
+      const [bx, bz] = this.points[i + 1];
+      const L = Math.hypot(bx - ax, bz - az);
+      if (s <= s0 + L || i === this.points.length - 2) {
+        const t = Math.min(1, Math.max(0, (s - s0) / L));
+        return { x: ax + (bx - ax) * t, z: az + (bz - az) * t, heading: Math.atan2(bz - az, bx - ax) };
+      }
+      s0 += L;
+    }
+    return { x: this.points[0][0], z: this.points[0][1], heading: 0 };
+  }
+}
+
 /** Cottage Road: from the west end of Market Street up into the hills. */
-export const HILL_ROAD: P2[] = [
+export const COTTAGE_ROAD = new CountryRoad("Cottage Road", [
   [-230, 300],
   [-300, 342],
   [-382, 392],
@@ -72,109 +172,91 @@ export const HILL_ROAD: P2[] = [
   [-612, 566],
   [-664, 616],
   [COTTAGE.position[0] + 18, COTTAGE.position[1] - 14],
-];
-export const HILL_ROAD_WIDTH = 7;
+]);
+/** Lake Road: past the goat farm, north-west to the dock on Heron Lake. */
+export const LAKE_ROAD = new CountryRoad("Lake Road", [
+  [-300, -112],
+  [-304, -230],
+  [-350, -330],
+  [-420, -410],
+  [-490, -470],
+  DOCK_LAND,
+]);
+/** Owawa Road: from the east end of Caivan Boulevard up to the city. */
+export const OWAWA_ROAD = new CountryRoad("Owawa Road", [
+  [430, 0],
+  [480, -60],
+  [560, -190],
+  [630, -320],
+  [675, -430],
+  [690, OWAWA.centre[1] + OWAWA.half],
+], 9);
 
-// Road profile: sample the hills along the road, smooth it and cap the grade.
-const PROFILE_STEP = 6;
-const MAX_GRADE = 0.11;
-const profile = (() => {
-  const pts: { x: number; z: number; s: number }[] = [];
-  let s = 0;
-  for (let i = 0; i < HILL_ROAD.length - 1; i++) {
-    const [ax, az] = HILL_ROAD[i];
-    const [bx, bz] = HILL_ROAD[i + 1];
-    const L = Math.hypot(bx - ax, bz - az);
-    const n = Math.max(1, Math.round(L / PROFILE_STEP));
-    for (let k = 0; k < n; k++) {
-      const t = k / n;
-      pts.push({ x: ax + (bx - ax) * t, z: az + (bz - az) * t, s: s + L * t });
-    }
-    s += L;
-  }
-  const last = HILL_ROAD[HILL_ROAD.length - 1];
-  pts.push({ x: last[0], z: last[1], s });
-  let h = pts.map((p) => naturalHeight(p.x, p.z));
-  for (let pass = 0; pass < 40; pass++) h = h.map((v, i) => (i === 0 ? 0 : i === h.length - 1 ? v : (h[i - 1] + v * 2 + h[i + 1]) / 4));
-  // Level where the road leaves town (the community ground is exactly flat).
-  pts.forEach((p, i) => {
-    if (Math.max(Math.abs(p.x), Math.abs(p.z)) < FLAT_HALF) h[i] = 0;
-  });
-  // Never steeper than MAX_GRADE, in either direction.
-  for (let i = 1; i < h.length; i++) h[i] = Math.min(h[i], h[i - 1] + MAX_GRADE * PROFILE_STEP);
-  for (let i = h.length - 2; i >= 0; i--) h[i] = Math.min(h[i], h[i + 1] + MAX_GRADE * PROFILE_STEP);
-  h[0] = 0;
-  return { pts, h, length: s };
-})();
+export const COUNTRY_ROADS = [COTTAGE_ROAD, LAKE_ROAD, OWAWA_ROAD];
 
-export const HILL_ROAD_LENGTH = profile.length;
+// Older names for Cottage Road, used around the code.
+export const HILL_ROAD = COTTAGE_ROAD.points;
+export const HILL_ROAD_WIDTH = COTTAGE_ROAD.width;
+export const HILL_ROAD_LENGTH = COTTAGE_ROAD.length;
+export const nearestOnRoad = (x: number, z: number) => COTTAGE_ROAD.nearest(x, z);
+export const roadHeightAt = (s: number) => COTTAGE_ROAD.heightAt(s);
+export const roadPointAt = (s: number) => COTTAGE_ROAD.pointAt(s);
 
-/** Nearest point on the road: distance from its centre line, and how far along it is (m). */
-export function nearestOnRoad(x: number, z: number) {
-  let best = { d: Infinity, s: 0 };
-  let s0 = 0;
-  for (let i = 0; i < HILL_ROAD.length - 1; i++) {
-    const [ax, az] = HILL_ROAD[i];
-    const [bx, bz] = HILL_ROAD[i + 1];
-    const dx = bx - ax;
-    const dz = bz - az;
-    const L2 = dx * dx + dz * dz;
-    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2));
-    const d = Math.hypot(x - (ax + dx * t), z - (az + dz * t));
-    if (d < best.d) best = { d, s: s0 + Math.sqrt(L2) * t };
-    s0 += Math.sqrt(L2);
+/** The nearest country road to a point, and how far it is. */
+export function nearestCountryRoad(x: number, z: number) {
+  let best = { road: COTTAGE_ROAD, d: Infinity, s: 0 };
+  for (const road of COUNTRY_ROADS) {
+    const n = road.nearest(x, z);
+    if (n.d < best.d) best = { road, ...n };
   }
   return best;
 }
 
-/** Road surface height at distance `s` along it. */
-export function roadHeightAt(s: number) {
-  const i = Math.min(profile.h.length - 2, Math.max(0, Math.floor(s / PROFILE_STEP)));
-  const a = profile.pts[i];
-  const b = profile.pts[i + 1];
-  const t = Math.min(1, Math.max(0, (s - a.s) / Math.max(1e-6, b.s - a.s)));
-  return profile.h[i] + (profile.h[i + 1] - profile.h[i]) * t;
-}
-
-/** A point along the road (for placing things on it). */
-export function roadPointAt(s: number): { x: number; z: number; heading: number } {
-  let s0 = 0;
-  for (let i = 0; i < HILL_ROAD.length - 1; i++) {
-    const [ax, az] = HILL_ROAD[i];
-    const [bx, bz] = HILL_ROAD[i + 1];
-    const L = Math.hypot(bx - ax, bz - az);
-    if (s <= s0 + L || i === HILL_ROAD.length - 2) {
-      const t = Math.min(1, Math.max(0, (s - s0) / L));
-      return { x: ax + (bx - ax) * t, z: az + (bz - az) * t, heading: Math.atan2(bz - az, bx - ax) };
-    }
-    s0 += L;
-  }
-  return { x: HILL_ROAD[0][0], z: HILL_ROAD[0][1], heading: 0 };
-}
-
 const COTTAGE_PAD = 26;
-const cottageHeight = (() => {
-  const end = profile.h[profile.h.length - 1];
-  return end;
-})();
+const cottageHeight = COTTAGE_ROAD.endHeight;
+export const COTTAGE_Y = cottageHeight;
+/** Lake surface: a little below where Lake Road reaches the shore. */
+export const LAKE_Y = LAKE_ROAD.endHeight - 1.6;
+/** Owawa's ground level: where Owawa Road arrives. */
+export const CITY_Y = OWAWA_ROAD.endHeight;
 
-/** Ground height anywhere: hills, with the road and the cottage yard levelled in. */
+/** 0 at the lake's centre, 1 on the shoreline. */
+export function lakeRadius(x: number, z: number) {
+  return Math.hypot((x - LAKE.centre[0]) / LAKE.rx, (z - LAKE.centre[1]) / LAKE.rz);
+}
+
+export function inLake(x: number, z: number) {
+  return lakeRadius(x, z) < 1 && Math.hypot(x - LAKE.centre[0], z - LAKE.centre[1]) > LAKE.island;
+}
+
+/** Ground height anywhere: hills, with the lake, the city, the cottage yard and the roads worked in. */
 export function terrainHeight(x: number, z: number) {
   const r = Math.max(Math.abs(x), Math.abs(z));
   if (r < FLAT_HALF - 4) return 0;
   let h = naturalHeight(x, z);
-  // The cottage yard first, then the road on top, so the drive meets the yard exactly.
+  // Heron Lake: shelving bed, a gentle bank, and the island.
+  const e = lakeRadius(x, z);
+  if (e < 1.4) {
+    // Inside the shoreline the bank keeps falling smoothly, so there's no step at the water's edge.
+    if (e < 1) h = LAKE_Y + 1.2 - Math.min(7.2, (1 - e) * 38);
+    else h += (LAKE_Y + 1.2 - h) * smoothstep(1.4, 1.0, e);
+    const di = Math.hypot(x - LAKE.centre[0], z - LAKE.centre[1]);
+    if (di < LAKE.island * 1.5) h = Math.max(h, LAKE_Y - 2.5 + 6 * smoothstep(LAKE.island * 1.5, LAKE.island * 0.55, di));
+  }
+  // Owawa's plateau.
+  const [ox, oz] = OWAWA.centre;
+  const dq = Math.max(Math.abs(x - ox), Math.abs(z - oz)) - OWAWA.half;
+  if (dq < 45) h += (CITY_Y - h) * smoothstep(45, 0, dq);
+  // The cottage yard, then the roads on top, so each drive meets its end exactly.
   const dc = Math.hypot(x - COTTAGE.position[0], z - COTTAGE.position[1]);
   if (dc < COTTAGE_PAD + 22) h += (cottageHeight - h) * smoothstep(COTTAGE_PAD + 22, COTTAGE_PAD, dc);
-  const road = nearestOnRoad(x, z);
+  const road = nearestCountryRoad(x, z);
   if (road.d < 34) {
-    const k = smoothstep(30, HILL_ROAD_WIDTH / 2 + 2.5, road.d);
-    h += (roadHeightAt(road.s) - h) * k;
+    const k = smoothstep(30, road.road.width / 2 + 2.5, road.d);
+    h += (road.road.heightAt(road.s) - h) * k;
   }
   return h;
 }
-
-export const COTTAGE_Y = cottageHeight;
 
 /** Clearing in the woods where Peanut is grazing. */
 const CLEARING = 26;
@@ -193,12 +275,26 @@ export const HILL_TREES: { position: P2; y: number; scale: number; variant: 0 | 
     const z = (rand(i + 50000) * 2 - 1) * edge;
     if (Math.max(Math.abs(x), Math.abs(z)) < FLAT_HALF + 18) continue;
     if (fbm(x * 0.004 + 7, z * 0.004) < 0.47) continue;
-    if (nearestOnRoad(x, z).d < HILL_ROAD_WIDTH / 2 + 5) continue;
+    if (nearestCountryRoad(x, z).d < 9) continue;
+    if (lakeRadius(x, z) < 1.25) continue;
+    if (Math.max(Math.abs(x - OWAWA.centre[0]), Math.abs(z - OWAWA.centre[1])) < OWAWA.half + 25) continue;
     if (Math.hypot(x - COTTAGE.position[0], z - COTTAGE.position[1]) < 36) continue;
     if (Math.hypot(x - ELEPHANT_SPOT[0], z - ELEPHANT_SPOT[1]) < CLEARING) continue;
     const y = terrainHeight(x, z);
     const conifer = y > 45 || rand(i + 90000) < 0.35;
     out.push({ position: [x, z], y, scale: 0.9 + rand(i + 70000) * 0.7, variant: conifer ? 1 : rand(i + 80000) < 0.5 ? 0 : 2 });
+  }
+  // A few pines and maples on Elias's island, leaving the path to his jetty clear.
+  const [cx, cz] = LAKE.centre;
+  for (let i = 0; i < 11; i++) {
+    const a = i * 2.39996 + 0.4;
+    if (Math.abs(Math.atan2(Math.sin(a - 1.27), Math.cos(a - 1.27))) < 0.55) continue;
+    const r = 5 + ((i * 7.3) % 13);
+    const x = cx + Math.cos(a) * r;
+    const z = cz + Math.sin(a) * r;
+    // Clear of Elias's shack (world/lake.ts LAKE_HUTS).
+    if (Math.hypot(x - (cx - 7), z - (cz - 6)) < 6) continue;
+    out.push({ position: [x, z], y: terrainHeight(x, z), scale: 0.8 + ((i * 0.37) % 0.6), variant: i % 3 === 0 ? 0 : 1 });
   }
   return out;
 })();

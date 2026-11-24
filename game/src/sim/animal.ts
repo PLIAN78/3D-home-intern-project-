@@ -66,7 +66,7 @@ export class AnimalController {
     this.heading = heading;
     const centre = spec.halfHeight + spec.radius;
     // Animals that knock things over wade through the wreckage instead of getting stuck on it.
-    this.filter = LAYER.STATIC | LAYER.BREAKABLE | LAYER.VEHICLE | LAYER.PLAYER | (spec.breaksAt === Infinity ? LAYER.DEBRIS : 0);
+    this.filter = LAYER.WATER | LAYER.STATIC | LAYER.BREAKABLE | LAYER.VEHICLE | LAYER.PLAYER | (spec.breaksAt === Infinity ? LAYER.DEBRIS : 0);
     this.body = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(x, groundY + centre, z));
     this.collider = world.createCollider(R.ColliderDesc.capsule(spec.halfHeight, spec.radius).setCollisionGroups(groups(LAYER.ANIMAL, this.filter)), this.body);
     this.kcc = world.createCharacterController(0.04);

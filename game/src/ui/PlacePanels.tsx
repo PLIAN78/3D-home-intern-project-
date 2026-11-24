@@ -8,7 +8,8 @@ import { BANK, creditLeft } from "../story/bank";
 import { canBuy, DEALER_ORDER, GEAR, money } from "../story/economy";
 import { PLACES, type PlaceId } from "../story/places";
 import { useGame, type PanelId } from "../story/store";
-import { earnedRank, MEALS, RANKS, type Kitchen } from "../story/work";
+import { earnedRank, LAND_STAGES, MEALS, PARCEL_PRICES, RANKS, RENT, RENT_SECONDS, RESUMES, type Kitchen } from "../story/work";
+import { lotById, PARCELS, STREETS } from "../world/map";
 import { CheckIcon, CloseIcon, GearIcon } from "./icons";
 
 /**
@@ -51,9 +52,14 @@ function PanelBody({ panel }: { panel: PanelId }) {
       return <Wardrobe />;
     case "subs":
     case "burger":
+    case "shawarma":
       return <Restaurant kitchen={panel} />;
     case "desk":
       return <Desk />;
+    case "cityhall":
+      return <CityHall />;
+    case "resumes":
+      return <Resumes />;
   }
 }
 
@@ -359,7 +365,7 @@ function Restaurant({ kitchen }: { kitchen: Kitchen }) {
   const meal = MEALS[kitchen];
   return (
     <>
-      <Head place={kitchen} eyebrow="Market Street" />
+      <Head place={kitchen} eyebrow={kitchen === "shawarma" ? "Queen Street · Owawa" : "Market Street"} />
       <div className="items">
         <div className="item">
           <div className="item-body">
@@ -477,6 +483,141 @@ function Desk() {
       </div>
       <div className="card-foot muted">
         <kbd>Esc</kbd> stand up
+      </div>
+    </>
+  );
+}
+
+// ── Owawa City Hall: buy land, get a permit ─────────────────────────────
+
+const LAND_STEP_TEXT = {
+  none: "",
+  bought: "Bought. Walk your parcel in Caivan Ridge to survey it; it's marked on your map.",
+  surveyed: "Surveyed. Apply for your building permit below.",
+  building: "Permit approved. Caivan's crew is building your house.",
+  done: `Finished and rented out: ${money(RENT)} every ${RENT_SECONDS / 60} minutes.`,
+};
+
+function parcelStreet(id: string) {
+  const lot = lotById(id);
+  return Math.abs(lot.position[2] - STREETS.maple.z) < Math.abs(lot.position[2] - STREETS.birch.z) ? STREETS.maple.name : STREETS.birch.name;
+}
+
+function CityHall() {
+  const land = useGame((s) => s.land);
+  const cash = useGame((s) => s.cash);
+  const unlimited = useGame((s) => s.unlimited);
+  const g = useGame.getState;
+  const now = () => host.sim?.time ?? 0;
+  return (
+    <>
+      <Head place="cityhall" eyebrow="Land and permits office" />
+      {land.step === "none" ? (
+        <>
+          <p className="muted small">Owawa sells serviced lots in Caivan Ridge’s new east phase. Buy one, walk it to survey it, get a permit here, and Caivan builds you a house that pays rent.</p>
+          <div className="items">
+            {PARCELS.map((id, i) => {
+              const price = PARCEL_PRICES[id];
+              const lot = lotById(id);
+              const short = !unlimited && cash < price;
+              return (
+                <div key={id} className="item">
+                  <div className="item-body">
+                    <div className="item-name">
+                      Lot {lot.number}, {parcelStreet(id)}
+                    </div>
+                    <div className="item-blurb">
+                      {lot.width} m × {lot.depth} m · {i === 2 ? "Corner of the phase, backs onto the woods" : i === 1 ? "Wide frontage, south-facing yard" : "Quiet end of the street"}
+                    </div>
+                  </div>
+                  <div className="item-buy">
+                    <button disabled={short} onClick={() => g().buyParcel(id, price, now())}>
+                      Buy {money(price)}
+                    </button>
+                    {short && <div className="item-need">Need {money(price - cash)} more</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <div className="items">
+          <div className="item">
+            <div className="item-body">
+              <div className="item-name">Your land: Lot {land.lot ? lotById(land.lot).number : ""}</div>
+              <div className="item-blurb">{LAND_STEP_TEXT[land.step]}</div>
+              {land.step === "building" && (
+                <div className="item-specs">
+                  Stage {land.stage + 1} of {LAND_STAGES.length}: {LAND_STAGES[land.stage]}
+                </div>
+              )}
+            </div>
+            {land.step === "surveyed" && (
+              <div className="item-buy">
+                <button
+                  onClick={() => {
+                    g().setPanel(null);
+                    g().openDialog("clerk_permit", false, () => g().filePermit(now()));
+                  }}
+                >
+                  Apply for permit
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      <div className="card-foot muted">
+        <kbd>Esc</kbd> leave
+      </div>
+    </>
+  );
+}
+
+// ── Co-op résumés (Ms. Tran's folder) ───────────────────────────────────
+
+function Resumes() {
+  const [note, setNote] = useState<string | null>(null);
+  const hire = (i: number) => {
+    const r = RESUMES[i];
+    const g = useGame.getState();
+    if (!r.best) {
+      setNote(r.note);
+      return;
+    }
+    g.setCoop("hired");
+    g.setPanel(null);
+    g.toast(`${r.name} is hired! Sam's waiting by the school bus.`);
+  };
+  return (
+    <>
+      <div className="card-head">
+        <div>
+          <div className="eyebrow">Ms. Tran’s co-op folder</div>
+          <h2>Pick a student for the panel factory</h2>
+        </div>
+      </div>
+      <p className="muted small">The factory needs someone who’s safety-trained, shows up, and wants to build. Read each résumé, then hire one.</p>
+      <div className="resume-grid">
+        {RESUMES.map((r, i) => (
+          <div key={r.name} className="resume">
+            <div className="item-name">{r.name}</div>
+            <div className="eyebrow">{r.program}</div>
+            <ul>
+              {r.points.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+            <button className="secondary" onClick={() => hire(i)}>
+              Hire
+            </button>
+          </div>
+        ))}
+      </div>
+      {note && <div className="resume-note">Ms. Tran: “{note}”</div>}
+      <div className="card-foot muted">
+        <kbd>Esc</kbd> close the folder
       </div>
     </>
   );

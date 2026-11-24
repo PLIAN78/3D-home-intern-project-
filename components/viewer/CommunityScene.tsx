@@ -7,6 +7,7 @@ import * as THREE from "three";
 import type { Community, Lot } from "@/lib/models/community";
 import { addBox, MeshBuilder, planFrame, type Vec3 } from "@/lib/geometry/meshBuilder";
 import { placeholderFor, type PlaceholderSurface } from "@/lib/geometry/placeholderHouse";
+import { stripPieces } from "@/lib/geometry/roadStrips";
 import { withGroundXray } from "@/lib/materials/groundXray";
 import { getSiteMaterial, siteTexture } from "@/lib/materials/materialFactory";
 import { houseOffsetOnLot, lotToWorld, type HouseFootprintInfo } from "@/lib/viewer/placement";
@@ -60,15 +61,19 @@ export interface DrivewaySpec {
   width: number;
 }
 
-/** Ground, roads, curbs, sidewalks and driveways (also used by the Caivan game). */
-export function buildSite(community: Community, driveways: DrivewaySpec[]) {
+/**
+ * Ground, roads, curbs, sidewalks and driveways (also used by the Caivan game).
+ * Curbs and sidewalks stop at the edge of any street that crosses theirs, so
+ * intersections stay clear asphalt. `ground: false` skips the lawn plane.
+ */
+export function buildSite(community: Community, driveways: DrivewaySpec[], opts: { ground?: boolean } = {}) {
   const ground = new MeshBuilder();
-  ground.flatPolygon([new THREE.Vector2(-450, -450), new THREE.Vector2(450, -450), new THREE.Vector2(450, 450), new THREE.Vector2(-450, 450)], [], 0, "up");
+  if (opts.ground ?? true) ground.flatPolygon([new THREE.Vector2(-450, -450), new THREE.Vector2(450, -450), new THREE.Vector2(450, 450), new THREE.Vector2(-450, 450)], [], 0, "up");
 
   const asphalt = new MeshBuilder();
   const concrete = new MeshBuilder();
   const curb = new MeshBuilder();
-  for (const r of community.roads) {
+  community.roads.forEach((r, i) => {
     const dx = r.to[0] - r.from[0];
     const dz = r.to[1] - r.from[1];
     const L = Math.hypot(dx, dz);
@@ -77,12 +82,12 @@ export function buildSite(community: Community, driveways: DrivewaySpec[]) {
     for (const side of [-1, 1]) {
       const z0 = (r.width / 2) * side;
       const z1 = (r.width / 2 + 0.18) * side;
-      addBox(curb, f, [0, 0, Math.min(z0, z1)], [L, 0.14, Math.max(z0, z1)], "metric", { bottom: false });
+      for (const [u0, u1] of stripPieces(community.roads, i, z0, z1)) addBox(curb, f, [u0, 0, Math.min(z0, z1)], [u1, 0.14, Math.max(z0, z1)], "metric", { bottom: false });
       const s0 = (r.width / 2 + r.boulevardWidth) * side;
       const s1 = (r.width / 2 + r.boulevardWidth + r.sidewalkWidth) * side;
-      addBox(concrete, f, [0, 0, Math.min(s0, s1)], [L, 0.08, Math.max(s0, s1)], "metric", { bottom: false });
+      for (const [u0, u1] of stripPieces(community.roads, i, s0, s1)) addBox(concrete, f, [u0, 0, Math.min(s0, s1)], [u1, 0.08, Math.max(s0, s1)], "metric", { bottom: false });
     }
-  }
+  });
 
   const road = community.roads[0];
   const toCurb = road ? road.boulevardWidth + road.sidewalkWidth : 3.6;

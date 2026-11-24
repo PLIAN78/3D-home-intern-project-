@@ -24,6 +24,8 @@ export const LAYER = {
   BREAKABLE: 1 << 3,
   DEBRIS: 1 << 4,
   ANIMAL: 1 << 5,
+  /** The lake's "swimming floor": people and animals wade, vehicles sink. */
+  WATER: 1 << 6,
 } as const;
 
 export const ALL_LAYERS = 0xffff;

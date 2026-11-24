@@ -3,8 +3,10 @@ import type { LotProgress, StageId } from "@/lib/models/construction";
 import { placeholderFor, storeysFor } from "@/lib/geometry/placeholderHouse";
 import { placeholderScale } from "@/lib/geometry/siteGeometry";
 import { lotToWorld } from "@/lib/viewer/placement";
-import { COTTAGE, COTTAGE_Y, HILL_ROAD_WIDTH, nearestOnRoad } from "./terrain";
+import { COTTAGE, COTTAGE_Y, nearestCountryRoad } from "./terrain";
 import { OFFICE, officeBoxes } from "./office";
+import { lakeBoxes } from "./lake";
+import { owawaBoxes } from "./owawa";
 import type { VehicleId } from "../sim/vehicle";
 
 /**
@@ -86,7 +88,7 @@ export const LANDMARKS: Record<LandmarkId, Landmark> = {
   cottage: { id: "cottage", name: "Rosa's Cottage", position: COTTAGE.position, size: [12, 9, 6.5] },
   office: { id: "office", name: "Caivan Office", position: OFFICE.centre, size: [OFFICE.w, OFFICE.d, OFFICE.height] },
   dealer: { id: "dealer", name: "Ridge Motors", position: [200, 46], size: [36, 20, 7] },
-  bank: { id: "bank", name: "Ridge Savings Bank", position: [150, 279], size: [20, 16, 8] },
+  bank: { id: "bank", name: "Ridge Savings Bank", position: [-80, 279], size: [20, 16, 8] },
   clothing: { id: "clothing", name: "Northline Outfitters", position: [186, 280], size: [22, 14, 6] },
   subs: { id: "subs", name: "Crossroads Subs", position: [-30, 321], size: [14, 12, 5] },
   burger: { id: "burger", name: "Flat Top Burgers", position: [105, 322], size: [18, 14, 6] },
@@ -114,7 +116,16 @@ export const PARKED_CARS: { x: number; z: number; heading: number; color: string
   { x: 236.4, z: 323.5, heading: -Math.PI / 2, color: "#1d3b6a" },
   { x: 250, z: 337, heading: Math.PI / 2, color: "#4b5258" },
 ];
+/** Where the school bus parks (it's a drivable vehicle now: see sim/vehicle.ts). */
 export const SCHOOL_BUS = { x: -76, z: 331, heading: 0 };
+
+/** Tower cranes over the east phase, in the back yards of lots being framed. */
+export const CRANES: { x: number; z: number; height: number; jib: number; phase: number }[] = [
+  { x: 178.75, z: 166, height: 30, jib: 36, phase: 0 },
+  { x: 277.75, z: 186, height: 34, jib: 40, phase: 2.1 },
+];
+/** The site foreman, on the Maple Run sidewalk between the cranes. */
+export const FOREMAN = { at: [228, 137.4] as V2, facing: -Math.PI / 2 };
 
 /** Cars on display on the Ridge Motors forecourt, nose to the boulevard. */
 export const DISPLAY_CARS: { id: VehicleId; x: number; z: number; heading: number; color: string }[] = [
@@ -164,14 +175,19 @@ const ROOF_COLORS = ["#2c2d30", "#5a5048", "#4a4f55", "#34383d"];
 
 /** Lot numbers: Ridgeview 1xx, Maple 2xx; north side even, south side odd. */
 export const HERO_LOT_ID = "lot-42";
+/** The east phase's lots start here (x of the first lot's centre). */
+const EAST_LOT_X0 = 129.25;
+const isEastLot = (n: number) => (n >= 224 && n < 300) || n >= 324;
+/** Vacant lots the City Hall in Owawa sells to you (the land quest). */
+export const PARCELS = ["lot-246", "lot-247", "lot-347"];
 export const SURVEY_LOT_ID = "lot-113";
 export const POUR_LOT_ID = "lot-207";
 export const MODEL_HOME_LOT_ID = "lot-204";
 
-function streetLots(streetZ: number, firstNumber: number, rand: () => number): Lot[] {
+function streetLots(streetZ: number, firstNumber: number, rand: () => number, x0 = -90.75): Lot[] {
   const lots: Lot[] = [];
   for (let i = 0; i < 12; i++) {
-    const x = -90.75 + i * LOT_W;
+    const x = x0 + i * LOT_W;
     for (const side of [-1, 1] as const) {
       const n = firstNumber + i * 2 + (side > 0 ? 1 : 0);
       const s = Math.floor(rand() * 1000);
@@ -201,7 +217,14 @@ function streetLots(streetZ: number, firstNumber: number, rand: () => number): L
 
 function buildLots(): Lot[] {
   const rand = mulberry32(2026);
-  const lots = [...streetLots(STREETS.ridgeview.z, 100, rand), ...streetLots(STREETS.maple.z, 200, rand), ...streetLots(STREETS.birch.z, 300, rand)];
+  const lots = [
+    ...streetLots(STREETS.ridgeview.z, 100, rand),
+    ...streetLots(STREETS.maple.z, 200, rand),
+    ...streetLots(STREETS.birch.z, 300, rand),
+    // The new east phase: Maple Run and Birch Lane continue to Mill Road.
+    ...streetLots(STREETS.maple.z, 224, rand, EAST_LOT_X0),
+    ...streetLots(STREETS.birch.z, 324, rand, EAST_LOT_X0),
+  ];
   // The hero home (Plan 36) on Ridgeview, centre north side, numbered 42 like the studio demo.
   const hero = lots.find((l) => l.id === "lot-112")!;
   hero.id = HERO_LOT_ID;
@@ -209,7 +232,7 @@ function buildLots(): Lot[] {
   hero.houseModelId = "plan-36";
   hero.status = "selected";
   for (const l of lots) {
-    if (l.id === SURVEY_LOT_ID) l.status = "available";
+    if (l.id === SURVEY_LOT_ID || PARCELS.includes(l.id)) l.status = "available";
     if (l.id === MODEL_HOME_LOT_ID) l.status = "model-home";
   }
   return lots;
@@ -219,11 +242,18 @@ function buildLots(): Lot[] {
 function startingStages(lots: Lot[]): Record<string, StageId> {
   const stages: Record<string, StageId> = {};
   const cycle: StageId[] = ["excavation", "framing", "foundation", "roofing", "framing", "excavation"];
+  // The east phase is busier: nearly every lot is being built, a few are finished.
+  const east: StageId[] = ["framing", "foundation", "roofing", "excavation", "framing", "drywall", "framing", "foundation"];
   let k = 0;
+  let e = 0;
   for (const l of lots) {
     const n = Number(l.number);
-    if (n >= 200 && n % 2 === 1) stages[l.id] = cycle[k++ % cycle.length];
+    if (isEastLot(n)) {
+      if (e % 5 !== 4) stages[l.id] = east[e % east.length];
+      e++;
+    } else if (n >= 200 && n % 2 === 1) stages[l.id] = cycle[k++ % cycle.length];
   }
+  for (const id of PARCELS) stages[id] = "permits";
   stages[POUR_LOT_ID] = "excavation";
   stages[SURVEY_LOT_ID] = "permits";
   stages[HERO_LOT_ID] = "roofing";
@@ -237,10 +267,10 @@ function road(id: string, from: V2, to: V2): Road {
 const ROADS: Road[] = [
   road("boulevard", [-WORLD_HALF + 10, STREETS.boulevard.z], [WORLD_HALF - 10, STREETS.boulevard.z]),
   road("ridgeview", [STREETS.west.x, STREETS.ridgeview.z], [STREETS.east.x, STREETS.ridgeview.z]),
-  road("maple", [STREETS.west.x, STREETS.maple.z], [STREETS.east.x, STREETS.maple.z]),
+  road("maple", [STREETS.west.x, STREETS.maple.z], [STREETS.link.x, STREETS.maple.z]),
   road("founders", [STREETS.west.x, STREETS.ridgeview.z], [STREETS.west.x, STREETS.market.z]),
   road("quarry", [STREETS.east.x, STREETS.ridgeview.z], [STREETS.east.x, STREETS.market.z]),
-  road("birch", [STREETS.west.x, STREETS.birch.z], [STREETS.east.x, STREETS.birch.z]),
+  road("birch", [STREETS.west.x, STREETS.birch.z], [STREETS.link.x, STREETS.birch.z]),
   road("market", [-230, STREETS.market.z], [STREETS.link.x, STREETS.market.z]),
   road("mill", [STREETS.link.x, STREETS.boulevard.z], [STREETS.link.x, STREETS.market.z]),
   // Factory spur and farm lane
@@ -268,7 +298,8 @@ export function isOpenGround(x: number, z: number, lots: Lot[], pad = 3): boolea
   if (Math.abs(x - PEN.centre[0]) < PEN.half + 4 && Math.abs(z - PEN.centre[1]) < PEN.half + 4) return false;
   for (const p of PAVED) if (x > p.x0 - pad && x < p.x1 + pad && z > p.z0 - pad && z < p.z1 + pad) return false;
   for (const g of SIGNS) if (Math.hypot(x - g.x, z - g.z) < g.width / 2 + 1.5) return false;
-  if (nearestOnRoad(x, z).d < HILL_ROAD_WIDTH / 2 + 2 + pad) return false;
+  if (nearestCountryRoad(x, z).d < 5.5 + pad) return false;
+  for (const c of CRANES) if (Math.hypot(x - c.x, z - c.z) < 6) return false;
   return true;
 }
 
@@ -370,7 +401,8 @@ export function collisionBoxes(stages: Record<string, StageId>): Box[] {
   const [cx, cz] = COTTAGE.position;
   boxes.push({ x0: cx - 6, z0: cz - 4.5 - 2.4, x1: cx + 6, z1: cz - 4.5, h: 0.45, kind: "landmark", id: "porch", y: COTTAGE_Y });
   for (const c of [...PARKED_CARS, ...DISPLAY_CARS]) boxes.push({ x0: c.x - 0.95, z0: c.z - 2.3, x1: c.x + 0.95, z1: c.z + 2.3, h: 1.4, kind: "landmark", id: "parked" });
-  boxes.push({ x0: SCHOOL_BUS.x - 6.4, z0: SCHOOL_BUS.z - 1.25, x1: SCHOOL_BUS.x + 6.4, z1: SCHOOL_BUS.z + 1.25, h: 3, kind: "landmark", id: "bus" });
+  for (const c of CRANES) boxes.push({ x0: c.x - 1.1, z0: c.z - 1.1, x1: c.x + 1.1, z1: c.z + 1.1, h: c.height, kind: "landmark", id: "crane" });
+  boxes.push(...lakeBoxes(), ...owawaBoxes());
   for (const g of SIGNS) {
     const along = Math.abs(Math.cos(g.heading)) < 0.5;
     const hw = g.width / 2 + 0.25;
@@ -405,20 +437,20 @@ export const SPAWN: { position: V2; heading: number } = { position: [-175, 22], 
 // ── Street furniture and town life ──────────────────────────────────────────
 
 /** Street lights along every road, on the grass strip between curb and sidewalk, clear of junctions. */
-export function streetLights(): { x: number; z: number; heading: number }[] {
-  const out: { x: number; z: number; heading: number }[] = [];
-  const offset = ROAD.width / 2 + ROAD.boulevard * 0.45;
+export function streetLights(roads: Road[] = ROADS, y = 0): { x: number; z: number; y: number; heading: number }[] {
+  const out: { x: number; z: number; y: number; heading: number }[] = [];
   const nearJunction = (x: number, z: number, self: Road) =>
-    ROADS.some((r) => {
+    roads.some((r) => {
       if (r === self) return false;
       const [ax, az] = r.from;
       const [bx, bz] = r.to;
       const dx = bx - ax;
       const dz = bz - az;
       const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
-      return Math.hypot(x - (ax + dx * t), z - (az + dz * t)) < FRONT + 6;
+      return Math.hypot(x - (ax + dx * t), z - (az + dz * t)) < r.width / 2 + r.boulevardWidth + r.sidewalkWidth + 6;
     });
-  for (const r of ROADS) {
+  for (const r of roads) {
+    const offset = r.width / 2 + r.boulevardWidth * 0.45;
     const [ax, az] = r.from;
     const [bx, bz] = r.to;
     const L = Math.hypot(bx - ax, bz - az);
@@ -432,7 +464,7 @@ export function streetLights(): { x: number; z: number; heading: number }[] {
       const z = az + uz * s + ux * offset * side;
       if (nearJunction(x, z, r)) continue;
       // The lamp arm reaches back over the road.
-      out.push({ x, z, heading: Math.atan2(-ux * side, uz * side) });
+      out.push({ x, z, y, heading: Math.atan2(-ux * side, uz * side) });
     }
   }
   return out;

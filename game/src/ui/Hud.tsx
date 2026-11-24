@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { host } from "../core/simHost";
 import { runtime } from "../core/runtime";
 import { BLUEPRINTS } from "../story/collectibles";
 import { GEAR, HOTBAR_ORDER, money, slotOf, slotOwned, type ModeId } from "../story/economy";
 import { currentStep, stepTarget } from "../story/missions";
 import { DEPOT } from "../story/sidequests";
+import { activeQuests } from "../story/quests";
 import { objective, useGame } from "../story/store";
 import { GearIcon, LockIcon, MapIcon } from "./icons";
 import { Minimap } from "./MapView";
 
-const NAMES: Record<ModeId, string> = { walk: "On foot", ...Object.fromEntries(Object.values(GEAR).map((g) => [g.id, g.name])) } as Record<ModeId, string>;
+const NAMES: Record<ModeId, string> = { walk: "On foot", boat: "Lakerunner boat", ...Object.fromEntries(Object.values(GEAR).map((g) => [g.id, g.name])) } as Record<ModeId, string>;
 
 /** Live readout for the current way of getting around: speed, jetpack fuel, or altitude. */
 function Gauge() {
@@ -58,7 +59,7 @@ function Boost() {
   if (!boost) return null;
   return (
     <div className="boost panel">
-      <span className="eyebrow">{boost.kind === "run" ? "Energy" : "Jetpack fuel"}</span>
+      <span className="eyebrow">{boost.kind === "run" ? "Energy" : boost.kind === "fuel" ? "Jetpack fuel" : "Energy + fuel"}</span>
       <span>
         {Math.floor(left / 60)}:{String(Math.floor(left % 60)).padStart(2, "0")}
       </span>
@@ -79,10 +80,14 @@ function Distance({ target }: { target: [number, number] }) {
   return <span className="dist">{distanceText(d)}</span>;
 }
 
-/** Side jobs in progress: the delivery clock and the search for Peanut. */
+/** Side jobs in progress: the delivery clock, the search for Peanut, and the other side quests. */
 function SideJobs() {
   const delivery = useGame((s) => s.delivery);
   const elephant = useGame((s) => s.elephant);
+  const elias = useGame((s) => s.elias);
+  const coop = useGame((s) => s.coop);
+  const land = useGame((s) => s.land);
+  const quests = useMemo(() => activeQuests({ elias, coop, land }), [elias, coop, land]);
   const [left, setLeft] = useState(0);
   useEffect(() => {
     if (!delivery) return;
@@ -91,7 +96,7 @@ function SideJobs() {
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
   }, [delivery]);
-  if (!delivery && elephant !== "asked") return null;
+  if (!delivery && elephant !== "asked" && quests.length === 0) return null;
   const clock = (s: number) => `${Math.floor(Math.abs(s) / 60)}:${String(Math.floor(Math.abs(s) % 60)).padStart(2, "0")}`;
   return (
     <div className="panel sidejobs">
@@ -110,6 +115,14 @@ function SideJobs() {
           <div className="task">Find Peanut in the woods west of Rosa’s cottage</div>
         </div>
       )}
+      {quests.map((q) => (
+        <div key={q.label} className="sidejob">
+          <div className="eyebrow">Side job</div>
+          <div className="task">
+            {q.text} <Distance target={q.at} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

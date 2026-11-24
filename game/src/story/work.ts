@@ -190,7 +190,7 @@ export function schedulePay(mistakes: number, mult = 1) {
 
 // ── Restaurant shifts: build the order ──────────────────────────────────
 
-export type Kitchen = "subs" | "burger";
+export type Kitchen = "subs" | "burger" | "shawarma";
 
 export const INGREDIENTS: Record<Kitchen, { id: string; label: string; color: string }[]> = {
   subs: [
@@ -219,16 +219,33 @@ export const INGREDIENTS: Record<Kitchen, { id: string; label: string; color: st
     { id: "pickles", label: "Pickles", color: "#6f8f3a" },
     { id: "ketchup", label: "Ketchup", color: "#c0281f" },
   ],
+  shawarma: [
+    { id: "pita", label: "Pita", color: "#e2c48a" },
+    { id: "chicken", label: "Chicken", color: "#d9a35f" },
+    { id: "beef", label: "Beef", color: "#7a4a2e" },
+    { id: "falafel", label: "Falafel", color: "#8a6a32" },
+    { id: "garlic", label: "Garlic sauce", color: "#f4efe0" },
+    { id: "tahini", label: "Tahini", color: "#d8c49a" },
+    { id: "turnip", label: "Pickled turnip", color: "#d0569a" },
+    { id: "lettuce", label: "Lettuce", color: "#8fc46a" },
+    { id: "tomato", label: "Tomato", color: "#d9493e" },
+    { id: "onion", label: "Onion", color: "#e8dbe8" },
+    { id: "hot", label: "Hot sauce", color: "#c23b1c" },
+  ],
 };
+
+/** Each kitchen's bases and fillings (an order is one base, one filling, then toppings). */
+const BASES: Record<Kitchen, string[]> = { subs: ["white", "wheat"], burger: ["bun"], shawarma: ["pita"] };
+const FILLINGS: Record<Kitchen, string[]> = { subs: ["turkey", "ham", "veggie"], burger: ["beef", "beef", "veggie"], shawarma: ["chicken", "chicken", "beef", "falafel"] };
 
 export const CUSTOMERS = ["Ava", "Noah", "Olivia", "Liam", "Maya", "Ethan", "Zoe", "Arjun", "Chloe", "Mateo", "Leah", "Owen"];
 
 /** One customer's order: a base (bread or bun), a filling, and toppings, in the order they go on. */
 export function makeOrder(kitchen: Kitchen, r: () => number) {
   const all = INGREDIENTS[kitchen];
-  const base = kitchen === "subs" ? pick(r, ["white", "wheat"]) : "bun";
-  const filling = kitchen === "subs" ? pick(r, ["turkey", "ham", "veggie"]) : pick(r, ["beef", "beef", "veggie"]);
-  const toppings = all.map((i) => i.id).filter((id) => ![base, filling, "white", "wheat", "bun", "turkey", "ham", "beef", "veggie"].includes(id));
+  const base = pick(r, BASES[kitchen]);
+  const filling = pick(r, FILLINGS[kitchen]);
+  const toppings = all.map((i) => i.id).filter((id) => !BASES[kitchen].includes(id) && !FILLINGS[kitchen].includes(id));
   const count = int(r, 2, 4);
   const chosen: string[] = [];
   while (chosen.length < count) {
@@ -240,12 +257,77 @@ export function makeOrder(kitchen: Kitchen, r: () => number) {
 
 // ── Meals: boosts ───────────────────────────────────────────────────────
 
-export type BoostKind = "run" | "fuel";
+export type BoostKind = "run" | "fuel" | "both";
 
 export const MEALS: Record<Kitchen, { name: string; price: number; boost: BoostKind; blurb: string }> = {
   subs: { name: "Footlong combo", price: 12, boost: "run", blurb: "Fresh and light: run 35% faster for 3 minutes." },
   burger: { name: "Double burger meal", price: 14, boost: "fuel", blurb: "Big lunch: the jetpack's fuel lasts 60% longer for 3 minutes." },
+  shawarma: { name: "Shawarma plate", price: 16, boost: "both", blurb: "The works: run faster and the jetpack lasts longer, for 3 minutes." },
 };
+
+export const KITCHEN_NAMES: Record<Kitchen, string> = { subs: "Crossroads Subs", burger: "Flat Top Burgers", shawarma: "Owawa Shawarma" };
+
+// ── Co-op student hiring: résumés ────────────────────────────────────────
+
+export interface Resume {
+  name: string;
+  program: string;
+  points: string[];
+  /** The best fit for the panel factory. */
+  best: boolean;
+  note: string;
+}
+
+export const RESUMES: Resume[] = [
+  {
+    name: "Jamie Lee",
+    program: "Grade 12, music and drama",
+    points: ["Lead role in the school musical", "Wants a co-op at a recording studio", "Never worked in a shop"],
+    best: false,
+    note: "Jamie would be great somewhere else, but this co-op is building wall panels.",
+  },
+  {
+    name: "Sam Okafor",
+    program: "Grade 11, construction technology",
+    points: ["WHMIS and working-at-heights certificates", "Built a shed with the school's tech class", "Perfect attendance this year; asks good questions"],
+    best: true,
+    note: "Sam has the training, the safety tickets and the attitude. A great fit for the factory.",
+  },
+  {
+    name: "Riley Chen",
+    program: "Grade 12, computer science",
+    points: ["Builds video games in their spare time", "Wants to work on software", "Available two afternoons a week"],
+    best: false,
+    note: "Riley's skills fit Home Studio's software team better than the panel line.",
+  },
+  {
+    name: "Taylor Brooks",
+    program: "Grade 11, construction technology",
+    points: ["Some framing experience", "No safety training yet", "Missed 14 days this term"],
+    best: false,
+    note: "Taylor has potential, but safety training and showing up matter most on a factory floor.",
+  },
+];
+
+export const COOP_PAY = 1000;
+
+// ── Elias's fishing and the crane ───────────────────────────────────────
+
+export const ELIAS_REWARD = 1200;
+/** Per fish caught after Elias teaches you. */
+export const FISH_PAY = 40;
+/** Per load landed with the tower crane. */
+export const CRANE_PAY = 90;
+
+// ── The land quest at Owawa City Hall ───────────────────────────────────
+
+export const PARCEL_PRICES: Record<string, number> = { "lot-246": 4000, "lot-247": 5500, "lot-347": 7000 };
+/** Stages Caivan's crew takes your house through, one every `LAND_STAGE_SECONDS` of play. */
+export const LAND_STAGES = ["excavation", "foundation", "framing", "roofing", "drywall", "finishes"] as const;
+export const LAND_STAGE_SECONDS = 45;
+/** Rent your finished house pays, every `RENT_SECONDS`. */
+export const RENT = 250;
+export const RENT_SECONDS = 120;
 
 export const BOOST_SECONDS = 180;
 export const BOOST = { run: 1.35, fuelBurn: 0.625 };

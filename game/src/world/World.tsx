@@ -19,6 +19,9 @@ import { CottageScene } from "./Cottage";
 import { District } from "./District";
 import { StreetLights } from "./StreetLights";
 import { Places } from "./Places";
+import { LakeScene } from "./LakeScene";
+import { OwawaScene } from "./OwawaScene";
+import { EastPhase } from "./EastPhase";
 
 /** Lawns, roads, curbs, sidewalks and driveways from Home Studio's community site builder, with PBR surfaces. */
 function Ground() {
@@ -128,6 +131,9 @@ export function World() {
       <Places />
       <CottageScene />
       <StreetLights />
+      <LakeScene />
+      <OwawaScene />
+      <EastPhase />
     </group>
   );
 }

@@ -9,7 +9,7 @@ import { drawLegendSymbol, drawMap, type MapState, type MapView } from "./mapRen
 /** Everything the map needs from the game store, read fresh each frame (no re-renders). */
 function mapState(): MapState {
   const g = useGame.getState();
-  return { stages: g.stages, progress: g.progress, owned: g.owned, elephant: g.elephant, delivery: g.delivery, goatsHome: g.goatsHome };
+  return { stages: g.stages, progress: g.progress, owned: g.owned, elephant: g.elephant, delivery: g.delivery, goatsHome: g.goatsHome, elias: g.elias, coop: g.coop, land: g.land };
 }
 
 /** Sizes a canvas for the screen's pixel density; returns the CSS size. */
@@ -87,7 +87,7 @@ const LEGEND: { group: string; items: [string, string][] }[] = [
     group: "Places",
     items: [
       ["road", "Street"],
-      ["country", "Cottage Road"],
+      ["country", "Country road"],
       ["home", "Home"],
       ["build", "Under construction"],
       ["landmark", "Landmark"],

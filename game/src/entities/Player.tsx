@@ -16,6 +16,7 @@ import { VEHICLE_SPOTS } from "../story/missions";
 import { useGame, type GameState } from "../story/store";
 import { BOOST } from "../story/work";
 import { MY_SEAT } from "../world/office";
+import { LAKE_Y } from "../world/terrain";
 
 /** Anything that takes over the screen (dialogs, panels, mini-games, the map) pauses the controls. */
 export function isBusy(g: GameState) {
@@ -27,12 +28,20 @@ export function modeOf(sim: Simulation): ModeId {
   const c = sim.control;
   if (c.kind === "vehicle" || c.kind === "animal") return c.id;
   if (c.kind === "heli") return "heli";
+  if (c.kind === "boat") return "boat";
   return sim.player.jetpack ? "jetpack" : "walk";
 }
 
 /** Which piece of gear a ride is (to check you own it). */
-export function gearOfRide(r: Ride): GearId {
+export function gearOfRide(r: Exclude<Ride, { kind: "boat" }>): GearId {
   return r.kind === "heli" ? "heli" : r.id;
+}
+
+/** Can you get in or on this? The lake boat is free; the school bus is lent for the co-op run. */
+export function canRide(r: Ride, g: GameState) {
+  if (r.kind === "boat") return true;
+  if (r.kind === "vehicle" && r.id === "bus") return g.coop === "hired" || g.coop === "riding" || g.coop === "done";
+  return g.owned[gearOfRide(r)];
 }
 
 const ANIMAL_IDS: AnimalId[] = ["horse", "elephant"];
@@ -82,8 +91,8 @@ export function Player() {
 
     // Meal boosts change how fast you run and how long the jetpack lasts.
     const boost = g.boost && s.time < g.boost.until ? g.boost.kind : null;
-    s.player.runBoost = boost === "run" ? BOOST.run : 1;
-    s.player.fuelBurn = boost === "fuel" ? BOOST.fuelBurn : 1;
+    s.player.runBoost = boost === "run" || boost === "both" ? BOOST.run : 1;
+    s.player.fuelBurn = boost === "fuel" || boost === "both" ? BOOST.fuelBurn : 1;
     g.tickBoost(s.time);
 
     // Sitting at your desk in the office: stay in the chair, facing the screen.
@@ -102,6 +111,19 @@ export function Player() {
         runtime.shake = Math.min(1, e.speed / 25);
         sfx("thud");
       } else if (e.kind === "crash") runtime.shake = Math.min(0.7, e.speed / 30);
+      else if (e.kind === "sunk") {
+        // Towed out of the lake, back to where it parks.
+        if (s.control.kind === "vehicle" && s.control.id === e.id) {
+          const p = s.vehicles[e.id]!.position;
+          s.control = { kind: "foot" };
+          s.player.setActive(true);
+          s.player.place(p.x, p.z, LAKE_Y - 1, 0);
+        }
+        const spot = VEHICLE_SPOTS[e.id];
+        s.spawnVehicle(e.id, spot.position[0], spot.position[1], spot.heading);
+        g.toast(`Your ${GEAR[e.id].name} went into the lake. A tow truck took it back to its parking spot.`);
+        bump();
+      }
     }
 
     const mode = modeOf(s);
@@ -150,13 +172,14 @@ function rideFor(id: GearId): Ride | null {
 
 function positionOf(s: Simulation, r: Ride) {
   if (r.kind === "heli") return s.heli;
+  if (r.kind === "boat") return s.boat;
   if (r.kind === "animal") return s.animals[r.id] ?? null;
   const v = s.vehicles[r.id];
   return v ? v.position : null;
 }
 
 function handleControls(s: Simulation, g: ReturnType<typeof useGame.getState>, bump: () => void) {
-  const c = s.control;
+  let c = s.control;
   const owned = g.owned as Owned;
 
   if (wasPressed("KeyF")) {
@@ -164,12 +187,13 @@ function handleControls(s: Simulation, g: ReturnType<typeof useGame.getState>, b
       const f = s.focus();
       const airborne = c.kind === "heli" && !f.grounded;
       if (Math.abs(f.speed) < 6 && !airborne) {
-        s.exit();
-        sfx("blip");
-        bump();
+        if (s.exit()) {
+          sfx("blip");
+          bump();
+        } else g.toast("Steer up to the shore or a jetty to get off");
       } else g.toast(airborne ? "Land first" : "Slow down to get out");
     } else {
-      const ride = s.nearestRide((r) => owned[gearOfRide(r)]);
+      const ride = s.nearestRide((r) => canRide(r, g));
       if (ride && s.board(ride)) {
         sfx("switch");
         bump();
@@ -179,6 +203,12 @@ function handleControls(s: Simulation, g: ReturnType<typeof useGame.getState>, b
 
   HOTBAR_ORDER.forEach((slot, i) => {
     if (!wasPressed(`Digit${i + 1}`)) return;
+    // Out on the lake you have to get to shore before switching to anything else.
+    if (s.control.kind === "boat" && !s.exit()) {
+      g.toast("Steer up to the shore or a jetty first");
+      return;
+    }
+    c = s.control;
     if (slot === "walk") {
       if (c.kind !== "foot") s.exit();
       s.setJetpack(false);
@@ -211,7 +241,7 @@ function handleControls(s: Simulation, g: ReturnType<typeof useGame.getState>, b
     if (slot === "car" && !owned[gearId]) gearId = "truck";
     const ride = rideFor(gearId);
     if (!ride) return;
-    const already = (c.kind === "vehicle" || c.kind === "animal") && ride.kind !== "heli" && c.id === ride.id;
+    const already = (c.kind === "vehicle" || c.kind === "animal") && (ride.kind === "vehicle" || ride.kind === "animal") && c.id === ride.id;
     if (already || (c.kind === "heli" && ride.kind === "heli")) return;
     if (c.kind !== "foot") s.exit();
     // Close by? Just get in. Otherwise it comes to you.
@@ -219,7 +249,7 @@ function handleControls(s: Simulation, g: ReturnType<typeof useGame.getState>, b
     const near = at && Math.hypot(at.x - s.player.x, at.z - s.player.z) < (ride.kind === "heli" ? 12 : 7);
     const name = GEAR[gearId].name;
     if (!near) {
-      s.call(ride.kind === "heli" ? "heli" : ride.id);
+      s.call(ride.kind === "vehicle" || ride.kind === "animal" ? ride.id : "heli");
       g.toast(ride.kind === "animal" ? `${name.split(" ")[0]} comes over` : `Your ${name} is here`);
     } else if (slot === "car") g.toast(name);
     s.board(ride);

@@ -58,7 +58,7 @@ export function StreetLights() {
       tmp.quaternion.set(body.q.x, body.q.y, body.q.z, body.q.w);
       tmp.rotateY(-l.heading);
     } else {
-      tmp.position.set(l.x, 0, l.z);
+      tmp.position.set(l.x, l.y, l.z);
       tmp.rotation.set(0, -l.heading, 0);
     }
     tmp.updateMatrix();

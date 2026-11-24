@@ -6,7 +6,11 @@ import { DEPOT, ELEPHANT_SEARCH, ROSA, type Delivery, type ElephantQuest } from 
 import { PLACE_IDS, PLACES } from "../story/places";
 import { OFFICE } from "../world/office";
 import { CAIVAN_RIDGE, collisionBoxes, LANDMARKS, PAVED, PEN, STREETS, type V2 } from "../world/map";
-import { COTTAGE, FLAT_HALF, HILL_ROAD, HILL_ROAD_WIDTH, PLAY_HALF, terrainHeight } from "../world/terrain";
+import { COTTAGE, COUNTRY_ROADS, FLAT_HALF, LAKE, LAKE_Y, lakeRadius, OWAWA, PLAY_HALF, terrainHeight } from "../world/terrain";
+import { CITY_HALL, CITY_STREETS, OWAWA_ROADS, SHAWARMA, SQUARE } from "../world/owawa";
+import { ELIAS, TACKLE_SEARCH } from "../world/lake";
+import { activeQuests, TRAN } from "../story/quests";
+import type { CoopStep, EliasStep, GameState } from "../story/store";
 
 /**
  * The map, drawn like a printed town map: a base layer painted once (terrain
@@ -40,6 +44,8 @@ export const PALETTE = {
   label: "#3c3a35",
 };
 
+const WATER_RGB = [167, 196, 214];
+
 /** Base map resolution: pixels per metre. */
 const PPM = 1;
 const SIZE = PLAY_HALF * 2 * PPM;
@@ -66,7 +72,14 @@ function hillshade(ctx: CanvasRenderingContext2D) {
       const shade = Math.max(0.55, Math.min(1.15, 0.92 - (dx * -0.7 + dz * -0.7) * 1.6));
       const e = Math.min(1, H(i, j) / 90);
       const k = (j * n + i) * 4;
-      for (let c = 0; c < 3; c++) img.data[k + c] = (PALETTE.hillLow[c] + (PALETTE.hillHigh[c] - PALETTE.hillLow[c]) * e) * shade;
+      // Heron Lake: below the waterline inside the basin.
+      const x = -PLAY_HALF + (i + 0.5) * step;
+      const z = -PLAY_HALF + (j + 0.5) * step;
+      if (H(i, j) < LAKE_Y && lakeRadius(x, z) < 1.1) {
+        img.data[k] = WATER_RGB[0];
+        img.data[k + 1] = WATER_RGB[1];
+        img.data[k + 2] = WATER_RGB[2];
+      } else for (let c = 0; c < 3; c++) img.data[k + c] = (PALETTE.hillLow[c] + (PALETTE.hillHigh[c] - PALETTE.hillLow[c]) * e) * shade;
       img.data[k + 3] = 255;
     }
   const tmp = document.createElement("canvas");
@@ -127,13 +140,20 @@ function paintBase(stages: Record<string, string>) {
   ctx.fillStyle = PALETTE.parking;
   ctx.fillRect(wx(fx - 32), wx(fz + 20), 64 * PPM, 22 * PPM);
 
-  // Roads: casing, then surface. Cottage Road gets a cream fill like a country road.
+  // Downtown Owawa: paved blocks and the square's lawn.
+  ctx.fillStyle = PALETTE.parking;
+  ctx.fillRect(wx(540), wx(-820), 300 * PPM, 320 * PPM);
+  ctx.fillStyle = PALETTE.field;
+  ctx.fillRect(wx(SQUARE.x0), wx(SQUARE.z0), (SQUARE.x1 - SQUARE.x0) * PPM, (SQUARE.z1 - SQUARE.z0) * PPM);
+
+  // Roads: casing, then surface. Country roads get a cream fill.
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  for (const r of CAIVAN_RIDGE.roads) strokePath(ctx, [r.from as V2, r.to as V2], r.width + 2.4, PALETTE.roadCase);
-  strokePath(ctx, HILL_ROAD, HILL_ROAD_WIDTH + 2.4, PALETTE.roadCase);
-  for (const r of CAIVAN_RIDGE.roads) strokePath(ctx, [r.from as V2, r.to as V2], r.width, PALETTE.road);
-  strokePath(ctx, HILL_ROAD, HILL_ROAD_WIDTH, PALETTE.country);
+  const streets = [...CAIVAN_RIDGE.roads, ...OWAWA_ROADS];
+  for (const r of streets) strokePath(ctx, [r.from as V2, r.to as V2], r.width + 2.4, PALETTE.roadCase);
+  for (const r of COUNTRY_ROADS) strokePath(ctx, r.points, r.width + 2.4, PALETTE.roadCase);
+  for (const r of streets) strokePath(ctx, [r.from as V2, r.to as V2], r.width, PALETTE.road);
+  for (const r of COUNTRY_ROADS) strokePath(ctx, r.points, r.width, PALETTE.country);
 
   // Buildings: homes, frames under construction, landmarks.
   for (const b of collisionBoxes(stages as never)) {
@@ -197,6 +217,9 @@ export interface MapState {
   elephant: ElephantQuest;
   delivery: Delivery | null;
   goatsHome: string[];
+  elias: EliasStep;
+  coop: CoopStep;
+  land: GameState["land"];
 }
 
 /** Where a world point lands on the canvas (CSS pixels). */
@@ -290,6 +313,13 @@ const LABELS: { text: string; at: V2; minScale?: number }[] = [
   { text: "Outfitters", at: [LANDMARKS.clothing.position[0], LANDMARKS.clothing.position[1] - 11] },
   { text: "Subs", at: [LANDMARKS.subs.position[0], LANDMARKS.subs.position[1] + 10] },
   { text: "Burgers", at: [LANDMARKS.burger.position[0], LANDMARKS.burger.position[1] + 11] },
+  { text: "Heron Lake", at: [LAKE.centre[0] - 70, LAKE.centre[1] + 60] },
+  { text: "Elias's Island", at: [LAKE.centre[0], LAKE.centre[1] - 38] },
+  { text: "Boat Dock", at: [-575, -520] },
+  { text: "City Hall", at: [CITY_HALL.at[0], CITY_HALL.at[1] - 20] },
+  { text: "Owawa Square", at: [650, -512] },
+  { text: "Shawarma", at: [SHAWARMA.at[0], SHAWARMA.at[1] - 11] },
+  { text: "OWAWA", at: [OWAWA.centre[0], OWAWA.centre[1] - OWAWA.half + 4] },
 ];
 
 const STREET_LABELS: { text: string; at: V2; vertical?: boolean }[] = [
@@ -302,6 +332,14 @@ const STREET_LABELS: { text: string; at: V2; vertical?: boolean }[] = [
   { text: STREETS.east.name, at: [STREETS.east.x, 60], vertical: true },
   { text: STREETS.link.name, at: [STREETS.link.x, 150], vertical: true },
   { text: "Cottage Road", at: [-430, 420] },
+  { text: "Lake Road", at: [-385, -372] },
+  { text: "Owawa Road", at: [600, -250] },
+  { text: CITY_STREETS.wellington.name, at: [730, CITY_STREETS.wellington.z] },
+  { text: CITY_STREETS.rideau.name, at: [730, CITY_STREETS.rideau.z] },
+  { text: CITY_STREETS.queen.name, at: [740, CITY_STREETS.queen.z] },
+  { text: CITY_STREETS.lyon.name, at: [CITY_STREETS.lyon.x, -620], vertical: true },
+  { text: CITY_STREETS.elgin.name, at: [CITY_STREETS.elgin.x, -540], vertical: true },
+  { text: CITY_STREETS.kent.name, at: [CITY_STREETS.kent.x, -700], vertical: true },
 ];
 
 /** Draws the map for a view. `full` adds place and street names. */
@@ -358,6 +396,20 @@ export function drawMap(ctx: CanvasRenderingContext2D, w: number, h: number, v: 
     ctx.setLineDash([]);
   }
 
+  // Where Elias's tackle box drifted.
+  if (st.elias === "asked") {
+    const [x, y] = P(...TACKLE_SEARCH.centre);
+    ctx.setLineDash([6, 5]);
+    ctx.strokeStyle = PALETTE.side;
+    ctx.fillStyle = "rgba(47,143,136,0.1)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, TACKLE_SEARCH.radius / v.mpp, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   // Goats still on the loose.
   for (const g of runtime.goats) {
     if (g.home || st.goatsHome.includes(g.id)) continue;
@@ -378,6 +430,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, w: number, h: number, v: 
     for (const veh of Object.values(sim.vehicles)) if (veh) spots.push([veh.position.x, veh.position.z]);
     for (const [id, a] of Object.entries(sim.animals)) if (a && (id !== "elephant" || st.owned.elephant)) spots.push([a.x, a.z]);
     if (sim.heli) spots.push([sim.heli.x, sim.heli.z]);
+    spots.push([sim.boat.x, sim.boat.z]);
     const b = runtime.body;
     for (const [x, z] of spots) if (Math.hypot(x - b.x, z - b.z) > 3) marker(ctx, ...P(x, z), "vehicle");
   }
@@ -389,6 +442,9 @@ export function drawMap(ctx: CanvasRenderingContext2D, w: number, h: number, v: 
   if (st.delivery) marker(ctx, ...P(...st.delivery.drop.at), "side", 7);
   else marker(ctx, ...P(...DEPOT), "side", 6);
   if (st.elephant === "none") marker(ctx, ...P(...ROSA.position), "side", 6);
+  if (st.elias === "none") marker(ctx, ...P(...ELIAS.at), "side", 6);
+  if (st.coop === "none") marker(ctx, ...P(...TRAN.at), "side", 6);
+  for (const q of activeQuests(st)) if (q.label !== "Tackle box") marker(ctx, ...P(...q.at), "side", 7);
 
   // The story objective: on the map, or pinned to the edge pointing at it.
   const step = currentStep(st.progress);

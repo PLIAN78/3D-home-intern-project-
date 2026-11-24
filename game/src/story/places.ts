@@ -1,11 +1,12 @@
 import { LANDMARKS, type LandmarkId, type V2 } from "../world/map";
+import { CITY_HALL_DOOR, SHAWARMA_DOOR } from "../world/owawa";
 
 /**
  * Places you can use from the door (the building interiors aren't modelled):
  * walk up to the entrance and press E. The Caivan office is the exception:
  * you walk inside (see world/office.ts).
  */
-export type PlaceId = "dealer" | "bank" | "clothing" | "subs" | "burger";
+export type PlaceId = "dealer" | "bank" | "clothing" | "subs" | "burger" | "shawarma" | "cityhall";
 
 /** A spot on the pavement just outside the front door. Buildings face the street: north (−z) or south (+z). */
 function door(id: LandmarkId, faces: "north" | "south", out = 2.5): V2 {
@@ -20,6 +21,8 @@ export const PLACES: Record<PlaceId, { name: string; verb: string; door: V2 }> =
   clothing: { name: "Northline Outfitters", verb: "Try on clothes at Northline Outfitters", door: door("clothing", "south") },
   subs: { name: "Crossroads Subs", verb: "Go into Crossroads Subs", door: door("subs", "north") },
   burger: { name: "Flat Top Burgers", verb: "Go into Flat Top Burgers", door: door("burger", "north") },
+  shawarma: { name: "Owawa Shawarma", verb: "Go into Owawa Shawarma", door: SHAWARMA_DOOR },
+  cityhall: { name: "Owawa City Hall", verb: "Go into City Hall", door: CITY_HALL_DOOR },
 };
 
 export const PLACE_IDS = Object.keys(PLACES) as PlaceId[];

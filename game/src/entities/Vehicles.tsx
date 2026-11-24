@@ -6,8 +6,11 @@ import { useSimVersion } from "../core/simVersion";
 import { ElephantModel, HorseModel } from "../models/animals";
 import { HeliModel } from "../models/heli";
 import { ModelCar } from "../models/cars";
+import { BusShell } from "../models/bus";
+import { BoatModel } from "../models/boat";
 import { Human } from "../models/human";
 import { useGame } from "../story/store";
+import { SAM_LOOK } from "../story/quests";
 import { BODY_COLORS, BODY_SCALE, CarBody, DRIVER_SEAT, TruckBody, Wheel } from "../models/vehicles";
 import { chrome, lumber, mat } from "../render/materials";
 import type { AnimalId } from "../sim/animal";
@@ -27,6 +30,7 @@ export function Vehicles() {
         <AnimalEntity key={id} id={id} />
       ))}
       {sim.heli && <HeliEntity />}
+      <BoatEntity />
       <Debris />
     </>
   );
@@ -85,13 +89,14 @@ function Extras({ id }: { id: VehicleId }) {
   return null;
 }
 
-const RIMS: Record<VehicleId, string> = { truck: "#9aa1aa", trail: "#1b1c1f", hauler: "#d8dbe0", car: "#2b2d31", roadster: "#c9ccd1", coupe: "#d8dbe0", super: "#1b1c1f", suv: "#8f959c", sedan: "#b4b9bf" };
+const RIMS: Record<VehicleId, string> = { truck: "#9aa1aa", trail: "#1b1c1f", hauler: "#d8dbe0", car: "#2b2d31", roadster: "#c9ccd1", coupe: "#d8dbe0", super: "#1b1c1f", suv: "#8f959c", sedan: "#b4b9bf", bus: "#d8dbe0" };
 
 function VehicleEntity({ id }: { id: VehicleId }) {
   const outfit = useGame((g) => g.outfit);
   const root = useRef<THREE.Group>(null);
   const wheels = useRef<(THREE.Group | null)[]>([]);
   const driver = useRef<THREE.Group>(null);
+  const student = useRef<THREE.Group>(null);
   const spec = VEHICLES[id];
   // The Haul HD runs dual rear wheels: two extra hubs just outboard of the rear pair.
   const hubs = useMemo(() => {
@@ -123,15 +128,28 @@ function VehicleEntity({ id }: { id: VehicleId }) {
       if (spin) spin.rotation.z = -st.spin;
     }
     if (driver.current) driver.current.visible = s.control.kind === "vehicle" && s.control.id === id;
+    if (student.current) student.current.visible = useGame.getState().coop === "riding";
   });
 
   const pickup = id === "truck" || id === "trail" || id === "hauler";
   return (
     <group ref={root} name={`vehicle-${id}`}>
-      <group scale={BODY_SCALE[id]}>
-        {pickup ? <TruckBody color={BODY_COLORS[id]} livery={id === "truck"} /> : id === "car" ? <CarBody color={BODY_COLORS.car} /> : <ModelCar id={id} color={BODY_COLORS[id]} />}
-        <Extras id={id} />
-      </group>
+      {id === "bus" ? (
+        <>
+          {/* The shell is in ground coordinates: drop it by the ride height. */}
+          <group position={[-0.5, -(spec.wheelRadius + spec.suspensionRest * 0.72 - spec.wheelY), 0]}>
+            <BusShell />
+          </group>
+          <group ref={student} position={[1.6, -0.5, 0.6]} visible={false}>
+            <Human outfit={SAM_LOOK} pose="sit" />
+          </group>
+        </>
+      ) : (
+        <group scale={BODY_SCALE[id]}>
+          {pickup ? <TruckBody color={BODY_COLORS[id]} livery={id === "truck"} /> : id === "car" ? <CarBody color={BODY_COLORS.car} /> : <ModelCar id={id} color={BODY_COLORS[id]} />}
+          <Extras id={id} />
+        </group>
+      )}
       {hubs.map((_, i) => (
         <Wheel
           key={i}
@@ -146,6 +164,36 @@ function VehicleEntity({ id }: { id: VehicleId }) {
       ))}
       <group ref={driver} position={DRIVER_SEAT[id]} visible={false}>
         <Human outfit={outfit} pose="sit" />
+      </group>
+    </group>
+  );
+}
+
+/** The Lakerunner: bobs on the water, rolls into turns, pitches up under power. */
+function BoatEntity() {
+  const outfit = useGame((g) => g.outfit);
+  const root = useRef<THREE.Group>(null);
+  const tilt = useRef<THREE.Group>(null);
+  const skipper = useRef<THREE.Group>(null);
+  useFrame(() => {
+    const s = host.sim;
+    if (!s || !root.current) return;
+    const p = s.pose("boat", host.alpha);
+    root.current.position.set(p.x, p.y, p.z);
+    root.current.quaternion.set(p.q.x, p.q.y, p.q.z, p.q.w);
+    const b = s.boat;
+    if (tilt.current) tilt.current.rotation.set(b.roll, 0, b.pitch);
+    if (tilt.current) tilt.current.position.y = b.bob;
+    if (skipper.current) skipper.current.visible = s.control.kind === "boat";
+  });
+  const speed = () => host.sim?.boat.speed ?? 0;
+  return (
+    <group ref={root} name="boat">
+      <group ref={tilt}>
+        <BoatModel speed={speed} />
+        <group ref={skipper} position={[-0.5, 0.02, 0.48]} visible={false}>
+          <Human outfit={outfit} pose="sit" />
+        </group>
       </group>
     </group>
   );

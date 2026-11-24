@@ -2,9 +2,9 @@ import type { Collider, DynamicRayCastVehicleController, RigidBody, World } from
 import { groups, LAYER, SOLID, type Rapier } from "./rapier";
 import { clamp, damp, headingOf, quatFromHeading, rotate, uprightness, type Quat, type Vec3 } from "./math";
 
-export type VehicleId = "truck" | "car" | "trail" | "hauler" | "roadster" | "coupe" | "super" | "suv" | "sedan";
+export type VehicleId = "truck" | "car" | "trail" | "hauler" | "roadster" | "coupe" | "super" | "suv" | "sedan" | "bus";
 
-/** Every road vehicle, in dealership order. */
+/** Every road vehicle you can own, in dealership order (the school bus is borrowed, not owned). */
 export const VEHICLE_IDS: VehicleId[] = ["truck", "sedan", "roadster", "suv", "trail", "hauler", "coupe", "car", "super"];
 
 /**
@@ -271,6 +271,31 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 9,
     allWheelDrive: false,
     comDrop: 0.42,
+  },
+  bus: {
+    id: "bus",
+    name: "School bus",
+    mass: 7000,
+    half: [5.6, 1.2, 1.25],
+    wheelFront: 3.9,
+    wheelRear: -3.0,
+    track: 1.05,
+    wheelY: -1.0,
+    wheelRadius: 0.52,
+    suspensionRest: 0.45,
+    suspensionTravel: 0.3,
+    stiffness: 34,
+    compression: 3.6,
+    relaxation: 4.2,
+    frictionSlip: 2.2,
+    sideFriction: 1.0,
+    engine: 10500,
+    brake: 330,
+    maxSteer: 0.5,
+    topSpeed: 22,
+    reverseSpeed: 6,
+    allWheelDrive: false,
+    comDrop: 0.7,
   },
 };
 

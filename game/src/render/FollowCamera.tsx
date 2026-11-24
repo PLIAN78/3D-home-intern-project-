@@ -26,6 +26,8 @@ const RIG = {
   super: { dist: 8.6, lift: 1.4, fov: 58 },
   suv: { dist: 9.6, lift: 2.0, fov: 56 },
   sedan: { dist: 9, lift: 1.7, fov: 56 },
+  bus: { dist: 15, lift: 3.2, fov: 56 },
+  boat: { dist: 11, lift: 2.4, fov: 57 },
   heli: { dist: 17, lift: 2.4, fov: 58 },
 };
 

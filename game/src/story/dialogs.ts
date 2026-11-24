@@ -1,6 +1,6 @@
 /** Every line of dialogue in the game. Family friendly, a little silly, and true to what Caivan's teams do. */
 
-export type Speaker = "Maya" | "You" | "Priya Patel" | "Arjun Patel" | "Raj" | "Gail" | "The Nguyens" | "Rosa" | "Jordan" | "Daniel" | "Mei" | "Lucas" | "Sofia" | "Phone";
+export type Speaker = "Maya" | "You" | "Priya Patel" | "Arjun Patel" | "Raj" | "Gail" | "The Nguyens" | "Rosa" | "Jordan" | "Daniel" | "Mei" | "Lucas" | "Sofia" | "Phone" | "Elias" | "Ms. Tran" | "Sam" | "Marco" | "Crew" | "Clerk";
 
 export interface Choice {
   text: string;
@@ -45,7 +45,22 @@ export type DialogId =
   | "lucas_chat"
   | "lucas_again"
   | "sofia_chat"
-  | "sofia_again";
+  | "sofia_again"
+  | "elias_intro"
+  | "elias_waiting"
+  | "elias_found"
+  | "elias_again"
+  | "tran_coop"
+  | "tran_waiting"
+  | "tran_done"
+  | "sam_hello"
+  | "raj_coop"
+  | "marco_intro"
+  | "marco_again"
+  | "crew_1"
+  | "crew_2"
+  | "crew_3"
+  | "clerk_permit";
 
 export const DIALOGS: Record<DialogId, Line[]> = {
   maya_welcome: [
@@ -201,4 +216,76 @@ export const DIALOGS: Record<DialogId, Line[]> = {
     },
   ],
   sofia_again: [{ speaker: "Sofia", text: "Three closings this week. The neighbourhood is filling up!" }],
+  elias_intro: [
+    { speaker: "Elias", text: "Ah, a visitor. Not many folks row out to my little island. I'm Elias. I've fished Heron Lake for sixty years." },
+    { speaker: "Elias", text: "This morning a gust took my old tackle box clean off the jetty. Last I saw, it was bobbing west, toward the reeds." },
+    {
+      speaker: "Elias",
+      text: "My knees won't take the boat any more. Before you go, tell me: what's the first rule out on the water?",
+      choices: [
+        { text: "Wear a life jacket and keep an eye on the weather.", good: true, reply: "Ha! You'll do just fine." },
+        { text: "Go as fast as the boat will go.", good: false, reply: "That's how you meet the bottom of the lake." },
+        { text: "Fish don't like rules.", good: false, reply: "Fish don't. Lakes do." },
+      ],
+    },
+    { speaker: "Elias", text: "Take the Lakerunner from the dock. Steer close to the box and it'll float right to you. I've marked the west shore on your map." },
+  ],
+  elias_waiting: [{ speaker: "Elias", text: "No luck yet? Look by the reeds on the west shore. It's red, you can't miss it." }],
+  elias_found: [
+    { speaker: "Elias", text: "My tackle box! Every lure in there has a story. Thank you, friend." },
+    { speaker: "Elias", text: "Now, let me teach you something worth more than lures. Sit. Watch the float. When it dips, strike, then keep the line from snapping." },
+  ],
+  elias_again: [{ speaker: "Elias", text: "The bass are biting today. Grab the spare rod if you've got a minute." }],
+  tran_coop: [
+    { speaker: "Ms. Tran", text: "Hi! I'm Ms. Tran, the co-op counsellor. Caivan's panel factory has offered one of our students a co-op placement." },
+    { speaker: "Ms. Tran", text: "I have four résumés. Can you pick the student who fits the factory best? Safety training and showing up count for a lot." },
+  ],
+  tran_waiting: [{ speaker: "Ms. Tran", text: "Sam's waiting by the school bus. Drive the bus to the factory dock and introduce Sam to Raj. It's beside the school, keys are in it." }],
+  tran_done: [{ speaker: "Ms. Tran", text: "Sam hasn't stopped talking about the panel line. Thank you for giving a student a real start." }],
+  sam_hello: [{ speaker: "Sam", text: "Hi! I'm Sam. I brought my safety boots and my hard hat. Is that the bus? Let's go!" }],
+  raj_coop: [
+    { speaker: "Raj", text: "You must be Sam! Welcome to the panel line. We build walls indoors here, so homes go up faster." },
+    { speaker: "Sam", text: "Thanks! I can't wait to see the nailing bridge." },
+    {
+      speaker: "Raj",
+      text: "Quick question for the person who brought Sam. What's the first thing a new co-op student does here?",
+      choices: [
+        { text: "A safety orientation, with a mentor who shows them the line.", good: true, reply: "Exactly. Safety first, then the fun stuff." },
+        { text: "Drive the forklift.", good: false, reply: "Maybe in a few years!" },
+        { text: "Make the coffee.", good: false, reply: "Ha. Sam's here to learn the trade." },
+      ],
+    },
+    { speaker: "Raj", text: "Thanks for bringing Sam. Caivan pays a hiring bonus for every co-op placement." },
+  ],
+  marco_intro: [
+    { speaker: "Marco", text: "Welcome to the east phase! I'm Marco, the site foreman. Forty-eight homes going up on Maple Run and Birch Lane." },
+    { speaker: "Marco", text: "The two tower cranes lift roof trusses and wall panels onto the frames. We're short an operator today." },
+    {
+      speaker: "Marco",
+      text: "Before you swing a load, what do you check?",
+      choices: [
+        { text: "The wind, the load's weight, and that nobody is standing under it.", good: true, reply: "That's an operator talking. The cab's yours." },
+        { text: "That the radio is loud enough.", good: false, reply: "Music's nice. Safety's nicer." },
+        { text: "Nothing, cranes are strong.", good: false, reply: "Cranes are strong. Gravity's stronger." },
+      ],
+    },
+    { speaker: "Marco", text: "Walk up to the base of either crane and press E to climb into the cab. Each load you land on the mark pays." },
+  ],
+  marco_again: [{ speaker: "Marco", text: "Trusses on Birch Lane need lifting. The cranes are free if you are." }],
+  crew_1: [{ speaker: "Crew", text: "Morning! Keep your hard hat on. Things fall from cranes sometimes. Not often. But sometimes." }],
+  crew_2: [{ speaker: "Crew", text: "Three houses framed this week. These panels from the factory go up like Lego." }],
+  crew_3: [{ speaker: "Crew", text: "Marco, the foreman, is up on Maple Run with his clipboard. He's looking for a crane operator." }],
+  clerk_permit: [
+    { speaker: "Clerk", text: "Building permit application for your lot. Your survey's on file. Just one question before I stamp it." },
+    {
+      speaker: "Clerk",
+      text: "Why does the city check plans before a house is built?",
+      choices: [
+        { text: "So homes are safe, follow the building code and fit the neighbourhood.", good: true, reply: "Exactly right. Stamped and approved." },
+        { text: "To collect stamps.", good: false, reply: "We do love stamps. But no. Approved anyway; read the code, please." },
+        { text: "No reason, really.", good: false, reply: "Every reason, actually. Approved, but do read up on it." },
+      ],
+    },
+    { speaker: "Clerk", text: "Your permit is approved. Caivan's crew will start digging right away." },
+  ],
 };

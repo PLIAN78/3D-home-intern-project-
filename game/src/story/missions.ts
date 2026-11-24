@@ -43,6 +43,7 @@ export const VEHICLE_SPOTS: Record<VehicleId | "horse" | "heli", { position: V2;
   car: { position: [203, 30.5], heading: -Math.PI / 2 },
   coupe: { position: [212, 30.5], heading: -Math.PI / 2 },
   super: { position: [221, 30.5], heading: -Math.PI / 2 },
+  bus: { position: [-76, 331], heading: 0 },
   horse: { position: [-141, 23], heading: Math.PI },
   // The helipad on the lawn west of the Sales Centre.
   heli: { position: [-214, 30], heading: 0 },

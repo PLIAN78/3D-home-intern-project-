@@ -9,14 +9,21 @@ import { endFrame, wasPressed } from "../core/input";
 import { host } from "../core/simHost";
 import { VEHICLES } from "../sim/vehicle";
 import type { Ride } from "../sim/simulation";
-import { gearOfRide, isBusy } from "../entities/Player";
+import { canRide, isBusy } from "../entities/Player";
 import { PLACE_IDS, PLACES } from "./places";
 import { MY_SEAT, STAFF, type StaffId } from "../world/office";
 import type { DialogId } from "./dialogs";
 import { DEPOT, DROP_RADIUS, PICKUPS, ROSA } from "./sidequests";
+import { CRANE_REACH, CRANES, CREW, ELIAS, MARCO, SAM_WAIT, TACKLE_REACH, tackleAt, TRAN } from "./quests";
+import { lotFront } from "../world/map";
+
+/** The stage set last handed to the physics (so house colliders follow your land's progress). */
+let appliedStages = -1;
 
 function rideName(r: Ride) {
   if (r.kind === "heli") return "Fly the Skylark";
+  if (r.kind === "boat") return "Take the Lakerunner boat";
+  if (r.kind === "vehicle" && r.id === "bus") return "Drive the school bus";
   if (r.kind === "animal") return r.id === "horse" ? "Ride Biscuit" : "Ride Peanut";
   return `Get in the ${VEHICLES[r.id].name}`;
 }
@@ -52,7 +59,14 @@ export function Director() {
     const g = useGame.getState();
     const b = runtime.body;
     const busy = isBusy(g);
-    if (host.sim) g.tickBank(host.sim.time);
+    if (host.sim) {
+      g.tickBank(host.sim.time);
+      g.tickLand(host.sim.time);
+      if (g.stagesVersion !== appliedStages) {
+        appliedStages = g.stagesVersion;
+        host.sim.setStages(g.stages);
+      }
+    }
     if (busy) {
       endFrame();
       return;
@@ -165,13 +179,17 @@ export function Director() {
       if (Math.hypot(b.x - x, b.z - z) < 2.2 && Math.abs(b.y + 1 - y) < 2.4) g.collectBlueprint(bp.id);
     }
 
+    sideQuests(g, offer, (text) => {
+      if (!prompt) prompt = text;
+    });
+
     // Getting in and out (F). Shown only when nothing else is on offer.
     if (!prompt && sim) {
-      const ride = sim.nearestRide((r) => g.owned[gearOfRide(r)]);
+      const ride = sim.nearestRide((r) => canRide(r, g));
       const c = sim.control;
       if (ride) prompt = `F|${rideName(ride)}`;
       else if (c.kind === "heli" && b.grounded) prompt = "F|Climb out";
-      else if (c.kind !== "foot" && c.kind !== "heli" && Math.abs(b.speed) < 2) prompt = `F|${c.kind === "animal" ? "Get off" : "Get out"}`;
+      else if (c.kind !== "foot" && c.kind !== "heli" && Math.abs(b.speed) < 2) prompt = `F|${c.kind === "animal" || c.kind === "boat" ? "Get off" : "Get out"}`;
     }
 
     g.setPrompt(prompt);
@@ -179,4 +197,80 @@ export function Director() {
     endFrame();
   }, -10);
   return null;
+}
+
+type Offer = (text: string, fn: () => void) => void;
+
+/** Elias and his tackle box, the co-op student, the crane crews, and your land. */
+function sideQuests(g: ReturnType<typeof useGame.getState>, offer: Offer, info: (text: string) => void) {
+  const sim = host.sim;
+  if (!sim) return;
+  const b = runtime.body;
+  const c = sim.control;
+  const onFoot = c.kind === "foot";
+  const now = sim.time;
+  const near = (p: [number, number], r: number) => dist2d(b.x, b.z, p) < r;
+
+  // Elias, fishing on the island.
+  if (onFoot && near(ELIAS.at, 2.8)) {
+    if (g.elias === "none")
+      offer("Talk to Elias", () => {
+        g.setElias("asked");
+        g.openDialog("elias_intro");
+      });
+    else if (g.elias === "asked") offer("Talk to Elias", () => g.openDialog("elias_waiting"));
+    else if (g.elias === "found") offer("Give Elias his tackle box", () => g.openDialog("elias_found", false, () => g.startJob("fishing")));
+    else offer("Fish with Elias", () => g.openDialog("elias_again", false, () => g.startJob("fishing")));
+  }
+  if (g.elias === "asked" && c.kind === "boat") {
+    const [tx, tz] = tackleAt(runtime.time);
+    if (Math.hypot(sim.boat.x - tx, sim.boat.z - tz) < TACKLE_REACH) {
+      g.setElias("found");
+      sfx("pickup");
+      g.toast("Got Elias's tackle box! Take it back to him on the island.");
+    }
+  }
+
+  // The co-op student: Ms. Tran at the school, Sam at the bus, Raj at the factory.
+  if (onFoot && near(TRAN.at, 2.8)) {
+    if (g.coop === "none")
+      offer("Talk to Ms. Tran", () =>
+        g.openDialog("tran_coop", false, () => {
+          g.setCoop("reviewing");
+          g.setPanel("resumes");
+        }),
+      );
+    else if (g.coop === "reviewing") offer("Review the résumés", () => g.setPanel("resumes"));
+    else offer("Talk to Ms. Tran", () => g.openDialog(g.coop === "done" ? "tran_done" : "tran_waiting"));
+  }
+  if (onFoot && g.coop === "hired" && near(SAM_WAIT.at, 2.6)) offer("Talk to Sam", () => g.openDialog("sam_hello"));
+  if (g.coop === "hired" && c.kind === "vehicle" && c.id === "bus") {
+    g.setCoop("riding");
+    sfx("pickup");
+    g.toast("Sam hopped on. Drive to the factory dock, east on Caivan Boulevard.");
+  }
+  if (g.coop === "riding" && near(DEPOT, DROP_RADIUS + 5)) {
+    if (c.kind === "vehicle" && c.id === "bus") {
+      if (Math.abs(b.speed) < 3) offer("Drop Sam off with Raj", () => g.openDialog("raj_coop", false, () => g.finishCoop()));
+      else info("i|Stop the bus to let Sam off");
+    } else info("i|Bring the bus (Sam's on it) to the dock");
+  }
+
+  // The east phase: Marco, the crew and the two tower cranes.
+  if (onFoot && near(MARCO.at, 2.8)) offer("Talk to Marco", () => g.openDialog(g.talk("marco") ? "marco_intro" : "marco_again"));
+  if (onFoot)
+    for (const w of CREW) {
+      const d = w.dialog;
+      if (d && near(w.at, 2.4)) offer("Talk to the crew", () => g.openDialog(d));
+    }
+  if (onFoot)
+    for (const cr of CRANES)
+      if (near([cr.x, cr.z], CRANE_REACH))
+        offer("Climb into the crane cab", () => {
+          if (g.talk("crane")) g.toast("Land each load on the green mark. Space to lower it.");
+          g.startJob("crane");
+        });
+
+  // Your land: walk the parcel to survey it.
+  if (g.land.step === "bought" && g.land.lot && onFoot && near(lotFront(g.land.lot, 6), 7)) offer("Survey your parcel", () => g.surveyParcel(now));
 }

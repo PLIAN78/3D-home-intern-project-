@@ -43,7 +43,7 @@ const LOOKS: VehicleId[] = ["sedan", "suv", "car", "sedan", "coupe", "suv", "roa
 const lookOf = (car: TrafficCar): VehicleId => (car.model === "truck" ? "truck" : LOOKS[car.id % LOOKS.length]);
 const RIGS = Object.fromEntries((["truck", ...new Set(LOOKS)] as VehicleId[]).map((id) => [id, rig(id)])) as Record<VehicleId, ReturnType<typeof rig>>;
 
-function TrafficCarView({ car }: { car: TrafficCar }) {
+function TrafficCarView({ car, y = 0 }: { car: TrafficCar; y?: number }) {
   const root = useRef<THREE.Group>(null);
   const wheels = useRef<(THREE.Group | null)[]>([]);
   const camera = useThree((s) => s.camera);
@@ -55,7 +55,7 @@ function TrafficCarView({ car }: { car: TrafficCar }) {
     const far = Math.hypot(camera.position.x - car.x, camera.position.z - car.z) > DRAW_CAR;
     g.visible = !far;
     if (far) return;
-    g.position.set(car.x, r.ride, car.z);
+    g.position.set(car.x, y + r.ride, car.z);
     g.rotation.set(0, -car.heading, 0);
     for (const w of wheels.current) if (w?.children[0]) w.children[0].rotation.z = -car.spin;
   });
@@ -78,7 +78,7 @@ function TrafficCarView({ car }: { car: TrafficCar }) {
   );
 }
 
-function WalkerView({ walker }: { walker: Walker }) {
+function WalkerView({ walker, y = 0 }: { walker: Walker; y?: number }) {
   const root = useRef<THREE.Group>(null);
   const camera = useThree((s) => s.camera);
   useFrame(() => {
@@ -87,7 +87,7 @@ function WalkerView({ walker }: { walker: Walker }) {
     const far = Math.hypot(camera.position.x - walker.x, camera.position.z - walker.z) > DRAW_WALKER;
     g.visible = !far;
     if (far) return;
-    g.position.set(walker.x, 0, walker.z);
+    g.position.set(walker.x, y, walker.z);
     g.rotation.y = -walker.heading;
   });
   return (
@@ -100,6 +100,7 @@ function WalkerView({ walker }: { walker: Walker }) {
 export function Town() {
   const sim = useSim();
   const town = sim?.town;
+  const city = sim?.cityTown;
   if (!town) return null;
   return (
     <group name="Town">
@@ -108,6 +109,13 @@ export function Town() {
       ))}
       {town.walkers.map((w) => (
         <WalkerView key={w.id} walker={w} />
+      ))}
+      {/* Downtown Owawa, up on its plateau */}
+      {city?.cars.map((c) => (
+        <TrafficCarView key={`city-${c.id}`} car={c} y={city.y} />
+      ))}
+      {city?.walkers.map((w) => (
+        <WalkerView key={`city-${w.id}`} walker={w} y={city.y} />
       ))}
       <Rosa />
       {(Object.keys(STAFF) as StaffId[]).map((id) => (

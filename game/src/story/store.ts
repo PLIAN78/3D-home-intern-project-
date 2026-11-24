@@ -5,7 +5,7 @@ import { STARTING_STAGES } from "../world/map";
 import { DIALOGS, type DialogId } from "./dialogs";
 import { BLUEPRINT_VALUE, buy, canBuy, DELIVERY_BONUS, DELIVERY_PAY, ELEPHANT_REWARD, GEAR, GOAT_VALUE, isVehicle, money, STARTING_OWNED, type GearId, type Owned } from "./economy";
 import { accrue, borrow, deposit, OPEN_ACCOUNT, repay, splitPay, withdraw, type Account } from "./bank";
-import { BOOST_SECONDS, earnedRank, MEALS, RANKS, type BoostKind, type Kitchen } from "./work";
+import { BOOST_SECONDS, COOP_PAY, earnedRank, ELIAS_REWARD, FISH_PAY, LAND_STAGE_SECONDS, LAND_STAGES, MEALS, RANKS, RENT, RENT_SECONDS, type BoostKind, type Kitchen } from "./work";
 import type { PlaceId } from "./places";
 import type { StaffId } from "../world/office";
 import type { VehicleId } from "../sim/vehicle";
@@ -31,12 +31,20 @@ interface DialogState {
   good: number;
   /** Advance the mission when the dialog closes. */
   completesStep: boolean;
+  /** Runs when the dialog closes. */
+  then?: () => void;
 }
 
 /** A full-screen panel: one of the town's places, or your desk at the office. */
-export type PanelId = PlaceId | "desk";
+export type PanelId = PlaceId | "desk" | "resumes";
 
-export type JobKind = "math" | "trivia" | "schedule" | "orders";
+export type JobKind = "math" | "trivia" | "schedule" | "orders" | "fishing" | "crane";
+
+export type EliasStep = "none" | "asked" | "found" | "done";
+export type CoopStep = "none" | "reviewing" | "hired" | "riding" | "done";
+export type LandStep = "none" | "bought" | "surveyed" | "building" | "done";
+
+const OFFICE_JOBS: JobKind[] = ["math", "trivia", "schedule"];
 
 export interface Job {
   kind: JobKind;
@@ -77,6 +85,15 @@ export interface GameState {
   job: Job | null;
   /** Office career: finished tasks, current rank, staff you've met. */
   office: { tasks: number; rank: number; met: StaffId[] };
+  elias: EliasStep;
+  coop: CoopStep;
+  /** Your land in Caivan Ridge: which lot, how far along, and when the current step started (sim time). */
+  land: { lot: string | null; step: LandStep; since: number; stage: number };
+  rentLast: number;
+  /** People you've already had a first chat with (side quests). */
+  talked: string[];
+  /** Stage changes the physics needs to pick up (the Director applies them). */
+  stagesVersion: number;
   prompt: string | null;
   toasts: Toast[];
   showHelp: boolean;
@@ -85,7 +102,7 @@ export interface GameState {
   setMode: (mode: ModeId) => void;
   pay: (amount: number, why: string) => void;
   toast: (text: string, tone?: Toast["tone"]) => void;
-  openDialog: (id: DialogId, completesStep?: boolean) => void;
+  openDialog: (id: DialogId, completesStep?: boolean, then?: () => void) => void;
   nextLine: () => void;
   choose: (index: number) => void;
   completeStep: () => void;
@@ -118,6 +135,18 @@ export interface GameState {
   promote: () => boolean;
   /** Spend money (respects the cheat). Returns false if you can't afford it. */
   spend: (amount: number) => boolean;
+  /** Remember a first chat; returns true if it's the first time. */
+  talk: (who: string) => boolean;
+  setElias: (step: EliasStep) => void;
+  setCoop: (step: CoopStep) => void;
+  /** Ends a fishing session; the first one (with Elias) also pays his reward. */
+  finishFishing: (fish: number) => void;
+  /** Sam arrives at the factory. */
+  finishCoop: () => void;
+  buyParcel: (lot: string, price: number, now: number) => void;
+  surveyParcel: (now: number) => void;
+  filePermit: (now: number) => void;
+  tickLand: (now: number) => void;
   buyGear: (id: GearId) => void;
   collectBlueprint: (id: string) => void;
   goatHome: (id: string) => void;
@@ -156,6 +185,12 @@ const initial = () => ({
   panel: null as PanelId | null,
   job: null as Job | null,
   office: { tasks: 0, rank: 0, met: [] as StaffId[] },
+  elias: "none" as EliasStep,
+  coop: "none" as CoopStep,
+  land: { lot: null as string | null, step: "none" as LandStep, since: 0, stage: -1 },
+  rentLast: 0,
+  talked: [] as string[],
+  stagesVersion: 0,
   prompt: null,
   toasts: [] as Toast[],
   showHelp: true,
@@ -190,9 +225,9 @@ export const useGame = create<GameState>((set, get) => ({
     setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 3800);
   },
 
-  openDialog: (id, completesStep = false) => {
+  openDialog: (id, completesStep = false, then) => {
     sfx("blip");
-    set({ dialog: { id, line: 0, reply: null, good: 0, completesStep }, prompt: null });
+    set({ dialog: { id, line: 0, reply: null, good: 0, completesStep, then }, prompt: null });
   },
 
   nextLine: () => {
@@ -208,6 +243,7 @@ export const useGame = create<GameState>((set, get) => ({
     set({ dialog: null });
     if (d.good > 0) get().pay(d.good * 100, d.good === 1 ? "1 helpful answer" : `${d.good} helpful answers`);
     if (d.completesStep) get().completeStep();
+    d.then?.();
   },
 
   choose: (index) => {
@@ -371,10 +407,10 @@ export const useGame = create<GameState>((set, get) => ({
     const job = get().job;
     set({ job: null });
     if (!job) return;
-    if (done && job.kind !== "orders") set((s) => ({ office: { ...s.office, tasks: s.office.tasks + 1 } }));
+    if (done && OFFICE_JOBS.includes(job.kind)) set((s) => ({ office: { ...s.office, tasks: s.office.tasks + 1 } }));
     if (amount > 0) get().pay(amount, why);
     const o = get().office;
-    if (job.kind !== "orders" && earnedRank(o.tasks) > o.rank) get().toast("You've earned a promotion. Go and see Daniel.");
+    if (OFFICE_JOBS.includes(job.kind) && earnedRank(o.tasks) > o.rank) get().toast("You've earned a promotion. Go and see Daniel.");
   },
 
   bankDeposit: (amount) => {
@@ -426,7 +462,7 @@ export const useGame = create<GameState>((set, get) => ({
     const b = get().boost;
     if (b && now >= b.until) {
       set({ boost: null });
-      get().toast(b.kind === "run" ? "Your energy boost has worn off." : "Your jetpack boost has worn off.");
+      get().toast(b.kind === "run" ? "Your energy boost has worn off." : b.kind === "fuel" ? "Your jetpack boost has worn off." : "Your shawarma boost has worn off.");
     }
   },
 
@@ -440,6 +476,72 @@ export const useGame = create<GameState>((set, get) => ({
   meetStaff: (id) => {
     if (get().office.met.includes(id)) return;
     set((s) => ({ office: { ...s.office, met: [...s.office.met, id] } }));
+  },
+
+  talk: (who) => {
+    if (get().talked.includes(who)) return false;
+    set((s) => ({ talked: [...s.talked, who] }));
+    return true;
+  },
+  setElias: (step) => set({ elias: step }),
+  setCoop: (step) => set({ coop: step }),
+  finishFishing: (fish) => {
+    set({ job: null });
+    if (fish > 0) get().pay(fish * FISH_PAY, fish === 1 ? "1 fish caught" : `${fish} fish caught`);
+    if (get().elias === "found") {
+      set({ elias: "done" });
+      sfx("fanfare");
+      get().pay(ELIAS_REWARD, "Elias's tackle box");
+      get().toast("Elias says you can fish from his jetty any time.");
+    }
+  },
+  finishCoop: () => {
+    if (get().coop !== "riding") return;
+    set({ coop: "done" });
+    sfx("fanfare");
+    get().pay(COOP_PAY, "Co-op student placed at the factory");
+  },
+
+  buyParcel: (lot, price, now) => {
+    if (get().land.step !== "none") return;
+    if (!get().spend(price)) return;
+    sfx("fanfare");
+    set({ land: { lot, step: "bought", since: now, stage: -1 } });
+    get().toast("The land is yours. Go and walk the parcel to survey it; it's marked on your map.");
+  },
+  surveyParcel: (now) => {
+    const l = get().land;
+    if (l.step !== "bought") return;
+    sfx("step");
+    set({ land: { ...l, step: "surveyed", since: now } });
+    get().toast("Survey done. Back to City Hall to apply for your building permit.");
+  },
+  filePermit: (now) => {
+    const l = get().land;
+    if (l.step !== "surveyed" || !l.lot) return;
+    sfx("fanfare");
+    set((s) => ({ land: { ...l, step: "building", since: now, stage: 0 }, stages: { ...s.stages, [l.lot!]: LAND_STAGES[0] }, stagesVersion: s.stagesVersion + 1 }));
+    get().toast("Permit approved. Caivan's crew has started digging. Watch your house go up.");
+  },
+  tickLand: (now) => {
+    const s = get();
+    const l = s.land;
+    if (l.step === "building" && l.lot && now - l.since >= LAND_STAGE_SECONDS) {
+      const next = l.stage + 1;
+      if (next >= LAND_STAGES.length) {
+        // Finished: the house stands, ready for its tenants, and starts paying rent.
+        set({ land: { ...l, step: "done", since: now, stage: next }, stages: { ...s.stages, [l.lot]: "ready" }, rentLast: now, stagesVersion: s.stagesVersion + 1 });
+        sfx("fanfare");
+        get().toast(`Your house is finished! Its tenants pay ${money(RENT)} every ${RENT_SECONDS / 60} minutes.`);
+      } else {
+        set({ land: { ...l, since: now, stage: next }, stages: { ...s.stages, [l.lot]: LAND_STAGES[next] }, stagesVersion: s.stagesVersion + 1 });
+        get().toast(`Your house: ${LAND_STAGES[next]}.`);
+      }
+    }
+    if (l.step === "done" && now - s.rentLast >= RENT_SECONDS) {
+      set({ rentLast: now });
+      get().pay(RENT, "Rent from your house");
+    }
   },
 
   promote: () => {

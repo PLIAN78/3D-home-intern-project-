@@ -110,7 +110,11 @@ export class Town {
   readonly cars: TrafficCar[] = [];
   readonly walkers: Walker[] = [];
 
-  constructor(R: Rapier, world: World, loops: P[][], walkLoops: P[][], opts: { carsPerLoop: number[]; walkersPerLoop: number; laneOffset: number }) {
+  /** Ground height the town sits on (Owawa is up on its plateau). */
+  readonly y: number;
+
+  constructor(R: Rapier, world: World, loops: P[][], walkLoops: P[][], opts: { carsPerLoop: number[]; walkersPerLoop: number; laneOffset: number; y?: number }) {
+    this.y = opts.y ?? 0;
     let id = 0;
     loops.forEach((loop, li) => {
       const path = new Path(laneOf(loop, opts.laneOffset));
@@ -119,7 +123,7 @@ export class Town {
         const s = (path.length / n) * k + li * 7;
         const p = path.at(s);
         const truck = (id * 7) % 5 === 0;
-        const body = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(p.x, 0.85, p.z).setRotation(quatFromHeading(p.heading)));
+        const body = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(p.x, this.y + 0.85, p.z).setRotation(quatFromHeading(p.heading)));
         world.createCollider(
           R.ColliderDesc.cuboid(truck ? 2.75 : 2.3, truck ? 0.75 : 0.6, 0.98)
             .setTranslation(0, truck ? 0.15 : 0, 0)
@@ -174,7 +178,7 @@ export class Town {
       c.x += (p.x - c.x) * damp(10, dt);
       c.z += (p.z - c.z) * damp(10, dt);
       c.spin += (c.speed * dt) / 0.36;
-      c.body.setNextKinematicTranslation({ x: c.x, y: 0.85, z: c.z });
+      c.body.setNextKinematicTranslation({ x: c.x, y: this.y + 0.85, z: c.z });
       c.body.setNextKinematicRotation(quatFromHeading(c.heading));
     }
     // Pedestrians

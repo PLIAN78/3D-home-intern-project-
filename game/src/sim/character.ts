@@ -98,7 +98,7 @@ export class CharacterController {
     this.heading = heading;
     this.body = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(x, CENTRE, z));
     this.collider = world.createCollider(
-      R.ColliderDesc.capsule(FOOT.halfHeight, FOOT.radius).setCollisionGroups(groups(LAYER.PLAYER, LAYER.STATIC | LAYER.BREAKABLE | LAYER.DEBRIS | LAYER.VEHICLE | LAYER.ANIMAL)),
+      R.ColliderDesc.capsule(FOOT.halfHeight, FOOT.radius).setCollisionGroups(groups(LAYER.PLAYER, LAYER.WATER | LAYER.STATIC | LAYER.BREAKABLE | LAYER.DEBRIS | LAYER.VEHICLE | LAYER.ANIMAL)),
       this.body,
     );
     this.kcc = world.createCharacterController(0.03);
@@ -211,7 +211,7 @@ export class CharacterController {
     const desired = { x: this.vel.x * dt, y: this.vel.y * dt, z: this.vel.z * dt };
     const wasGrounded = this.grounded;
     const fallSpeed = -this.vel.y;
-    this.kcc.computeColliderMovement(this.collider, desired, this.R.QueryFilterFlags.EXCLUDE_SENSORS, groups(LAYER.PLAYER, LAYER.STATIC | LAYER.BREAKABLE | LAYER.DEBRIS | LAYER.VEHICLE | LAYER.ANIMAL));
+    this.kcc.computeColliderMovement(this.collider, desired, this.R.QueryFilterFlags.EXCLUDE_SENSORS, groups(LAYER.PLAYER, LAYER.WATER | LAYER.STATIC | LAYER.BREAKABLE | LAYER.DEBRIS | LAYER.VEHICLE | LAYER.ANIMAL));
     const moved = this.kcc.computedMovement();
     this.grounded = this.kcc.computedGrounded() && this.vel.y <= 0.01;
     for (let i = 0; i < this.kcc.numComputedCollisions(); i++) {

@@ -545,6 +545,7 @@ export const BODY_COLORS: Record<VehicleId, string> = {
   super: "#e8a31a",
   suv: "#2f3e52",
   sedan: "#b9bcc0",
+  bus: "#f2b01e",
 };
 /** Where the driver sits, in chassis-local coordinates (left-hand drive). */
 export const DRIVER_SEAT: Record<VehicleId, [number, number, number]> = {
@@ -557,6 +558,7 @@ export const DRIVER_SEAT: Record<VehicleId, [number, number, number]> = {
   super: [-0.2, -0.88, -0.4],
   suv: [-0.1, -0.62, -0.42],
   sedan: [-0.2, -0.8, -0.4],
+  bus: [4.1, -0.5, -0.6],
 };
 /** Body scale relative to the base pickup shell (the Haul HD is bigger). */
 export const BODY_SCALE: Record<VehicleId, [number, number, number]> = {
@@ -569,4 +571,5 @@ export const BODY_SCALE: Record<VehicleId, [number, number, number]> = {
   super: [1, 1, 1],
   suv: [1, 1, 1],
   sedan: [1, 1, 1],
+  bus: [1, 1, 1],
 };

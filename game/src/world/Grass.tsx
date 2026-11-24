@@ -8,7 +8,7 @@ import { noBackfaceFlip } from "../render/materials";
 import { useQuality } from "../render/quality";
 import { useGame } from "../story/store";
 import { CAIVAN_RIDGE, collisionBoxes, FRONT, LANDMARKS, PAVED, WORLD_HALF } from "./map";
-import { HILL_ROAD, HILL_ROAD_WIDTH } from "./terrain";
+import { COUNTRY_ROADS } from "./terrain";
 
 /**
  * Real grass near the camera: tens of thousands of instanced blades in a square
@@ -107,12 +107,14 @@ function paintMask(stages: Record<string, string>) {
   }
   const [mx, mz] = LANDMARKS.mall.position;
   ctx.fillRect(X(mx + LANDMARKS.mall.size[0] / 2), Z(mz - 23), 19 * k, 26 * k);
-  // Cottage Road where it crosses town
-  ctx.lineWidth = (HILL_ROAD_WIDTH + 3.4) * k;
+  // Country roads where they cross town (Cottage Road, Lake Road, Owawa Road)
   ctx.lineJoin = "round";
-  ctx.beginPath();
-  HILL_ROAD.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z))));
-  ctx.stroke();
+  for (const road of COUNTRY_ROADS) {
+    ctx.lineWidth = (road.width + 3.4) * k;
+    ctx.beginPath();
+    road.points.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z))));
+    ctx.stroke();
+  }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.NoColorSpace;
   t.flipY = false; // row 0 of the canvas is the north edge (z = −WORLD_HALF)
