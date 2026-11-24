@@ -1,59 +1,81 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Environment as DreiEnvironment, Lightformer, Sky } from "@react-three/drei";
+import { Environment as DreiEnvironment, Sky } from "@react-three/drei";
+import park from "@pmndrs/assets/hdri/park.exr";
 import * as THREE from "three";
-import { runtime } from "../game/runtime";
+import { runtime } from "../core/runtime";
+import { useQuality } from "../render/quality";
 
-const SUN = new THREE.Vector3(0.55, 0.78, 0.42).normalize();
+/** Afternoon sun from the north-west: lights the Sales Centre front and the streets you drive down. */
+export const SUN = new THREE.Vector3(-0.5, 0.7, -0.52).normalize();
+/** Horizon haze colour, shared by fog and the distant hills. */
+export const HAZE = "#c9d6e2";
 
-/** Sky, haze and a sun whose shadow follows the player (same look as Home Studio's viewer). */
+/**
+ * Daylight, the physically based way:
+ * - a Preetham sky for the background, with the sun where the shadows say it is;
+ * - image-based lighting from a CC0 Poly Haven HDRI ("park", bundled by
+ *   @pmndrs/assets), so paint, glass and water reflect a real outdoor scene;
+ * - one sun casting soft shadows from a 4K shadow map that follows the player;
+ * - distance fog matched to the horizon (aerial perspective).
+ */
 export function GameEnvironment() {
   const light = useRef<THREE.DirectionalLight>(null);
   const scene = useThree((s) => s.scene);
   const target = useMemo(() => new THREE.Object3D(), []);
+  const high = useQuality((s) => s.level === "high");
+  const span = high ? 70 : 50;
+
   useEffect(() => {
     scene.add(target);
     const l = light.current;
     if (l) {
       const cam = l.shadow.camera;
-      cam.left = -45;
-      cam.right = 45;
-      cam.top = 45;
-      cam.bottom = -45;
+      cam.left = -span;
+      cam.right = span;
+      cam.top = span;
+      cam.bottom = -span;
       cam.near = 1;
-      cam.far = 220;
+      cam.far = 400;
       cam.updateProjectionMatrix();
       l.target = target;
     }
     return () => {
       scene.remove(target);
     };
-  }, [scene, target]);
+  }, [scene, target, span]);
 
   useFrame(() => {
     const l = light.current;
     if (!l) return;
     const b = runtime.body;
-    // Snap to a 2 m grid so shadows don't shimmer as you move.
-    const x = Math.round(b.x / 2) * 2;
-    const z = Math.round(b.z / 2) * 2;
+    // Centre the shadow map a little ahead of the camera and snap it to shadow texels so edges don't shimmer.
+    const texel = (span * 2) / l.shadow.mapSize.x;
+    const ax = b.x + Math.cos(runtime.cameraYaw) * span * 0.35;
+    const az = b.z + Math.sin(runtime.cameraYaw) * span * 0.35;
+    const x = Math.round(ax / texel) * texel;
+    const z = Math.round(az / texel) * texel;
     target.position.set(x, 0, z);
     target.updateMatrixWorld();
-    l.position.set(x + SUN.x * 110, SUN.y * 110, z + SUN.z * 110);
+    l.position.set(x + SUN.x * 200, SUN.y * 200, z + SUN.z * 200);
   });
 
   return (
     <>
-      <Sky distance={4500} sunPosition={[SUN.x * 100, SUN.y * 100, SUN.z * 100]} turbidity={5} rayleigh={0.9} mieCoefficient={0.004} mieDirectionalG={0.82} />
-      <fog attach="fog" args={["#d6e2ea", 180, 620]} />
-      <hemisphereLight args={["#e3ecf6", "#76705a", 0.6]} />
-      <directionalLight ref={light} intensity={2.6} color="#fff3e2" castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0003} shadow-normalBias={0.04} />
-      <DreiEnvironment resolution={128} frames={1} environmentIntensity={0.55}>
-        <Lightformer form="rect" intensity={2.2} color="#dfe9f5" scale={[60, 20, 1]} position={[0, 18, -30]} />
-        <Lightformer form="rect" intensity={1.4} color="#ffffff" scale={[40, 15, 1]} position={[30, 10, 30]} rotation={[0, -Math.PI / 4, 0]} />
-        <Lightformer form="rect" intensity={0.8} color="#9db07a" scale={[100, 10, 1]} position={[0, -6, 0]} rotation={[Math.PI / 2, 0, 0]} />
-        <Lightformer form="circle" intensity={6} color="#fff1d6" scale={8} position={[40, 50, 30]} />
-      </DreiEnvironment>
+      <Sky distance={4500} sunPosition={[SUN.x, SUN.y, SUN.z]} turbidity={6} rayleigh={1.1} mieCoefficient={0.0045} mieDirectionalG={0.86} />
+      <fog attach="fog" args={[HAZE, 140, 980]} />
+      <DreiEnvironment files={park} environmentIntensity={0.5} />
+      <hemisphereLight args={["#f2efe6", "#7a7350", 0.5]} />
+      <directionalLight
+        ref={light}
+        intensity={3.6}
+        color="#ffeed6"
+        castShadow
+        shadow-mapSize={high ? [4096, 4096] : [2048, 2048]}
+        shadow-bias={-0.0002}
+        shadow-normalBias={0.035}
+        shadow-radius={3}
+      />
     </>
   );
 }

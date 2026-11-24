@@ -1,12 +1,12 @@
 import { create } from "zustand";
 import type { StageId } from "@/lib/models/construction";
-import type { ModeId } from "../player/physics";
+import type { ModeId } from "./economy";
 import { STARTING_STAGES } from "../world/map";
 import { DIALOGS, type DialogId } from "./dialogs";
 import { BLUEPRINT_VALUE, buy, canBuy, GOAT_VALUE, money, STARTING_OWNED, type GearId, type Owned } from "./economy";
 import { advance, currentMission, currentStep, START, type MinigameKind, type Progress } from "./missions";
-import { resetRuntime } from "./runtime";
-import { sfx } from "./sfx";
+import { resetRuntime } from "../core/runtime";
+import { sfx } from "../core/sfx";
 
 export type Phase = "title" | "playing" | "ending";
 

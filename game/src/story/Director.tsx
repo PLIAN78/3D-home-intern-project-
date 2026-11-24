@@ -1,10 +1,13 @@
 import { useFrame } from "@react-three/fiber";
 import { BLUEPRINTS, inPen } from "./collectibles";
-import { currentStep, GEAR_GARAGE, NPC_SPOTS } from "./missions";
-import { runtime } from "./runtime";
+import { GEAR } from "./economy";
+import { alreadySatisfied, currentStep, GEAR_GARAGE, NPC_SPOTS } from "./missions";
+import { runtime } from "../core/runtime";
 import { useGame } from "./store";
-import { sfx } from "./sfx";
-import { endFrame, wasPressed } from "../player/input";
+import { sfx } from "../core/sfx";
+import { endFrame, wasPressed } from "../core/input";
+import { host } from "../core/simHost";
+import { VEHICLES } from "../sim/vehicle";
 
 const REACH = 3.2;
 
@@ -14,7 +17,7 @@ function dist2d(x: number, z: number, p: [number, number]) {
 
 /**
  * Per-frame game rules: mission steps, the "Press E" prompt, pickups and
- * goats. Mounted last so it runs after the player and camera each frame, and
+ * goats. Runs after the player and camera each frame (frame priority −10) and
  * clears the frame's one-shot input when done.
  */
 export function Director() {
@@ -38,7 +41,10 @@ export function Director() {
     // Story step
     const step = currentStep(g.progress);
     if (step) {
-      if (step.kind === "goto" && dist2d(b.x, b.z, step.at) < step.radius) g.completeStep();
+      if (alreadySatisfied(step, g.owned)) {
+        if (step.kind === "own") g.toast(`You already own the ${GEAR[step.gear].name}. Nice saving!`);
+        g.completeStep();
+      } else if (step.kind === "goto" && dist2d(b.x, b.z, step.at) < step.radius) g.completeStep();
       else if (step.kind === "climb" && dist2d(b.x, b.z, step.at) < step.radius && b.y >= step.minY) g.completeStep();
       else if (step.kind === "talk" && dist2d(b.x, b.z, NPC_SPOTS[step.npc].position) < REACH + 2) {
         offer(`Talk to ${NPC_SPOTS[step.npc].name.split(" · ")[0]}`, () => g.openDialog(step.dialog, true));
@@ -87,9 +93,17 @@ export function Director() {
       if (Math.hypot(b.x - x, b.z - z) < 2.2 && Math.abs(b.y + 1 - y) < 2.4) g.collectBlueprint(bp.id);
     }
 
+    // Getting in and out (F). Shown only when nothing else is on offer.
+    const sim = host.sim;
+    if (!prompt && sim) {
+      const ride = sim.nearestRide();
+      if (ride) prompt = `F|${ride.kind === "horse" ? "Ride Biscuit" : `Get in the ${VEHICLES[ride.id].name}`}`;
+      else if (sim.control.kind !== "foot" && Math.abs(b.speed) < 2) prompt = `F|${sim.control.kind === "horse" ? "Get off" : "Get out"}`;
+    }
+
     g.setPrompt(prompt);
     if (e && action) (action as () => void)();
     endFrame();
-  });
+  }, -10);
   return null;
 }

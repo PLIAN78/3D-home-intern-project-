@@ -1,7 +1,7 @@
 import type { StageId } from "@/lib/models/construction";
 import { HERO_LOT_ID, LANDMARKS, lotFront, MODEL_HOME_LOT_ID, onLot, POUR_LOT_ID, SURVEY_LOT_ID, TOWER, type V2 } from "../world/map";
 import type { DialogId } from "./dialogs";
-import type { GearId } from "./economy";
+import type { GearId, Owned } from "./economy";
 
 /**
  * The story: five jobs that mirror what Caivan's people actually do, then the
@@ -29,6 +29,13 @@ export const SURVEY_STAKES: V2[] = [onLot(SURVEY_LOT_ID, [-5, 10]), onLot(SURVEY
 export const POUR_SPOT: V2 = onLot(POUR_LOT_ID, [0, 4]);
 
 export const GEAR_GARAGE: V2 = [-156, 25];
+
+/** Where vehicles wait: the pickup from day one, bought gear is delivered next to it. */
+export const VEHICLE_SPOTS: Record<"truck" | "car" | "horse", { position: V2; heading: number }> = {
+  truck: { position: [-166, 17], heading: -Math.PI / 2 },
+  car: { position: [-150, 17], heading: -Math.PI / 2 },
+  horse: { position: [-141, 23], heading: Math.PI },
+};
 
 export type MinigameKind = "timing" | "pour";
 
@@ -151,6 +158,14 @@ export function currentMission(p: Progress): Mission | null {
 
 export function currentStep(p: Progress): Step | null {
   return currentMission(p)?.steps[p.step] ?? null;
+}
+
+/**
+ * A step that is already true the moment it comes up, e.g. "buy the jetpack" when you
+ * bought it earlier with side-job money. The Director completes these right away.
+ */
+export function alreadySatisfied(step: Step | null, owned: Owned): boolean {
+  return step?.kind === "own" && owned[step.gear];
 }
 
 export function storyComplete(p: Progress) {

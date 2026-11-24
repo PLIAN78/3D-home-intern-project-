@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { BLUEPRINTS } from "../game/collectibles";
-import { GEAR, money } from "../game/economy";
-import { currentStep, stepTarget } from "../game/missions";
-import { runtime } from "../game/runtime";
-import { objective, useGame } from "../game/store";
-import { MODES, type ModeId } from "../player/physics";
+import { BLUEPRINTS } from "../story/collectibles";
+import { GEAR, money } from "../story/economy";
+import { currentStep, stepTarget } from "../story/missions";
+import { runtime } from "../core/runtime";
+import { objective, useGame } from "../story/store";
+import type { ModeId } from "../story/economy";
 import { CAIVAN_RIDGE, LANDMARKS, PEN, WORLD_HALF } from "../world/map";
+
+const LABELS: Record<ModeId, string> = { walk: "On foot (1)", truck: "Company pickup (2)", horse: "Biscuit the horse (3)", car: "Volt GT (4)", jetpack: "SkyHopper jetpack (5)" };
 
 const HOTBAR: { key: string; mode: ModeId; icon: string; gear?: keyof typeof GEAR }[] = [
   { key: "1", mode: "walk", icon: "🚶" },
@@ -118,7 +120,7 @@ function Gauge() {
   useEffect(() => {
     const id = setInterval(() => {
       const b = runtime.body;
-      setV({ speed: Math.abs(b.speed) * 3.6, fuel: b.fuel / (MODES.jetpack.fuel ?? 1), alt: b.y });
+      setV({ speed: Math.abs(b.speed) * 3.6, fuel: b.fuelMax ? b.fuel / b.fuelMax : 0, alt: b.y });
     }, 120);
     return () => clearInterval(id);
   }, []);
@@ -196,7 +198,7 @@ export function Hud() {
       <div className="bottom">
         {prompt && (
           <div className="prompt">
-            <kbd>E</kbd> {prompt}
+            <kbd>{prompt.includes("|") ? prompt.split("|")[0] : "E"}</kbd> {prompt.includes("|") ? prompt.split("|")[1] : prompt}
           </div>
         )}
         <div className="hotbar-row">
@@ -205,7 +207,7 @@ export function Hud() {
             {HOTBAR.map((h) => {
               const locked = h.gear ? !owned[h.gear] : false;
               return (
-                <div key={h.key} className={`slot ${mode === h.mode ? "active" : ""} ${locked ? "locked" : ""}`} title={MODES[h.mode].label}>
+                <div key={h.key} className={`slot ${mode === h.mode ? "active" : ""} ${locked ? "locked" : ""}`} title={LABELS[h.mode]}>
                   <span className="icon">{locked ? "🔒" : h.icon}</span>
                   <span className="num">{h.key}</span>
                 </div>
@@ -228,10 +230,13 @@ export function Hud() {
             <kbd>→</kbd> look · wheel zoom
           </div>
           <div>
-            <kbd>Space</kbd> jump · jetpack up · <kbd>Shift</kbd> sprint
+            <kbd>Space</kbd> jump · jetpack · handbrake · <kbd>Shift</kbd> sprint
           </div>
           <div>
-            <kbd>E</kbd> talk / use · <kbd>1</kbd>–<kbd>5</kbd> gear
+            <kbd>E</kbd> talk / use · <kbd>F</kbd> get in / out
+          </div>
+          <div>
+            <kbd>1</kbd>–<kbd>5</kbd> call your gear · <kbd>G</kbd> graphics
           </div>
           <div className="muted">
             <kbd>H</kbd> hide this

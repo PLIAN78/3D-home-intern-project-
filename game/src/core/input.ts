@@ -1,9 +1,9 @@
-import type { MoveInput } from "./physics";
+import type { SimInput } from "../sim/simulation";
 
 /**
- * Keyboard and mouse state. WASD moves (or steers), Space jumps / thrusts,
- * Shift sprints, E interacts, 1–5 switch gear, arrow keys or mouse drag turn
- * the camera, wheel zooms.
+ * Keyboard and mouse state. WASD moves (or drives), Space jumps / thrusts the
+ * jetpack / handbrake, Shift sprints, E talks or uses, F gets in and out,
+ * 1–5 call your gear, arrow keys or mouse drag turn the camera, wheel zooms.
  */
 
 const held = new Set<string>();
@@ -33,10 +33,19 @@ export function releaseAll() {
   pressed.clear();
 }
 
-export function moveInput(cameraYaw: number): MoveInput {
+/** This frame's controls for whatever the player is moving (on foot, driving or riding). */
+export function simInput(cameraYaw: number): SimInput {
   const f = (isHeld("KeyW") ? 1 : 0) - (isHeld("KeyS") ? 1 : 0);
   const s = (isHeld("KeyD") ? 1 : 0) - (isHeld("KeyA") ? 1 : 0);
-  return { forward: f, side: s, up: isHeld("Space"), sprint: isHeld("ShiftLeft") || isHeld("ShiftRight"), cameraYaw };
+  return {
+    forward: f,
+    side: s,
+    jump: wasPressed("Space"),
+    jumpHeld: isHeld("Space"),
+    handbrake: isHeld("Space"),
+    sprint: isHeld("ShiftLeft") || isHeld("ShiftRight"),
+    cameraYaw,
+  };
 }
 
 /** Camera turn from arrow keys (rad/s units, −1…1). */

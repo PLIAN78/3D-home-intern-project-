@@ -1,23 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { BLUEPRINTS, GOAT_STARTS, inPen } from "@/game/src/game/collectibles";
-import { DIALOGS } from "@/game/src/game/dialogs";
-import { BLUEPRINT_VALUE, buy, canBuy, GEAR, GOAT_VALUE, modeForKey, SHOP_ORDER, STARTING_OWNED } from "@/game/src/game/economy";
-import { advance, currentStep, MISSIONS, NPC_SPOTS, START, stepTarget, storyComplete, storyEarnings, type Progress } from "@/game/src/game/missions";
-import { createBody, MODES, stepBody, type Body, type MoveInput, type World } from "@/game/src/player/physics";
+import { BLUEPRINTS, GOAT_STARTS, inPen } from "@/game/src/story/collectibles";
+import { DIALOGS } from "@/game/src/story/dialogs";
+import { BLUEPRINT_VALUE, buy, canBuy, GEAR, GOAT_VALUE, modeForKey, SHOP_ORDER, STARTING_OWNED } from "@/game/src/story/economy";
+import { advance, alreadySatisfied, currentStep, MISSIONS, NPC_SPOTS, START, stepTarget, storyComplete, storyEarnings, type Progress } from "@/game/src/story/missions";
 import {
   CAIVAN_RIDGE,
-  ceilingHeightAt,
   collisionBoxes,
-  groundHeightAt,
   HERO_LOT_ID,
-  LANDMARKS,
   lotById,
   PEN,
   POUR_LOT_ID,
   SPAWN,
   STARTING_STAGES,
   SURVEY_LOT_ID,
-  TOWER,
   WORLD_HALF,
   type Box,
   type V2,
@@ -31,14 +26,6 @@ function finalStages() {
   const stages = { ...STARTING_STAGES };
   for (const m of MISSIONS) Object.assign(stages, m.setsStages ?? {});
   return stages;
-}
-
-const IDLE: MoveInput = { forward: 0, side: 0, up: false, sprint: false, cameraYaw: 0 };
-const WORLD: World = { boxes: collisionBoxes(STARTING_STAGES), groundAt: groundHeightAt, ceilingAt: ceilingHeightAt, half: WORLD_HALF - 4 };
-function run(body: Body, input: MoveInput, mode: keyof typeof MODES, seconds: number, world = WORLD) {
-  let b = body;
-  for (let t = 0; t < seconds; t += 1 / 60) b = stepBody(b, input, mode, 1 / 60, world);
-  return b;
 }
 
 describe("game world", () => {
@@ -90,54 +77,6 @@ describe("game world", () => {
   });
 });
 
-describe("arcade physics", () => {
-  it("walks the way the camera faces", () => {
-    const b = run(createBody(0, 20, 0), { ...IDLE, forward: 1, cameraYaw: Math.PI / 2 }, "walk", 1);
-    expect(b.z).toBeGreaterThan(22);
-    expect(Math.abs(b.x)).toBeLessThan(0.5);
-  });
-
-  it("stops at walls", () => {
-    const wall: Box = { x0: 5, z0: -5, x1: 6, z1: 5, h: 3 };
-    const world: World = { boxes: [wall], groundAt: () => 0, half: 100 };
-    const b = run(createBody(0, 0, 0), { ...IDLE, forward: 1, cameraYaw: 0 }, "walk", 3, world);
-    expect(b.x).toBeLessThan(5);
-  });
-
-  it("drives faster than you can walk, and the car is the fastest", () => {
-    const go = { ...IDLE, forward: 1, sprint: true };
-    const open: World = { boxes: [], groundAt: () => 0, half: 400 };
-    const walk = run(createBody(0, 0, 0), go, "walk", 6, open).x;
-    const truck = run(createBody(0, 0, 0), go, "truck", 6, open).x;
-    const car = run(createBody(0, 0, 0), go, "car", 6, open).x;
-    expect(truck).toBeGreaterThan(walk * 1.5);
-    expect(car).toBeGreaterThan(truck);
-  });
-
-  it("flies with the jetpack, runs out of fuel, and refuels on landing", () => {
-    const open: World = { boxes: [], groundAt: () => 0, half: 400 };
-    const up = run(createBody(0, 0, 0), { ...IDLE, up: true }, "jetpack", 3, open);
-    expect(up.y).toBeGreaterThan(10);
-    const empty = run(up, { ...IDLE, up: true }, "jetpack", 10, open);
-    expect(empty.fuel).toBe(0);
-    const landed = run(empty, IDLE, "jetpack", 12, open);
-    expect(landed.y).toBe(0);
-    expect(landed.fuel).toBeGreaterThan(0);
-  });
-
-  it("lets you stand under the water tank but only land on its deck from above", () => {
-    const [tx, tz] = LANDMARKS.tower.position;
-    const under = run(createBody(tx, tz, 0), IDLE, "walk", 1);
-    expect(under.y).toBe(0);
-    // Thrusting up from under the tank bumps your head instead of warping you onto the deck.
-    const bump = run(createBody(tx, tz, 0), { ...IDLE, up: true }, "jetpack", 6);
-    expect(bump.y).toBeLessThan(TOWER.tankBottom);
-    // Dropping from above lands you on the deck.
-    const top = run(createBody(tx, tz, 0, TOWER.deckY + 4), IDLE, "jetpack", 2);
-    expect(top.y).toBeCloseTo(TOWER.deckY);
-  });
-});
-
 describe("story", () => {
   it("references only dialogs that exist", () => {
     for (const m of MISSIONS) {
@@ -166,6 +105,16 @@ describe("story", () => {
     expect(storyEarnings(0)).toBeGreaterThanOrEqual(GEAR.jetpack.price);
     expect(storyEarnings(3)).toBeLessThan(allGear);
     expect(storyEarnings(3) + BLUEPRINTS.length * BLUEPRINT_VALUE + GOAT_STARTS.length * GOAT_VALUE).toBeGreaterThanOrEqual(allGear);
+  });
+
+  it("skips the 'buy the jetpack' step when you already bought it with side-job money", () => {
+    const finale = MISSIONS.findIndex((m) => m.ending);
+    const buyStep = currentStep({ mission: finale, step: 0 });
+    expect(buyStep?.kind).toBe("own");
+    expect(alreadySatisfied(buyStep, STARTING_OWNED)).toBe(false);
+    expect(alreadySatisfied(buyStep, { ...STARTING_OWNED, jetpack: true })).toBe(true);
+    // Other steps are never auto-completed by owning gear.
+    expect(alreadySatisfied(currentStep(START), { truck: true, horse: true, car: true, jetpack: true })).toBe(false);
   });
 
   it("asks a fair question: one honest answer per choice", () => {

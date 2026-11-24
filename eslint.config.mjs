@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Vendored / generated assets
     "public/pdf.worker.min.mjs",
     ".data/**",
+    // The game's static build (npm run game:build)
+    "dist-game/**",
   ]),
 ]);
 

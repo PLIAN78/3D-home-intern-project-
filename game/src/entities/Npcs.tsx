@@ -2,16 +2,18 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { TextSprite } from "@/components/community/TextSprite";
-import { BLUEPRINTS, inPen } from "../game/collectibles";
-import { currentStep, NPC_SPOTS, stepTarget, type NpcId } from "../game/missions";
-import { runtime, type GoatState } from "../game/runtime";
-import { useGame } from "../game/store";
-import { Character, Goat, mat, OUTFITS, type Outfit } from "../player/models";
-import { angleDelta } from "../player/physics";
+import { BLUEPRINTS, inPen } from "../story/collectibles";
+import { currentStep, NPC_SPOTS, stepTarget, type NpcId } from "../story/missions";
+import { runtime, type GoatState } from "../core/runtime";
+import { useGame } from "../story/store";
+import { GoatModel } from "../models/animals";
+import { Human, OUTFITS, type Outfit } from "../models/human";
+import { mat } from "../render/materials";
+import { angleDelta } from "../sim/math";
 import { PEN, TOWER } from "../world/map";
 
 /** An NPC that turns to face you and waves when you come close. */
-function Npc({ id, people, label = true }: { id: NpcId; people: { outfit: Outfit; offset: [number, number]; scale?: number }[]; label?: boolean }) {
+function Npc({ id, people, label = true }: { id: NpcId; people: { outfit: Outfit; offset: [number, number] }[]; label?: boolean }) {
   const spot = NPC_SPOTS[id];
   const ref = useRef<THREE.Group>(null);
   const near = useRef(false);
@@ -30,8 +32,8 @@ function Npc({ id, people, label = true }: { id: NpcId; people: { outfit: Outfit
     <group position={[spot.position[0], 0, spot.position[1]]}>
       <group ref={ref} rotation={[0, -spot.facing, 0]}>
         {people.map((p, i) => (
-          <group key={i} position={[p.offset[0], 0, p.offset[1]]} scale={p.scale ?? 1}>
-            <Character outfit={p.outfit} wave={i === 0 && id !== "gail"} />
+          <group key={i} position={[p.offset[0], 0, p.offset[1]]}>
+            <Human outfit={p.outfit} pose={i === 0 && id !== "gail" ? () => (near.current ? "wave" : "auto") : "auto"} />
           </group>
         ))}
       </group>
@@ -60,7 +62,7 @@ export function Npcs() {
           people={[
             { outfit: OUTFITS.nguyenA, offset: [0, -0.7] },
             { outfit: OUTFITS.nguyenB, offset: [0, 0.6] },
-            { outfit: OUTFITS.kid, offset: [0.4, -0.05], scale: 0.62 },
+            { outfit: OUTFITS.kid, offset: [0.4, -0.05] },
           ]}
         />
       )}
@@ -109,7 +111,7 @@ function GoatActor({ index }: { index: number }) {
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 1 / 20);
     const g = runtime.goats[index];
-    gait.current = updateGoat(g, dt, runtime.time) / 3;
+    gait.current = updateGoat(g, dt, runtime.time);
     const grp = ref.current;
     if (grp) {
       grp.position.set(g.x, 0, g.z);
@@ -118,7 +120,7 @@ function GoatActor({ index }: { index: number }) {
   });
   return (
     <group ref={ref}>
-      <Goat gait={() => gait.current} />
+      <GoatModel speed={() => gait.current} />
     </group>
   );
 }

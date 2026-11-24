@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { TextSprite } from "@/components/community/TextSprite";
-import { mat } from "../player/models";
-import { GEAR_GARAGE, MACHINES, POUR_SPOT, SURVEY_STAKES } from "../game/missions";
-import { useGame } from "../game/store";
+import { Decal } from "../render/decal";
+import { glass, groundAsphalt, lumber, mat, siteHomeMaterial } from "../render/materials";
+import { Pond } from "./Water";
+import { GEAR_GARAGE, MACHINES, POUR_SPOT, SURVEY_STAKES } from "../story/missions";
+import { useGame } from "../story/store";
 import { LANDMARKS, PEN, TOWER, TOWER_LEGS } from "./map";
 
 function B({ size, position, color, rotation, emissive, cast = true }: { size: [number, number, number]; position: [number, number, number]; color: string; rotation?: [number, number, number]; emissive?: string; cast?: boolean }) {
@@ -18,27 +20,72 @@ function Label({ text, at, accent = false }: { text: string; at: [number, number
   return <TextSprite text={text} position={at} size={accent ? 0.026 : 0.02} background={accent ? "#f59e0b" : "rgba(20,28,40,0.78)"} color="#ffffff" bold />;
 }
 
+/** A clean modern sales pavilion: glass curtain wall with mullions, white render, cedar accent, entrance canopy. */
 function SalesCentre() {
   const [x, z] = LANDMARKS.sales.position;
   const [w, d, h] = LANDMARKS.sales.size;
+  const front = z - d / 2;
+  const alu = mat("#2b3036", { metal: 0.6, rough: 0.35 });
+  const glassW = w - 8;
+  const mullionsX = useMemo(() => Array.from({ length: Math.round(glassW / 2) + 1 }, (_, i) => -glassW / 2 + i * 2), [glassW]);
   return (
     <group name="SalesCentre">
-      <B size={[w, h, d]} position={[x, h / 2, z]} color="#eef0f2" />
-      {/* glass front facing the boulevard (north, −z) */}
-      <B size={[w - 6, h - 2.2, 0.2]} position={[x, (h - 2.2) / 2 + 0.4, z - d / 2 - 0.05]} color="#6f9fc4" />
-      <B size={[w + 3, 0.5, d + 4]} position={[x, h + 0.25, z - 1]} color="#1f3a5f" />
-      <B size={[3, 2.6, 0.3]} position={[x, 1.3, z - d / 2 - 0.15]} color="#20365c" />
-      {/* parking lot */}
-      <B size={[56, 0.04, 16]} position={[x + 6, 0.02, z - d / 2 - 11]} color="#5a5c60" cast={false} />
+      {/* Main volume in white render, set back behind the glass */}
+      <mesh position={[x, h / 2, z + 0.4]} material={siteHomeMaterial("trim")} castShadow receiveShadow>
+        <boxGeometry args={[w, h, d - 0.8]} />
+      </mesh>
+      {/* Glass curtain wall on the boulevard side, with aluminium mullions and a transom */}
+      <mesh position={[x - 1, h * 0.46, front - 0.02]} material={glass("#1a2630")}>
+        <boxGeometry args={[glassW, h * 0.82, 0.08]} />
+      </mesh>
+      {mullionsX.map((dx) => (
+        <mesh key={dx} position={[x - 1 + dx, h * 0.46, front - 0.1]} material={alu} castShadow>
+          <boxGeometry args={[0.12, h * 0.82, 0.16]} />
+        </mesh>
+      ))}
+      <mesh position={[x - 1, 2.7, front - 0.1]} material={alu}>
+        <boxGeometry args={[glassW, 0.12, 0.16]} />
+      </mesh>
+      {/* Cedar slat feature wall beside the glass */}
+      {Array.from({ length: 14 }, (_, i) => (
+        <mesh key={i} position={[x + w / 2 - 3.6 + i * 0.24, h * 0.45, front - 0.08]} material={lumber()} castShadow>
+          <boxGeometry args={[0.12, h * 0.9, 0.12]} />
+        </mesh>
+      ))}
+      {/* Entrance: double doors under a cantilevered canopy with a light strip */}
+      <mesh position={[x - 1, 1.3, front - 0.16]} material={alu}>
+        <boxGeometry args={[3.2, 2.6, 0.12]} />
+      </mesh>
+      <mesh position={[x - 1.75, 1.25, front - 0.24]} material={glass("#22313b")}>
+        <boxGeometry args={[1.35, 2.3, 0.05]} />
+      </mesh>
+      <mesh position={[x - 0.25, 1.25, front - 0.24]} material={glass("#22313b")}>
+        <boxGeometry args={[1.35, 2.3, 0.05]} />
+      </mesh>
+      <mesh position={[x - 1, 3.35, front - 2.2]} material={mat("#f4f4f2", { rough: 0.5 })} castShadow receiveShadow>
+        <boxGeometry args={[7, 0.3, 4.4]} />
+      </mesh>
+      <mesh position={[x - 1, 3.19, front - 2.2]} material={mat("#fff7e0", { emissive: "#fff3d0", emissiveIntensity: 1.4 })}>
+        <boxGeometry args={[5.5, 0.02, 0.25]} />
+      </mesh>
+      {/* Roof parapet in Caivan navy with the logo */}
+      <mesh position={[x, h + 0.45, z]} material={mat("#1f3a5f", { rough: 0.45 })} castShadow receiveShadow>
+        <boxGeometry args={[w + 0.6, 0.9, d + 0.6]} />
+      </mesh>
+      <Decal text="CAIVAN" color="#ffffff" position={[x - 1, h + 0.45, front - 0.32]} rotation={[0, Math.PI, 0]} size={[5, 1.0]} />
+      {/* Parking lot */}
+      <mesh position={[x + 6, 0.02, front - 11]} material={groundAsphalt()} receiveShadow>
+        <boxGeometry args={[56, 0.04, 16]} />
+      </mesh>
       {[-18, -12, -6, 0, 6, 12, 18, 24].map((dx) => (
-        <B key={dx} size={[0.15, 0.05, 5]} position={[x + dx, 0.045, z - d / 2 - 13]} color="#f3f3f3" cast={false} />
+        <B key={dx} size={[0.15, 0.05, 5]} position={[x + dx, 0.045, front - 13]} color="#f3f3f3" cast={false} />
       ))}
       {[-8, 8].map((dx) => (
         <group key={dx}>
-          <mesh position={[x + dx, 5, z - d / 2 - 4]} material={mat("#c9ccd1", { metal: 0.5 })} castShadow>
-            <cylinderGeometry args={[0.08, 0.08, 10, 6]} />
+          <mesh position={[x + dx, 5, front - 4]} material={mat("#c9ccd1", { metal: 0.7, rough: 0.3 })} castShadow>
+            <cylinderGeometry args={[0.08, 0.08, 10, 10]} />
           </mesh>
-          <B size={[0.05, 1.1, 1.8]} position={[x + dx, 9.3, z - d / 2 - 4 + 0.95]} color={dx < 0 ? "#d52b1e" : "#1f3a5f"} />
+          <B size={[0.05, 1.1, 1.8]} position={[x + dx, 9.3, front - 4 + 0.95]} color={dx < 0 ? "#d52b1e" : "#1f3a5f"} />
         </group>
       ))}
       <Label text="CAIVAN SALES CENTRE" at={[x, h + 2.5, z]} accent />
@@ -182,11 +229,9 @@ function Park() {
   const [x, z] = LANDMARKS.park.position;
   return (
     <group name="Park">
-      <mesh position={[x + 10, 0.03, z + 5]} rotation={[-Math.PI / 2, 0, 0]} material={mat("#4f8fbf", { rough: 0.15, metal: 0.1 })} receiveShadow>
-        <circleGeometry args={[11, 32]} />
-      </mesh>
-      <mesh position={[x + 10, 0.025, z + 5]} rotation={[-Math.PI / 2, 0, 0]} material={mat("#cbbf9f")}>
-        <ringGeometry args={[11, 12.6, 32]} />
+      <Pond position={[x + 10, 0, z + 5]} radius={11} />
+      <mesh position={[x + 10, 0.025, z + 5]} rotation={[-Math.PI / 2, 0, 0]} material={mat("#cbbf9f", { rough: 0.95 })} receiveShadow>
+        <ringGeometry args={[11.4, 12.8, 48]} />
       </mesh>
       {/* playground */}
       <B size={[0.2, 2.2, 0.2]} position={[x - 18, 1.1, z - 6]} color="#e84a5f" />

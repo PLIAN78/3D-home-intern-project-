@@ -1,6 +1,6 @@
 /** Tiny synthesized sound effects (no audio files). Silent wherever Web Audio isn't available. */
 
-type Sound = "cash" | "blip" | "good" | "bad" | "step" | "fanfare" | "switch" | "pickup";
+type Sound = "cash" | "blip" | "good" | "bad" | "step" | "fanfare" | "switch" | "pickup" | "crash" | "thud";
 
 const NOTES: Record<Sound, [number, number, OscillatorType][]> = {
   cash: [
@@ -28,7 +28,26 @@ const NOTES: Record<Sound, [number, number, OscillatorType][]> = {
     [988, 0.05, "sine"],
     [1319, 0.08, "sine"],
   ],
+  crash: [],
+  thud: [],
 };
+
+/** Filtered noise burst: splintering wood (crash) or a heavy landing (thud). */
+function noise(c: AudioContext, kind: "crash" | "thud") {
+  const dur = kind === "crash" ? 0.55 : 0.25;
+  const buf = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length) ** (kind === "crash" ? 2 : 3);
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const filter = c.createBiquadFilter();
+  filter.type = kind === "crash" ? "bandpass" : "lowpass";
+  filter.frequency.value = kind === "crash" ? 1400 : 220;
+  const gain = c.createGain();
+  gain.gain.value = kind === "crash" ? 0.18 : 0.3;
+  src.connect(filter).connect(gain).connect(c.destination);
+  src.start();
+}
 
 let ctx: AudioContext | null = null;
 let muted = false;
@@ -41,6 +60,10 @@ export function sfx(sound: Sound) {
   if (muted || typeof window === "undefined" || !("AudioContext" in window)) return;
   try {
     ctx ??= new AudioContext();
+    if (sound === "crash" || sound === "thud") {
+      noise(ctx, sound);
+      return;
+    }
     let t = ctx.currentTime;
     for (const [freq, dur, type] of NOTES[sound]) {
       const osc = ctx.createOscillator();

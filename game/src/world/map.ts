@@ -37,6 +37,9 @@ export const STREETS = {
   east: { name: "Quarry Lane", x: 110 },
 } as const;
 
+/** What a collision box is, so physics can treat wood frames as breakable. */
+export type BoxKind = "house" | "frame" | "landmark" | "post";
+
 /** Box with a height, in world metres (axis-aligned). */
 export interface Box {
   x0: number;
@@ -44,6 +47,9 @@ export interface Box {
   x1: number;
   z1: number;
   h: number;
+  kind?: BoxKind;
+  /** Lot id for houses and frames, landmark id for landmarks. */
+  id?: string;
 }
 
 export type LandmarkId = "sales" | "factory" | "tower" | "farm" | "park";
@@ -275,17 +281,18 @@ export function houseBox(lot: Lot, stage: StageId | undefined): Box | null {
 export function collisionBoxes(stages: Record<string, StageId>): Box[] {
   const boxes: Box[] = [];
   for (const lot of CAIVAN_RIDGE.lots) {
-    const b = houseBox(lot, stages[lot.id]);
-    if (b) boxes.push(b);
+    const stage = stages[lot.id];
+    const b = houseBox(lot, stage);
+    if (b) boxes.push({ ...b, kind: stage === "framing" ? "frame" : "house", id: lot.id });
   }
   for (const m of Object.values(LANDMARKS)) {
     if (m.id === "park" || m.id === "tower") continue;
     const [w, d, h] = m.size;
-    boxes.push({ x0: m.position[0] - w / 2, z0: m.position[1] - d / 2, x1: m.position[0] + w / 2, z1: m.position[1] + d / 2, h });
+    boxes.push({ x0: m.position[0] - w / 2, z0: m.position[1] - d / 2, x1: m.position[0] + w / 2, z1: m.position[1] + d / 2, h, kind: "landmark", id: m.id });
   }
   // Water tower legs: four posts, so there is room to walk (or fly) between them.
   const [tx, tz] = LANDMARKS.tower.position;
-  for (const [lx, lz] of TOWER_LEGS) boxes.push({ x0: tx + lx - 0.6, z0: tz + lz - 0.6, x1: tx + lx + 0.6, z1: tz + lz + 0.6, h: TOWER.tankBottom });
+  for (const [lx, lz] of TOWER_LEGS) boxes.push({ x0: tx + lx - 0.6, z0: tz + lz - 0.6, x1: tx + lx + 0.6, z1: tz + lz + 0.6, h: TOWER.tankBottom, kind: "post", id: "tower" });
   return boxes;
 }
 

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { BLUEPRINTS } from "../game/collectibles";
-import { DIALOGS } from "../game/dialogs";
-import { canBuy, GEAR, money, SHOP_ORDER } from "../game/economy";
-import { useGame } from "../game/store";
-import { releaseAll } from "../player/input";
+import { BLUEPRINTS } from "../story/collectibles";
+import { DIALOGS } from "../story/dialogs";
+import { canBuy, GEAR, money, SHOP_ORDER } from "../story/economy";
+import { useGame } from "../story/store";
+import { releaseAll } from "../core/input";
 
 /** Talking: Space/Enter/E/click continues; 1–3 picks an answer. */
 export function DialogBox() {
@@ -260,7 +260,7 @@ export function Title() {
         <button className="play" onClick={start} autoFocus>
           Start your first day ▸
         </button>
-        <p className="muted small">WASD to move · drag to look · E to talk · 1–5 to switch gear</p>
+        <p className="muted small">WASD to move · drag to look · E to talk · F to get in and out · 1–5 to call your gear</p>
       </div>
     </div>
   );

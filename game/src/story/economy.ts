@@ -1,4 +1,5 @@
-import type { ModeId } from "../player/physics";
+/** What the player is using: on foot, a vehicle, the horse, or the jetpack. */
+export type ModeId = "walk" | "truck" | "horse" | "car" | "jetpack";
 
 export type GearId = "truck" | "horse" | "car" | "jetpack";
 
@@ -14,8 +15,8 @@ export interface Gear {
 
 export const GEAR: Record<GearId, Gear> = {
   truck: { id: "truck", name: "Company pickup", price: 0, mode: "truck", key: "2", blurb: "Caivan's trusty site truck. Yours from day one." },
-  horse: { id: "horse", name: "Biscuit the horse", price: 1200, mode: "horse", key: "3", blurb: "Gentle, quick, and jumps fences. Loves carrots." },
-  car: { id: "car", name: "Volt GT sports car", price: 2500, mode: "car", key: "4", blurb: "Electric, very fast, very shiny. Please drive safely." },
+  horse: { id: "horse", name: "Biscuit the horse", price: 1200, mode: "horse", key: "3", blurb: "Gentle, quick, and jumps fences. Waits by the Sales Centre; press 3 to whistle for her." },
+  car: { id: "car", name: "Volt GT sports car", price: 2500, mode: "car", key: "4", blurb: "Electric, very fast, very shiny. Delivered to the Sales Centre lot; press 4 to call it." },
   jetpack: { id: "jetpack", name: "SkyHopper jetpack", price: 3000, mode: "jetpack", key: "5", blurb: "Hold Space to fly. Refuels whenever you land." },
 };
 

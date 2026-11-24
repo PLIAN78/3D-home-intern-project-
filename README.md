@@ -10,7 +10,7 @@ Internal tool that turns architectural drawings into an interactive, configurabl
 - **Phase 4, real communities and build progress:** the Caivan communities from caivan.com are listed under **Communities**. *Place on real map* reads a community's published site plan and finds every lot, its collection and its sales status. It then locates the community from its street names and lines the plan up with real streets from OpenStreetMap (≈2 m error on The Conservancy). The community opens as a 3D map of the real neighbourhood, with every home drawn at its construction stage. Each lot has a progress bar and a stage timeline; the construction team updates them, and customers see them in their home view.
 - **Database and real photos:** data lives in SQLite through Drizzle ORM (`.data/home-studio.db`). A property catalogue links every Caivan community to its published photography, collections and home designs on caivan.com: elevation renderings, interiors, aerials, floorplan PDFs and 360° tours. Photos appear on community cards, a **Homes & photos** page per community, the lot panel (*Homes for this lot*, Street View), the studio's **Project** tab, and the customer view's **Real photos**.
 - **Phase 3, one-step drawing sets:** upload a builder's décor or plan-set PDF and the app reads every sheet. It finds each floor, elevation and layout option, works out the scale from the room sizes, traces and stacks the floors, and asks one question: generate now, or review first. The home opens on the standard plan with default finishes, and the configurator's **Plan** tab switches elevations and layouts.
-- **Caivan: Build It! (game):** a separate, family-friendly open-world game built from the same code. You play a new Caivan site coordinator: stake out a lot, help a family choose their home, reset the panel factory, pour a foundation and hand over keys. Story pay and side jobs buy a horse, a sports car and a jetpack. See [The game](#the-game-caivan-build-it).
+- **Caivan: Build It! (game):** a separate, family-friendly open-world game built from the same code, with real-time physics (Rapier) and physically based rendering. You play a new Caivan site coordinator: stake out a lot, help a family choose their home, reset the panel factory, pour a foundation and hand over keys. Story pay and side jobs buy a horse, a sports car and a jetpack. See [The game](#the-game-caivan-build-it).
 
 ## Run
 
@@ -136,7 +136,7 @@ Sample drawings live in `public/samples/`. They are rendered from the Plan 36 mo
 
 ## The game: Caivan: Build It!
 
-A separate app (its own Vite dev server and build, outside Next.js) that reuses Home Studio's code through the same `@/` imports: the site builder from `CommunityScene`, the construction-stage houses, the Plan 36 model, trees, materials and labels.
+A separate app (its own Vite dev server and build, outside Next.js) that reuses Home Studio's code through the same `@/` imports: the site builder from `CommunityScene`, the construction-stage houses, the Plan 36 model and the community data.
 
 ```bash
 npm run game           # http://localhost:5180
@@ -144,7 +144,7 @@ npm run game:build     # static build in dist-game/ (relative paths: host it fro
 npm run game:preview   # serve the build on http://localhost:5181
 ```
 
-**Controls:** WASD move or drive · drag or ←/→ to look, wheel to zoom · Space jump (hold to fly with the jetpack) · Shift sprint · E talk / use · 1–5 switch gear (walk, truck, horse, car, jetpack) · H show or hide the controls.
+**Controls:** WASD move or drive · drag or ←/→ to look, wheel to zoom · Space jump, hold to fly the jetpack, handbrake while driving · Shift sprint · E talk / use · F get in or out of a vehicle, on or off the horse · 1 on foot, 2–4 call the truck, horse or car to you, 5 jetpack on/off · G graphics quality · H show or hide the controls.
 
 **Story (5 chapters and a finale):**
 
@@ -155,20 +155,65 @@ npm run game:preview   # serve the build on http://localhost:5181
 | 3. Factory Floor | Drive to the panel factory, talk to Raj, reset three machines (timing mini-game) | $1,200 |
 | 4. Pour Day | Pour the foundation at Lot 207 (hold-and-release mini-game); the lot changes stage | $1,500 |
 | 5. Grand Opening | The finished Plan 36 home appears on Lot 42; hand the Nguyens their keys | $1,000 |
-| Finale | Buy the SkyHopper jetpack, fly to the top of the water tower for the community photo | — |
+| Finale | Have the SkyHopper jetpack (bought now, or earlier with side-job money), fly to the top of the water tower for the community photo | — |
 
 The story pays $5,200 (up to $5,500 with bonuses). The horse ($1,200), sports car ($2,500) and jetpack ($3,000) cost $6,700, so getting all three needs side jobs: 12 lost blueprints ($100 each, some only reachable by jetpack) and 3 runaway goats to lead back to Gail's farm ($300 each). After the ending you keep exploring.
 
-**Code (`game/src/`):**
+### Tech stack
+
+| Part | Library (licence) | Used for |
+| --- | --- | --- |
+| Language, UI | TypeScript, React 19 | Everything |
+| 3D | three.js (MIT) via React Three Fiber and drei (MIT) | Rendering, sky, HDR environment, performance monitor |
+| Physics | Rapier 0.19 (`@dimforge/rapier3d-compat`, Apache-2.0) | Rigid bodies, character controller, raycast vehicles, breakables |
+| Post-processing | pmndrs `postprocessing` + `@react-three/postprocessing` + N8AO (Zlib/MIT/ISC) | Ambient occlusion (N8AO), bloom, ACES tone mapping, colour grading, vignette, SMAA |
+| Lighting asset | `@pmndrs/assets` (CC0) | The "park" HDRI from Poly Haven, for image-based lighting and reflections |
+| State | zustand (MIT) | Game state (cash, story, gear, dialogs) |
+| Build, tests | Vite 8, Vitest, ESLint | Dev server and static build; unit tests run the real physics in Node |
+
+Every texture (grass, asphalt, concrete, dirt, bark, lumber, siding, shingles, OSB, water, leaves) is generated in code at startup, and every model (people, vehicles, horse, goats, jetpack, trees) is built from code. There are no image or model files to download or license. See `game/CREDITS.md`.
+
+### How it works
+
+Each frame runs in a fixed order (R3F frame priorities):
+
+1. **Physics (−30):** `entities/Player.tsx` reads the keys, handles F and the hotbar, and steps the `Simulation` in fixed 60 Hz steps. It interpolates poses for drawing.
+2. **Camera (−20):** `render/FollowCamera.tsx` follows whatever you control. It casts a physics ray so it never ends up inside a wall, widens its view with speed, and shakes on hard landings.
+3. **Rules (−10):** `story/Director.tsx` checks mission steps, prompts, goats and pickups, then clears one-shot input.
+4. **Drawing:** vehicles, the horse, debris and fallen trees read their poses from the simulation; the HUD reads `core/runtime.ts` on timers.
+
+The simulation (`game/src/sim/`) is plain TypeScript over a Rapier world, independent of React:
+
+- `character.ts`: a kinematic capsule moved by Rapier's character controller. It walks, runs, jumps, climbs curbs and pushes loose planks. The jetpack flight model has thrust, momentum, air drag, fuel, body lean and hard landings.
+- `vehicle.ts`: raycast vehicles with suspension, tyre grip and a lowered centre of mass, plus driver aids: speed-sensitive steering, brake-then-reverse, a handbrake for drifts and self-righting.
+- `horse.ts`: steered like an animal (walk, trot, gallop, jump), with momentum and wider turns at speed.
+- `breakables.ts`: trees and framing-stage houses are fixed bodies until something heavy hits them fast. Trees above 7 m/s (≈25 km/h) become dynamic and topple. Frames above 6 m/s collapse into up to 72 loose studs and plates. A crew stands them back up after 30–40 s once you're away.
+- `simulation.ts`: ties it together. It builds static colliders from `world/map.ts`, routes input to whatever you control, and gets you in and out at a free spot. It also calls vehicles to you, detects impacts and exposes interpolated poses.
+
+**Code layout (`game/src/`):**
 
 | Folder | What's in it |
 | --- | --- |
-| `world/` | `map.ts` is the world as pure data (streets, lots, landmarks, collision boxes, tree placement, spawn). `World.tsx` draws it with the shared site and house builders; `Landmarks.tsx` and `Environment.tsx` add the sales centre, factory, water tower, farm, park, sky and light. |
-| `player/` | `physics.ts` is pure arcade physics (each mode's speed, steering, jump, jetpack fuel, collisions). `input.ts` handles keyboard and mouse. `Player.tsx`, `FollowCamera.tsx` and `models.tsx` handle the low-poly character, vehicles and horse. |
-| `game/` | `missions.ts` (the story as data), `dialogs.ts`, `economy.ts` (gear and prices), `collectibles.ts`, `store.ts` (zustand game state), `Director.tsx` (per-frame rules: reach, talk, mini-games, goats, pickups), `sfx.ts` (synthesised sounds) |
-| `npc/`, `ui/` | NPCs, goats, blueprints and the objective beacon; the HUD, minimap, dialogs, mini-games, shop, title and ending |
+| `sim/` | The physics simulation described above (no React) |
+| `core/` | Input, per-frame runtime state, the shared simulation host, sound effects |
+| `entities/` | Things that move: the player rig, vehicles, horse and debris, NPCs and goats |
+| `models/` | Procedural models: people (jointed, animated), vehicles (beveled bodies, separate wheels), horse and goats, jetpack |
+| `render/` | Procedural textures, PBR materials, post-processing, quality settings, the follow camera, text decals |
+| `world/` | Map data (`map.ts`), ground and houses, trees, grass, countryside, water, landmarks, sky and light |
+| `story/` | Missions, dialogs, economy, collectibles, the game store and the Director |
+| `ui/` | HUD, minimap, dialogs, mini-games, shop, title and ending |
 
-Rules live in pure modules (`map`, `physics`, `missions`, `economy`). `tests/game.test.ts` checks them: every objective is reachable, the story plays through to the ending, and the money covers the gear. In `npm run game`, `window.__game` exposes the runtime and store for debugging. Production builds leave it out.
+`tests/game.test.ts` checks the rules: every objective is reachable, the story plays through to the ending, the money covers the gear, and a jetpack bought early skips the "buy it" step. `tests/sim.test.ts` runs the real Rapier physics on the game map: walking, jumping, walls, jetpack flight, both vehicles, the horse, breaking and rebuilding trees and frames, and camera collision. In `npm run game`, `window.__game` exposes the runtime, store, simulation and a `teleport(x, z)` helper for debugging. Production builds leave it out.
+
+### References
+
+- [Rapier character controller](https://rapier.rs/docs/user_guides/javascript/character_controller) and its raycast vehicle controller
+- [pmndrs/ecctrl](https://github.com/pmndrs/ecctrl) (MIT): character and vehicle controllers on Rapier for R3F; design reference for the floating capsule and driver aids
+- [swift502/Sketchbook](https://github.com/swift502/Sketchbook) (MIT): GTA-style third-person sandbox; reference for entering and leaving vehicles as separate entities
+- [Three.js Journey: Realistic render](https://threejs-journey.com/lessons/realistic-render): environment maps, tone mapping, shadow tuning
+- [pmndrs/postprocessing](https://github.com/pmndrs/postprocessing) and [N8AO](https://github.com/N8python/n8ao): effect order and ambient occlusion
+- [al-ro's grass](https://al-ro.github.io/projects/grass) and [Codrops: fluffy grass](https://tympanus.net/codrops/2025/02/04/how-to-make-the-fluffiest-grass-with-three-js/): instanced, wind-blown grass blades
+- [Poly Haven](https://polyhaven.com/) (CC0): the HDRI, via `@pmndrs/assets`
 
 ## Architecture
 
