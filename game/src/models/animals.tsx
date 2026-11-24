@@ -193,3 +193,177 @@ export function GoatModel({ speed, coat = "#f1ede5" }: { speed: () => number; co
     </group>
   );
 }
+
+const EG = {
+  body: new THREE.SphereGeometry(1, 28, 20),
+  head: new THREE.SphereGeometry(0.62, 22, 16),
+  ear: (() => {
+    // A rounded fan shape, slightly cupped.
+    const sh = new THREE.Shape();
+    sh.moveTo(0, 0.55);
+    sh.bezierCurveTo(-0.55, 0.62, -0.95, 0.2, -0.85, -0.35);
+    sh.bezierCurveTo(-0.75, -0.85, -0.2, -1.05, 0.05, -0.6);
+    sh.lineTo(0, 0.55);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 0.05, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2, curveSegments: 12 });
+    return g;
+  })(),
+  leg: new THREE.CylinderGeometry(0.33, 0.36, 1.7, 16),
+  foot: new THREE.CylinderGeometry(0.38, 0.4, 0.12, 18),
+  trunkSeg: new THREE.CylinderGeometry(0.12, 0.17, 0.44, 14),
+  tusk: new THREE.ConeGeometry(0.07, 0.6, 10),
+  tail: new THREE.CylinderGeometry(0.03, 0.06, 1.0, 8),
+  eye: new THREE.SphereGeometry(0.045, 8, 6),
+  /** A blanket draped over the back: an open arc of cylinder, axis along the body. */
+  blanket: (() => {
+    const g = new THREE.CylinderGeometry(1.05, 1.05, 1.5, 28, 1, true, -1.05, 2.1);
+    g.rotateZ(Math.PI / 2);
+    g.rotateX(-Math.PI / 2);
+    return g;
+  })(),
+  blanketEdge: (() => {
+    const g = new THREE.CylinderGeometry(1.04, 1.04, 1.58, 28, 1, true, -1.1, 2.2);
+    g.rotateZ(Math.PI / 2);
+    g.rotateX(-Math.PI / 2);
+    return g;
+  })(),
+};
+
+/**
+ * Peanut the elephant: about 2.9 m at the shoulder, with a barrel body, thick
+ * columnar legs, fanned ears that flap, and a jointed trunk that sways. Faces
+ * +x, feet at y = 0. Walks with a slow lateral gait (both legs on one side
+ * move close together, the way elephants do).
+ */
+export function ElephantModel({ speed }: { speed: () => number }) {
+  const legs = useRef<(THREE.Group | null)[]>([]);
+  const trunk = useRef<(THREE.Group | null)[]>([]);
+  const ears = useRef<(THREE.Group | null)[]>([]);
+  const body = useRef<THREE.Group>(null);
+  const t = useRef(0);
+  const m = useMemo(
+    () => ({
+      // Elephant skin is a warm grey-brown, never blue: keep it slightly warm so sky light doesn't turn it violet.
+      skin: mat("#857a6e", { rough: 0.92 }),
+      dark: mat("#6c6258", { rough: 0.95 }),
+      pad: mat("#4f473f", { rough: 0.95 }),
+      nail: mat("#d8d0c2", { rough: 0.6 }),
+      tusk: mat("#efe7d6", { rough: 0.35 }),
+      eye: mat("#14100c", { rough: 0.2 }),
+      blanket: new THREE.MeshStandardMaterial({ color: "#8c2f2a", roughness: 0.88, side: THREE.DoubleSide }),
+      trim: new THREE.MeshStandardMaterial({ color: "#c9973c", roughness: 0.7, side: THREE.DoubleSide }),
+    }),
+    [],
+  );
+  useFrame((_, rawDt) => {
+    const dt = Math.min(rawDt, 0.1);
+    const v = Math.abs(speed());
+    t.current += dt * (v < 0.1 ? 0.5 : 1.2 + v * 0.75);
+    const p = t.current;
+    const amp = v < 0.1 ? 0 : Math.min(0.32, 0.1 + v * 0.05);
+    // Lateral sequence: left hind, left fore, right hind, right fore.
+    const offsets = [0.6, Math.PI + 0.6, 0, Math.PI];
+    for (let i = 0; i < 4; i++) legs.current[i]?.rotation.set(0, 0, Math.sin(p + offsets[i]) * amp);
+    const idle = v < 0.1 ? Math.sin(p * 0.9) * 0.18 : 0;
+    trunk.current.forEach((seg, i) => seg?.rotation.set(Math.sin(p * 0.6 + i) * 0.05, 0, -0.12 - Math.sin(p * 0.8 + i * 0.7) * 0.08 - idle * (i + 1) * 0.25));
+    ears.current.forEach((e, i) => {
+      if (e) e.rotation.y = (i ? -1 : 1) * (0.35 + Math.sin(p * 1.6 + i) * 0.18);
+    });
+    if (body.current) {
+      body.current.rotation.x = Math.sin(p) * amp * 0.06;
+      body.current.position.y = Math.abs(Math.sin(p)) * amp * 0.06;
+    }
+  });
+  const legSpots: [number, number][] = [
+    [1.0, 0.62],
+    [1.0, -0.62],
+    [-1.05, 0.62],
+    [-1.05, -0.62],
+  ];
+  return (
+    <group>
+      <group ref={body}>
+        {/* Barrel body with a higher shoulder than hip, and a rounded rump */}
+        <mesh geometry={EG.body} material={m.skin} position={[0.05, 2.25, 0]} scale={[1.75, 1.0, 0.98]} castShadow receiveShadow />
+        <mesh geometry={EG.body} material={m.skin} position={[0.75, 2.45, 0]} scale={[0.95, 0.95, 0.9]} castShadow />
+        <mesh geometry={EG.body} material={m.skin} position={[-1.05, 2.15, 0]} scale={[0.8, 0.88, 0.86]} castShadow />
+        {legSpots.map(([x, z], i) => (
+          <group
+            key={i}
+            ref={(el) => {
+              legs.current[i] = el;
+            }}
+            position={[x, 1.75, z]}
+          >
+            <mesh geometry={EG.leg} material={m.skin} position={[0, -0.85, 0]} castShadow />
+            <mesh geometry={EG.foot} material={m.pad} position={[0, -1.69, 0]} />
+            {[-0.2, 0, 0.2].map((dz) => (
+              <mesh key={dz} material={m.nail} position={[0.34, -1.64, dz]}>
+                <sphereGeometry args={[0.06, 8, 6]} />
+              </mesh>
+            ))}
+          </group>
+        ))}
+        {/* Head, domed brow, ears, tusks and a jointed trunk */}
+        <group position={[1.85, 2.55, 0]}>
+          <mesh geometry={EG.head} material={m.skin} scale={[1.05, 1.15, 1.0]} castShadow />
+          <mesh geometry={EG.head} material={m.skin} position={[-0.1, 0.3, 0]} scale={[0.8, 0.75, 0.85]} />
+          {[1, -1].map((side, i) => (
+            <group
+              key={side}
+              ref={(el) => {
+                ears.current[i] = el;
+              }}
+              position={[-0.32, 0.05, side * 0.5]}
+            >
+              <mesh geometry={EG.ear} material={m.dark} rotation={[0, side > 0 ? 0 : Math.PI, 0]} scale={[1, 1.05, 1]} castShadow />
+            </group>
+          ))}
+          {[1, -1].map((side) => (
+            <mesh key={side} geometry={EG.eye} material={m.eye} position={[0.42, 0.18, side * 0.42]} />
+          ))}
+          {[1, -1].map((side) => (
+            <mesh key={side} geometry={EG.tusk} material={m.tusk} position={[0.62, -0.45, side * 0.26]} rotation={[side * 0.15, 0, -2.25]} />
+          ))}
+          <group position={[0.62, -0.25, 0]}>
+            <group
+              ref={(el) => {
+                trunk.current[0] = el;
+              }}
+              rotation={[0, 0, -0.15]}
+            >
+              <mesh geometry={EG.trunkSeg} material={m.skin} position={[0, -0.2, 0]} scale={[1.25, 1, 1.25]} />
+              <group
+                ref={(el) => {
+                  trunk.current[1] = el;
+                }}
+                position={[0, -0.42, 0]}
+              >
+                <mesh geometry={EG.trunkSeg} material={m.skin} position={[0, -0.2, 0]} scale={[1.05, 1, 1.05]} />
+                <group
+                  ref={(el) => {
+                    trunk.current[2] = el;
+                  }}
+                  position={[0, -0.42, 0]}
+                >
+                  <mesh geometry={EG.trunkSeg} material={m.skin} position={[0, -0.2, 0]} scale={[0.85, 1, 0.85]} />
+                  <group
+                    ref={(el) => {
+                      trunk.current[3] = el;
+                    }}
+                    position={[0, -0.42, 0]}
+                  >
+                    <mesh geometry={EG.trunkSeg} material={m.skin} position={[0, -0.2, 0]} scale={[0.7, 1, 0.7]} />
+                  </group>
+                </group>
+              </group>
+            </group>
+          </group>
+        </group>
+        <mesh geometry={EG.tail} material={m.dark} position={[-1.85, 1.95, 0]} rotation={[0, 0, -0.3]} />
+        {/* Riding blanket with a gold trim */}
+        <mesh geometry={EG.blanketEdge} material={m.trim} position={[0.3, 2.25, 0]} castShadow />
+        <mesh geometry={EG.blanket} material={m.blanket} position={[0.3, 2.26, 0]} />
+      </group>
+    </group>
+  );
+}

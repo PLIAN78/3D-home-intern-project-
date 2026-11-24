@@ -31,10 +31,14 @@ export const POUR_SPOT: V2 = onLot(POUR_LOT_ID, [0, 4]);
 export const GEAR_GARAGE: V2 = [-156, 25];
 
 /** Where vehicles wait: the pickup from day one, bought gear is delivered next to it. */
-export const VEHICLE_SPOTS: Record<"truck" | "car" | "horse", { position: V2; heading: number }> = {
+export const VEHICLE_SPOTS: Record<"truck" | "car" | "trail" | "hauler" | "horse" | "heli", { position: V2; heading: number }> = {
   truck: { position: [-166, 17], heading: -Math.PI / 2 },
   car: { position: [-150, 17], heading: -Math.PI / 2 },
+  trail: { position: [-182, 17], heading: -Math.PI / 2 },
+  hauler: { position: [-190, 17], heading: -Math.PI / 2 },
   horse: { position: [-141, 23], heading: Math.PI },
+  // The helipad on the lawn west of the Sales Centre.
+  heli: { position: [-214, 30], heading: 0 },
 };
 
 export type MinigameKind = "timing" | "pour";

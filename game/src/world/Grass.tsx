@@ -7,7 +7,8 @@ import { runtime } from "../core/runtime";
 import { noBackfaceFlip } from "../render/materials";
 import { useQuality } from "../render/quality";
 import { useGame } from "../story/store";
-import { CAIVAN_RIDGE, collisionBoxes, FRONT, LANDMARKS, WORLD_HALF } from "./map";
+import { CAIVAN_RIDGE, collisionBoxes, FRONT, LANDMARKS, PAVED, WORLD_HALF } from "./map";
+import { HILL_ROAD, HILL_ROAD_WIDTH } from "./terrain";
 
 /**
  * Real grass near the camera: tens of thousands of instanced blades in a square
@@ -89,6 +90,29 @@ function paintMask(stages: Record<string, string>) {
   ctx.beginPath();
   ctx.arc(X(px + 10), Z(pz + 5), 13 * k, 0, Math.PI * 2);
   ctx.fill();
+  // Parking lots, the track and pitch, the mall's loading dock
+  for (const p of PAVED) {
+    if (p.kind === "parking") ctx.fillRect(X(p.x0 - 0.5), Z(p.z0 - 0.5), (p.x1 - p.x0 + 1) * k, (p.z1 - p.z0 + 1) * k);
+    else {
+      // The running track around the pitch (matches District's track: 34 m straights, 12.4–17 m radius).
+      const cx = (p.x0 + p.x1) / 2;
+      const cz = (p.z0 + p.z1) / 2;
+      ctx.lineWidth = 5.2 * k;
+      ctx.beginPath();
+      ctx.arc(X(cx + 17), Z(cz), 14.7 * k, -Math.PI / 2, Math.PI / 2);
+      ctx.arc(X(cx - 17), Z(cz), 14.7 * k, Math.PI / 2, (3 * Math.PI) / 2);
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+  const [mx, mz] = LANDMARKS.mall.position;
+  ctx.fillRect(X(mx + LANDMARKS.mall.size[0] / 2), Z(mz - 23), 19 * k, 26 * k);
+  // Cottage Road where it crosses town
+  ctx.lineWidth = (HILL_ROAD_WIDTH + 3.4) * k;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  HILL_ROAD.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z))));
+  ctx.stroke();
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.NoColorSpace;
   t.flipY = false; // row 0 of the canvas is the north edge (z = −WORLD_HALF)

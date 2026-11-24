@@ -2,11 +2,10 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { host } from "../core/simHost";
+import { host, TREES } from "../core/simHost";
 import { bark, noBackfaceFlip } from "../render/materials";
 import { leafCardTexture } from "../render/textures";
 import { treeShape } from "../sim/breakables";
-import { CAIVAN_RIDGE } from "./map";
 
 /**
  * Trees with "fluffy" foliage: each crown is a cloud of leaf cards (alpha-tested
@@ -134,7 +133,7 @@ const LEAF_TINTS = [
 const WIND = { value: 0 };
 
 export function Vegetation() {
-  const trees = CAIVAN_RIDGE.trees;
+  const trees = TREES;
   const wind = WIND;
   const variants = useMemo(
     () =>
@@ -164,7 +163,7 @@ export function Vegetation() {
       tmp.quaternion.set(body.q.x, body.q.y, body.q.z, body.q.w);
       tmp.rotateY(yaw);
     } else {
-      tmp.position.set(t.position[0], 0, t.position[1]);
+      tmp.position.set(t.position[0], t.y ?? 0, t.position[1]);
       tmp.rotation.set(0, yaw, 0);
     }
     tmp.scale.setScalar(t.scale);
@@ -200,7 +199,10 @@ export function Vegetation() {
     WIND.value += Math.min(dt, 0.1);
     const s = host.sim;
     if (!s || s.breakables.dirtyTrees.size === 0) return;
+    // Street lights share the breakables list after the trees; StreetLights handles those.
     for (const ti of s.breakables.dirtyTrees) {
+      if (ti >= trees.length) continue;
+      s.breakables.dirtyTrees.delete(ti);
       const tb = s.breakables.trees[ti];
       if (!tb) continue;
       if (tb.status === "standing") place(ti);
@@ -213,7 +215,6 @@ export function Vegetation() {
         if (cr) cr.instanceMatrix.needsUpdate = true;
       }
     }
-    s.breakables.dirtyTrees.clear();
   });
 
   const depth = useMemo(

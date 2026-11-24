@@ -16,7 +16,7 @@ export const BLUEPRINTS: Blueprint[] = [
   { id: "bp-ridge-w", position: [-118, 1.2, -150], hint: "Founders Way" },
   { id: "bp-maple-e", position: [118, 1.2, 152], hint: "Quarry Lane" },
   { id: "bp-woods-n", position: [40, 1.2, -205], hint: "north woods" },
-  { id: "bp-woods-s", position: [-60, 1.2, 210], hint: "south woods" },
+  { id: "bp-woods-s", position: [-285, 1.2, 205], hint: "south-west woods" },
   { id: "bp-farm", position: [-350, 1.2, -95], hint: "goat farm" },
   { id: "bp-east", position: [400, 1.2, 30], hint: "far east field" },
   { id: "bp-west", position: [-405, 1.2, 40], hint: "far west field" },

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { BLUEPRINTS } from "../story/collectibles";
 import { DIALOGS } from "../story/dialogs";
 import { canBuy, GEAR, money, SHOP_ORDER } from "../story/economy";
+import { CheckIcon, CloseIcon, GearIcon } from "./icons";
 import { useGame } from "../story/store";
 import { releaseAll } from "../core/input";
 
@@ -33,7 +34,7 @@ export function DialogBox() {
   return (
     <div className="dialog" onClick={() => !waiting && nextLine()}>
       <div className="speaker">{line.speaker}</div>
-      <div className="line">{line.text}</div>
+      <div className={`line ${line.speaker === "Phone" ? "call" : ""}`}>{line.text}</div>
       {line.choices && dialog.reply === null && (
         <div className="choices">
           {line.choices.map((c, i) => (
@@ -50,7 +51,11 @@ export function DialogBox() {
         </div>
       )}
       {dialog.reply && <div className="reply">“{dialog.reply}”</div>}
-      {!waiting && <div className="continue">Space ▸</div>}
+      {!waiting && (
+        <div className="continue">
+          <kbd>Space</kbd> Continue
+        </div>
+      )}
     </div>
   );
 }
@@ -90,7 +95,7 @@ function TimingGame({ onDone }: { onDone: (ok: boolean) => void }) {
       const p = posRef.current;
       if (p >= zone[0] && p <= zone[1]) {
         live.current = false;
-        setMsg("Machine reset! ✅");
+        setMsg("Machine reset.");
         setTimeout(() => onDone(true), 700);
       } else setMsg("Missed. Try again!");
     };
@@ -149,7 +154,7 @@ function PourGame({ onDone }: { onDone: (ok: boolean) => void }) {
       holding.current = false;
       if (lv.current >= POUR_BAND[0] && lv.current <= POUR_BAND[1]) {
         live.current = false;
-        setMsg("Perfect pour! 🏗️");
+        setMsg("Perfect pour.");
         setTimeout(() => onDone(true), 900);
       } else if (lv.current < POUR_BAND[0]) setMsg("A bit more concrete…");
     };
@@ -222,27 +227,50 @@ export function Shop() {
   return (
     <div className="modal">
       <div className="card shop">
-        <h2>Gear Garage</h2>
-        <p className="muted">Spend what you’ve earned. You have {money(cash)}.</p>
+        <div className="card-head">
+          <div>
+            <div className="eyebrow">Sales Centre</div>
+            <h2>Gear Garage</h2>
+          </div>
+          <div className="balance">
+            <span className="eyebrow">Balance</span>
+            {money(cash)}
+          </div>
+        </div>
         <div className="items">
           {SHOP_ORDER.map((id, i) => {
             const g = GEAR[id];
             const check = canBuy(cash, owned, id);
             return (
               <div key={id} className={`item ${owned[id] ? "owned" : ""}`}>
-                <div className="item-icon">{id === "horse" ? "🐴" : id === "car" ? "🏎️" : "🚀"}</div>
-                <div className="item-name">{g.name}</div>
-                <div className="item-blurb">{g.blurb}</div>
-                <button disabled={!check.ok} onClick={() => buyGear(id)}>
-                  {owned[id] ? `Owned · press ${g.key}` : `${i + 1} · Buy ${money(g.price)}`}
-                </button>
-                {!owned[id] && !check.ok && <div className="item-need">{check.reason}</div>}
+                <div className="item-icon">
+                  <GearIcon mode={id} size={28} />
+                </div>
+                <div className="item-body">
+                  <div className="item-name">{g.name}</div>
+                  <div className="item-blurb">{g.blurb}</div>
+                </div>
+                <div className="item-buy">
+                  {owned[id] ? (
+                    <span className="owned-tag">
+                      <CheckIcon size={14} /> Owned · key {g.key}
+                    </span>
+                  ) : (
+                    <>
+                      <button disabled={!check.ok} onClick={() => buyGear(id)}>
+                        <kbd>{i + 1}</kbd> Buy {money(g.price ?? 0)}
+                      </button>
+                      {!check.ok && <div className="item-need">{check.reason}</div>}
+                    </>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
-        <button className="ghost" onClick={() => setShop(false)}>
-          Close (Esc)
+        <div className="card-foot muted">Peanut the elephant isn’t for sale. Ask around up in the hills.</div>
+        <button className="icon-btn corner" aria-label="Close" onClick={() => setShop(false)}>
+          <CloseIcon />
         </button>
       </div>
     </div>
@@ -255,12 +283,17 @@ export function Title() {
     <div className="title-screen">
       <div className="title-card">
         <div className="logo">CAIVAN</div>
-        <h1>Build It!</h1>
-        <p className="tagline">A family-friendly open-world adventure in Caivan Ridge. Visit job sites, help homebuyers, keep the factory humming, pour foundations, and earn your way to a horse, a sports car and a jetpack.</p>
+        <h1>Build It</h1>
+        <p className="tagline">An open-world day on the job in Caivan Ridge. Check survey stakes, help a family choose their home, fix the panel line, pour a foundation and hand over the keys. Then drive up into the hills, run deliveries, and earn your way to a helicopter.</p>
         <button className="play" onClick={start} autoFocus>
-          Start your first day ▸
+          Start your first day
         </button>
-        <p className="muted small">WASD to move · drag to look · E to talk · F to get in and out · 1–5 to call your gear</p>
+        <p className="muted small">
+          <kbd>W</kbd>
+          <kbd>A</kbd>
+          <kbd>S</kbd>
+          <kbd>D</kbd> move · <kbd>E</kbd> talk · <kbd>F</kbd> get in · <kbd>1</kbd>–<kbd>9</kbd> your gear · <kbd>M</kbd> map
+        </p>
       </div>
     </div>
   );
@@ -284,7 +317,7 @@ export function Ending() {
     <div className="modal ending">
       {flash && <div className="flash" />}
       <div className="card">
-        <div className="logo small">📸 SAY “CAIVAN RIDGE!”</div>
+        <div className="eyebrow">Grand Opening photo</div>
         <h2>Grand Opening: The End</h2>
         <p>From survey stakes to front-door keys, you helped build a neighbourhood. The Nguyens are home, the Patels picked their lot, and Raj’s panel line is humming.</p>
         <div className="stats">
@@ -302,7 +335,7 @@ export function Ending() {
           </div>
         </div>
         <button className="play" onClick={keep}>
-          Keep exploring ▸
+          Keep exploring
         </button>
       </div>
     </div>

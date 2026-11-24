@@ -1,119 +1,17 @@
-import { useEffect, useRef, useState } from "react";
-import { BLUEPRINTS } from "../story/collectibles";
-import { GEAR, money } from "../story/economy";
-import { currentStep, stepTarget } from "../story/missions";
+import { useEffect, useState } from "react";
+import { host } from "../core/simHost";
 import { runtime } from "../core/runtime";
+import { BLUEPRINTS } from "../story/collectibles";
+import { GEAR, HOTBAR_ORDER, money, type ModeId } from "../story/economy";
+import { currentStep, stepTarget } from "../story/missions";
+import { DEPOT } from "../story/sidequests";
 import { objective, useGame } from "../story/store";
-import type { ModeId } from "../story/economy";
-import { CAIVAN_RIDGE, LANDMARKS, PEN, WORLD_HALF } from "../world/map";
+import { GearIcon, LockIcon, MapIcon } from "./icons";
+import { Minimap } from "./MapView";
 
-const LABELS: Record<ModeId, string> = { walk: "On foot (1)", truck: "Company pickup (2)", horse: "Biscuit the horse (3)", car: "Volt GT (4)", jetpack: "SkyHopper jetpack (5)" };
+const NAMES: Record<ModeId, string> = { walk: "On foot", ...Object.fromEntries(Object.values(GEAR).map((g) => [g.id, g.name])) } as Record<ModeId, string>;
 
-const HOTBAR: { key: string; mode: ModeId; icon: string; gear?: keyof typeof GEAR }[] = [
-  { key: "1", mode: "walk", icon: "🚶" },
-  { key: "2", mode: "truck", icon: "🛻", gear: "truck" },
-  { key: "3", mode: "horse", icon: "🐴", gear: "horse" },
-  { key: "4", mode: "car", icon: "🏎️", gear: "car" },
-  { key: "5", mode: "jetpack", icon: "🚀", gear: "jetpack" },
-];
-
-/** North-up map: roads, lots, landmarks, you, the objective and runaway goats. */
-function Minimap() {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const progress = useGame((s) => s.progress);
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    const S = canvas.width;
-    const k = S / (WORLD_HALF * 2);
-    const P = (x: number, z: number): [number, number] => [(x + WORLD_HALF) * k, (z + WORLD_HALF) * k];
-    let raf = 0;
-    const draw = () => {
-      ctx.clearRect(0, 0, S, S);
-      ctx.fillStyle = "#6f8d4a";
-      ctx.fillRect(0, 0, S, S);
-      ctx.strokeStyle = "#3f4246";
-      ctx.lineWidth = 9 * k * 1.6;
-      ctx.lineCap = "round";
-      for (const r of CAIVAN_RIDGE.roads) {
-        ctx.beginPath();
-        ctx.moveTo(...P(r.from[0], r.from[1]));
-        ctx.lineTo(...P(r.to[0], r.to[1]));
-        ctx.stroke();
-      }
-      ctx.fillStyle = "#cfc5b2";
-      for (const l of CAIVAN_RIDGE.lots) {
-        const [x, y] = P(l.position[0] - l.width / 2, l.position[2] - l.depth / 2);
-        ctx.fillRect(x + 0.5, y + 0.5, l.width * k - 1, l.depth * k - 1);
-      }
-      for (const m of Object.values(LANDMARKS)) {
-        if (m.id === "park") continue;
-        const [x, y] = P(m.position[0], m.position[1]);
-        ctx.fillStyle = m.id === "factory" ? "#94a3b8" : m.id === "tower" ? "#e2e8f0" : m.id === "farm" ? "#b45309" : "#1f3a5f";
-        const w = Math.max(5, m.size[0] * k);
-        const h = Math.max(5, m.size[1] * k);
-        ctx.fillRect(x - w / 2, y - h / 2, w, h);
-      }
-      ctx.strokeStyle = "#a07a52";
-      ctx.lineWidth = 1.5;
-      const [px, py] = P(PEN.centre[0] - PEN.half, PEN.centre[1] - PEN.half);
-      ctx.strokeRect(px, py, PEN.half * 2 * k, PEN.half * 2 * k);
-      ctx.fillStyle = "#4f8fbf";
-      ctx.beginPath();
-      ctx.arc(...P(LANDMARKS.park.position[0] + 10, LANDMARKS.park.position[1] + 5), 11 * k, 0, Math.PI * 2);
-      ctx.fill();
-      // goats still on the loose
-      ctx.fillStyle = "#ffffff";
-      for (const g of runtime.goats) {
-        if (g.home) continue;
-        ctx.beginPath();
-        ctx.arc(...P(g.x, g.z), 2.6, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      const step = currentStep(useGame.getState().progress);
-      if (step) {
-        const [tx, ty] = P(...stepTarget(step));
-        const pulse = 4 + Math.sin(performance.now() / 200) * 1.5;
-        ctx.fillStyle = "#facc15";
-        ctx.strokeStyle = "#111827";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(tx, ty, pulse, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      }
-      const b = runtime.body;
-      const [bx, by] = P(b.x, b.z);
-      ctx.save();
-      ctx.translate(bx, by);
-      ctx.rotate(b.heading);
-      ctx.fillStyle = "#ef4444";
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(7, 0);
-      ctx.lineTo(-5, -4.5);
-      ctx.lineTo(-2.5, 0);
-      ctx.lineTo(-5, 4.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => cancelAnimationFrame(raf);
-  }, [progress]);
-  return (
-    <div className="minimap">
-      <canvas ref={ref} width={220} height={220} />
-      <span className="north">N</span>
-    </div>
-  );
-}
-
-/** Speed or jetpack fuel, refreshed a few times a second. */
+/** Live readout for the current way of getting around: speed, jetpack fuel, or altitude. */
 function Gauge() {
   const mode = useGame((s) => s.mode);
   const [v, setV] = useState({ speed: 0, fuel: 1, alt: 0 });
@@ -124,22 +22,30 @@ function Gauge() {
     }, 120);
     return () => clearInterval(id);
   }, []);
+  if (mode === "walk") return null;
   if (mode === "jetpack")
     return (
-      <div className="gauge">
-        <div className="gauge-label">Fuel · {Math.round(v.alt)} m up</div>
+      <div className="gauge panel">
+        <div className="eyebrow">Fuel</div>
         <div className="fuel">
           <div style={{ width: `${Math.round(v.fuel * 100)}%` }} />
         </div>
+        <div className="gauge-sub">{Math.round(v.alt)} m above ground</div>
       </div>
     );
-  if (mode === "walk") return null;
   return (
-    <div className="gauge">
-      <div className="speed">{Math.round(v.speed)}</div>
-      <div className="gauge-label">km/h</div>
+    <div className="gauge panel">
+      <div className="speed">
+        {Math.round(v.speed)}
+        <span>km/h</span>
+      </div>
+      {mode === "heli" && <div className="gauge-sub">Altitude {Math.round(v.alt)} m</div>}
     </div>
   );
+}
+
+function distanceText(d: number) {
+  return d < 1000 ? `${Math.round(d)} m` : `${(d / 1000).toFixed(1)} km`;
 }
 
 function Distance({ target }: { target: [number, number] }) {
@@ -148,7 +54,42 @@ function Distance({ target }: { target: [number, number] }) {
     const id = setInterval(() => setD(Math.hypot(runtime.body.x - target[0], runtime.body.z - target[1])), 250);
     return () => clearInterval(id);
   }, [target]);
-  return <span className="dist">{d < 1000 ? `${Math.round(d)} m` : `${(d / 1000).toFixed(1)} km`}</span>;
+  return <span className="dist">{distanceText(d)}</span>;
+}
+
+/** Side jobs in progress: the delivery clock and the search for Peanut. */
+function SideJobs() {
+  const delivery = useGame((s) => s.delivery);
+  const elephant = useGame((s) => s.elephant);
+  const [left, setLeft] = useState(0);
+  useEffect(() => {
+    if (!delivery) return;
+    const tick = () => setLeft(delivery.limit - ((host.sim?.time ?? 0) - delivery.started));
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [delivery]);
+  if (!delivery && elephant !== "asked") return null;
+  const clock = (s: number) => `${Math.floor(Math.abs(s) / 60)}:${String(Math.floor(Math.abs(s) % 60)).padStart(2, "0")}`;
+  return (
+    <div className="panel sidejobs">
+      {delivery && (
+        <div className="sidejob">
+          <div className="eyebrow">Delivery</div>
+          <div className="task">
+            Panels to {delivery.drop.label} <Distance target={delivery.drop.at} />
+          </div>
+          <div className={`timer ${left < 0 ? "late" : ""}`}>{left >= 0 ? `${clock(left)} for the on-time bonus` : `${clock(left)} over, no bonus`}</div>
+        </div>
+      )}
+      {elephant === "asked" && (
+        <div className="sidejob">
+          <div className="eyebrow">Side job</div>
+          <div className="task">Find Peanut in the woods west of Rosa’s cottage</div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function Hud() {
@@ -161,33 +102,62 @@ export function Hud() {
   const showHelp = useGame((s) => s.showHelp);
   const blueprints = useGame((s) => s.blueprints.length);
   const goats = useGame((s) => s.goatsHome.length);
+  const deliveries = useGame((s) => s.deliveries);
+  const delivery = useGame((s) => s.delivery);
   const obj = objective(progress);
   const step = currentStep(progress);
+  const [key, label] = prompt?.includes("|") ? (prompt.split("|") as [string, string]) : ["E", prompt ?? ""];
 
   return (
     <div className="hud">
       <div className="top-left">
-        <div className="cash">{money(cash)}</div>
-        {obj && step ? (
-          <div className="objective">
-            <div className="chapter">
-              {obj.chapter} · {obj.title}
-            </div>
-            <div className="task">
-              ▸ {obj.text} <Distance target={stepTarget(step)} />
-            </div>
-          </div>
-        ) : (
-          <div className="objective">
-            <div className="chapter">Free roam</div>
-            <div className="task">Story complete. Find every blueprint and goat!</div>
+        <div className="panel objective">
+          {obj && step ? (
+            <>
+              <div className="eyebrow">
+                {obj.chapter} · {obj.title}
+              </div>
+              <div className="task">
+                {obj.text} <Distance target={stepTarget(step)} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="eyebrow">Free roam</div>
+              <div className="task">Story complete. Deliveries, blueprints and goats are still out there.</div>
+            </>
+          )}
+        </div>
+        <SideJobs />
+        {!delivery && deliveries === 0 && obj && progress.mission >= 2 && (
+          <div className="hint">
+            Need cash? Bring a pickup to the factory dock for delivery runs. <Distance target={DEPOT} />
           </div>
         )}
-        <div className="extras">
-          📘 {blueprints}/{BLUEPRINTS.length} blueprints · 🐐 {goats}/3 goats home
+      </div>
+
+      <div className="top-right">
+        <div className="cash panel">{money(cash)}</div>
+        <Minimap />
+        <div className="counters panel">
+          <span>
+            Blueprints
+            <b>
+              {blueprints}/{BLUEPRINTS.length}
+            </b>
+          </span>
+          <span>
+            Goats<b>{goats}/3</b>
+          </span>
+          <span>
+            Deliveries<b>{deliveries}</b>
+          </span>
+        </div>
+        <div className="map-hint">
+          <MapIcon size={14} /> <kbd>M</kbd> Map
         </div>
       </div>
-      <Minimap />
+
       <div className="toasts">
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.tone}`}>
@@ -195,52 +165,72 @@ export function Hud() {
           </div>
         ))}
       </div>
+
       <div className="bottom">
         {prompt && (
           <div className="prompt">
-            <kbd>{prompt.includes("|") ? prompt.split("|")[0] : "E"}</kbd> {prompt.includes("|") ? prompt.split("|")[1] : prompt}
+            {key !== "i" && <kbd>{key}</kbd>}
+            <span>{label}</span>
           </div>
         )}
-        <div className="hotbar-row">
-          <Gauge />
-          <div className="hotbar">
-            {HOTBAR.map((h) => {
-              const locked = h.gear ? !owned[h.gear] : false;
-              return (
-                <div key={h.key} className={`slot ${mode === h.mode ? "active" : ""} ${locked ? "locked" : ""}`} title={LABELS[h.mode]}>
-                  <span className="icon">{locked ? "🔒" : h.icon}</span>
-                  <span className="num">{h.key}</span>
-                </div>
-              );
-            })}
-          </div>
+        <div className="mode-name">{NAMES[mode]}</div>
+        <div className="hotbar">
+          {HOTBAR_ORDER.map((m, i) => {
+            const locked = m !== "walk" && !owned[m];
+            return (
+              <div key={m} className={`slot ${mode === m ? "active" : ""} ${locked ? "locked" : ""}`} title={`${NAMES[m]} (${i + 1})`}>
+                <span className="num">{i + 1}</span>
+                <GearIcon mode={m} />
+                {locked && (
+                  <span className="lock">
+                    <LockIcon size={11} />
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
+      <div className="bottom-left">
+        <Gauge />
+      </div>
+
       {showHelp && (
-        <div className="help">
-          <b>Controls</b>
-          <div>
-            <kbd>W</kbd>
-            <kbd>A</kbd>
-            <kbd>S</kbd>
-            <kbd>D</kbd> move / drive
-          </div>
-          <div>
-            <kbd>Drag</kbd> or <kbd>←</kbd>
-            <kbd>→</kbd> look · wheel zoom
-          </div>
-          <div>
-            <kbd>Space</kbd> jump · jetpack · handbrake · <kbd>Shift</kbd> sprint
-          </div>
-          <div>
-            <kbd>E</kbd> talk / use · <kbd>F</kbd> get in / out
-          </div>
-          <div>
-            <kbd>1</kbd>–<kbd>5</kbd> call your gear · <kbd>G</kbd> graphics
-          </div>
-          <div className="muted">
-            <kbd>H</kbd> hide this
-          </div>
+        <div className="help panel">
+          <div className="eyebrow">Controls</div>
+          <dl>
+            <dt>
+              <kbd>W</kbd>
+              <kbd>A</kbd>
+              <kbd>S</kbd>
+              <kbd>D</kbd>
+            </dt>
+            <dd>Move, drive, fly</dd>
+            <dt>
+              <kbd>Drag</kbd>
+            </dt>
+            <dd>Look around, scroll to zoom</dd>
+            <dt>
+              <kbd>Space</kbd>
+            </dt>
+            <dd>Jump, jetpack thrust, handbrake, climb</dd>
+            <dt>
+              <kbd>Shift</kbd>
+            </dt>
+            <dd>Sprint, gallop, descend</dd>
+            <dt>
+              <kbd>E</kbd> <kbd>F</kbd>
+            </dt>
+            <dd>Talk or use, get in or out</dd>
+            <dt>
+              <kbd>1</kbd>–<kbd>9</kbd>
+            </dt>
+            <dd>Call your gear</dd>
+            <dt>
+              <kbd>M</kbd> <kbd>G</kbd> <kbd>H</kbd>
+            </dt>
+            <dd>Map, graphics, hide this</dd>
+          </dl>
         </div>
       )}
     </div>

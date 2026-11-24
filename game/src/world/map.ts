@@ -3,6 +3,7 @@ import type { LotProgress, StageId } from "@/lib/models/construction";
 import { placeholderFor, storeysFor } from "@/lib/geometry/placeholderHouse";
 import { placeholderScale } from "@/lib/geometry/siteGeometry";
 import { lotToWorld } from "@/lib/viewer/placement";
+import { COTTAGE, COTTAGE_Y, HILL_ROAD_WIDTH, nearestOnRoad } from "./terrain";
 
 /**
  * Caivan Ridge: the game's open world, generated from Home Studio's own
@@ -17,6 +18,8 @@ import { lotToWorld } from "@/lib/viewer/placement";
  *   ══════════════ Caivan Boulevard (z = 0) ══════════════════════════════════
  *        Sales Centre       ║      Park         ║
  *                           ║  Maple Run (z = 130), construction zone south
+ *                           ║  Birch Lane (z = 220)                       ║x=330
+ *   Hills → Cottage Road ═══ Market Street (z = 300): shop · school · mall ═╝
  */
 
 export type V2 = [number, number];
@@ -26,15 +29,20 @@ export const ROAD = { width: 9, sidewalk: 1.6, boulevard: 2 };
 export const FRONT = ROAD.width / 2 + ROAD.boulevard + ROAD.sidewalk;
 export const LOT_W = 16.5;
 export const LOT_D = 34;
-/** Half-size of the playable ground square. */
+/** Half-size of the community's flat ground (roads, lots, trees). The hills beyond are in terrain.ts. */
 export const WORLD_HALF = 440;
+/** Half-size of the flat physics slab under the community. */
+export const FLAT_GROUND_HALF = WORLD_HALF + 10;
 
 export const STREETS = {
   boulevard: { name: "Caivan Boulevard", z: 0 },
   ridgeview: { name: "Ridgeview Crescent", z: -130 },
   maple: { name: "Maple Run", z: 130 },
+  birch: { name: "Birch Lane", z: 220 },
+  market: { name: "Market Street", z: 300 },
   west: { name: "Founders Way", x: -110 },
   east: { name: "Quarry Lane", x: 110 },
+  link: { name: "Mill Road", x: 330 },
 } as const;
 
 /** What a collision box is, so physics can treat wood frames as breakable. */
@@ -50,9 +58,11 @@ export interface Box {
   kind?: BoxKind;
   /** Lot id for houses and frames, landmark id for landmarks. */
   id?: string;
+  /** Base height (for buildings on the hills). */
+  y?: number;
 }
 
-export type LandmarkId = "sales" | "factory" | "tower" | "farm" | "park";
+export type LandmarkId = "sales" | "factory" | "tower" | "farm" | "park" | "shop" | "school" | "mall" | "cottage";
 
 export interface Landmark {
   id: LandmarkId;
@@ -68,7 +78,42 @@ export const LANDMARKS: Record<LandmarkId, Landmark> = {
   tower: { id: "tower", name: "Caivan Ridge Water Tower", position: [0, -48], size: [12, 12, 34] },
   farm: { id: "farm", name: "Hillside Goat Farm", position: [-335, -150], size: [16, 12, 8] },
   park: { id: "park", name: "Ridge Park", position: [0, 45], size: [70, 50, 0] },
+  shop: { id: "shop", name: "Ridge Corner Market", position: [40, 330], size: [30, 18, 6] },
+  school: { id: "school", name: "Caivan Ridge Public School", position: [-130, 350], size: [56, 30, 9] },
+  mall: { id: "mall", name: "Ridge Centre Mall", position: [215, 372], size: [100, 56, 14] },
+  cottage: { id: "cottage", name: "Rosa's Cottage", position: COTTAGE.position, size: [12, 9, 6.5] },
 };
+
+/** Paved areas (parking lots, yards): no trees or grass there. */
+export const PAVED: { x0: number; z0: number; x1: number; z1: number; kind: "parking" | "field" }[] = [
+  { x0: -199, z0: 11, x1: -143, z1: 27, kind: "parking" },
+  { x0: 165, z0: 310, x1: 265, z1: 342, kind: "parking" },
+  { x0: 20, z0: 309.5, x1: 60, z1: 320, kind: "parking" },
+  { x0: -98, z0: 318, x1: -62, z1: 344, kind: "parking" },
+  { x0: -232, z0: 318, x1: -166, z1: 384, kind: "field" },
+];
+
+/** Cars parked at the mall, nose-in to the stalls (solid: you bump into them). */
+export const PARKED_CARS: { x: number; z: number; heading: number; color: string }[] = [
+  { x: 177, z: 315, heading: -Math.PI / 2, color: "#c9ccd1" },
+  { x: 190.5, z: 315, heading: Math.PI / 2, color: "#20232a" },
+  { x: 209.4, z: 323.5, heading: -Math.PI / 2, color: "#8c1d18" },
+  { x: 223, z: 315, heading: Math.PI / 2, color: "#e6e2d8" },
+  { x: 236.4, z: 323.5, heading: -Math.PI / 2, color: "#1d3b6a" },
+  { x: 250, z: 337, heading: Math.PI / 2, color: "#4b5258" },
+];
+export const SCHOOL_BUS = { x: -76, z: 331, heading: 0 };
+
+/** Monument signs at the street (game heading = the way the lettering faces). */
+export const SIGNS: { text: string; sub?: string; x: number; z: number; heading: number; width: number }[] = [
+  { text: "CAIVAN SALES CENTRE", sub: "Model homes open daily", x: -150, z: 8.5, heading: -Math.PI / 2, width: 5.5 },
+  { text: "CAIVAN PANEL FACTORY", sub: "Deliveries at the dock", x: 265, z: -9, heading: Math.PI / 2, width: 5.5 },
+  { text: "HILLSIDE GOAT FARM", x: -290, z: -9, heading: Math.PI / 2, width: 5 },
+  { text: "RIDGE PARK", x: -4, z: 9.5, heading: -Math.PI / 2, width: 3.6 },
+  { text: "CAIVAN RIDGE PUBLIC SCHOOL", sub: "Kindergarten to Grade 8", x: -146, z: 323, heading: -Math.PI / 2, width: 6 },
+  { text: "RIDGE CENTRE", sub: "Shops, dining, services", x: 159, z: 309.5, heading: -Math.PI / 2, width: 5.5 },
+  { text: "COTTAGE ROAD", sub: "Rosa's Cottage, 0.6 km", x: -246, z: 300, heading: 0, width: 4.6 },
+];
 
 /** Water tower: tank radius and the walkable deck on top. */
 export const TOWER = { tankRadius: 7, tankBottom: 24, deckY: 33.2 };
@@ -133,7 +178,7 @@ function streetLots(streetZ: number, firstNumber: number, rand: () => number): L
 
 function buildLots(): Lot[] {
   const rand = mulberry32(2026);
-  const lots = [...streetLots(STREETS.ridgeview.z, 100, rand), ...streetLots(STREETS.maple.z, 200, rand)];
+  const lots = [...streetLots(STREETS.ridgeview.z, 100, rand), ...streetLots(STREETS.maple.z, 200, rand), ...streetLots(STREETS.birch.z, 300, rand)];
   // The hero home (Plan 36) on Ridgeview, centre north side, numbered 42 like the studio demo.
   const hero = lots.find((l) => l.id === "lot-112")!;
   hero.id = HERO_LOT_ID;
@@ -170,8 +215,11 @@ const ROADS: Road[] = [
   road("boulevard", [-WORLD_HALF + 10, STREETS.boulevard.z], [WORLD_HALF - 10, STREETS.boulevard.z]),
   road("ridgeview", [STREETS.west.x, STREETS.ridgeview.z], [STREETS.east.x, STREETS.ridgeview.z]),
   road("maple", [STREETS.west.x, STREETS.maple.z], [STREETS.east.x, STREETS.maple.z]),
-  road("founders", [STREETS.west.x, STREETS.ridgeview.z], [STREETS.west.x, STREETS.maple.z]),
-  road("quarry", [STREETS.east.x, STREETS.ridgeview.z], [STREETS.east.x, STREETS.maple.z]),
+  road("founders", [STREETS.west.x, STREETS.ridgeview.z], [STREETS.west.x, STREETS.market.z]),
+  road("quarry", [STREETS.east.x, STREETS.ridgeview.z], [STREETS.east.x, STREETS.market.z]),
+  road("birch", [STREETS.west.x, STREETS.birch.z], [STREETS.east.x, STREETS.birch.z]),
+  road("market", [-230, STREETS.market.z], [STREETS.link.x, STREETS.market.z]),
+  road("mill", [STREETS.link.x, STREETS.boulevard.z], [STREETS.link.x, STREETS.market.z]),
   // Factory spur and farm lane
   road("factory-spur", [255, STREETS.boulevard.z], [255, -46]),
   road("farm-lane", [-300, STREETS.boulevard.z], [-300, -112]),
@@ -195,6 +243,9 @@ export function isOpenGround(x: number, z: number, lots: Lot[], pad = 3): boolea
     if (Math.abs(x - m.position[0]) < w / 2 + 12 && Math.abs(z - m.position[1]) < d / 2 + 12) return false;
   }
   if (Math.abs(x - PEN.centre[0]) < PEN.half + 4 && Math.abs(z - PEN.centre[1]) < PEN.half + 4) return false;
+  for (const p of PAVED) if (x > p.x0 - pad && x < p.x1 + pad && z > p.z0 - pad && z < p.z1 + pad) return false;
+  for (const g of SIGNS) if (Math.hypot(x - g.x, z - g.z) < g.width / 2 + 1.5) return false;
+  if (nearestOnRoad(x, z).d < HILL_ROAD_WIDTH / 2 + 2 + pad) return false;
   return true;
 }
 
@@ -288,7 +339,17 @@ export function collisionBoxes(stages: Record<string, StageId>): Box[] {
   for (const m of Object.values(LANDMARKS)) {
     if (m.id === "park" || m.id === "tower") continue;
     const [w, d, h] = m.size;
-    boxes.push({ x0: m.position[0] - w / 2, z0: m.position[1] - d / 2, x1: m.position[0] + w / 2, z1: m.position[1] + d / 2, h, kind: "landmark", id: m.id });
+    boxes.push({ x0: m.position[0] - w / 2, z0: m.position[1] - d / 2, x1: m.position[0] + w / 2, z1: m.position[1] + d / 2, h, kind: "landmark", id: m.id, y: m.id === "cottage" ? COTTAGE_Y : 0 });
+  }
+  // Rosa's porch: a low deck you can step up onto.
+  const [cx, cz] = COTTAGE.position;
+  boxes.push({ x0: cx - 6, z0: cz - 4.5 - 2.4, x1: cx + 6, z1: cz - 4.5, h: 0.45, kind: "landmark", id: "porch", y: COTTAGE_Y });
+  for (const c of PARKED_CARS) boxes.push({ x0: c.x - 0.95, z0: c.z - 2.3, x1: c.x + 0.95, z1: c.z + 2.3, h: 1.4, kind: "landmark", id: "parked" });
+  boxes.push({ x0: SCHOOL_BUS.x - 6.4, z0: SCHOOL_BUS.z - 1.25, x1: SCHOOL_BUS.x + 6.4, z1: SCHOOL_BUS.z + 1.25, h: 3, kind: "landmark", id: "bus" });
+  for (const g of SIGNS) {
+    const along = Math.abs(Math.cos(g.heading)) < 0.5;
+    const hw = g.width / 2 + 0.25;
+    boxes.push({ x0: g.x - (along ? hw : 0.35), z0: g.z - (along ? 0.35 : hw), x1: g.x + (along ? hw : 0.35), z1: g.z + (along ? 0.35 : hw), h: 1.9, kind: "landmark", id: "sign" });
   }
   // Water tower legs: four posts, so there is room to walk (or fly) between them.
   const [tx, tz] = LANDMARKS.tower.position;
@@ -315,3 +376,106 @@ export function ceilingHeightAt(x: number, z: number, y: number): number {
 }
 
 export const SPAWN: { position: V2; heading: number } = { position: [-175, 22], heading: Math.PI / 2 };
+
+// ── Street furniture and town life ──────────────────────────────────────────
+
+/** Street lights along every road, on the grass strip between curb and sidewalk, clear of junctions. */
+export function streetLights(): { x: number; z: number; heading: number }[] {
+  const out: { x: number; z: number; heading: number }[] = [];
+  const offset = ROAD.width / 2 + ROAD.boulevard * 0.45;
+  const nearJunction = (x: number, z: number, self: Road) =>
+    ROADS.some((r) => {
+      if (r === self) return false;
+      const [ax, az] = r.from;
+      const [bx, bz] = r.to;
+      const dx = bx - ax;
+      const dz = bz - az;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+      return Math.hypot(x - (ax + dx * t), z - (az + dz * t)) < FRONT + 6;
+    });
+  for (const r of ROADS) {
+    const [ax, az] = r.from;
+    const [bx, bz] = r.to;
+    const L = Math.hypot(bx - ax, bz - az);
+    const ux = (bx - ax) / L;
+    const uz = (bz - az) / L;
+    let i = 0;
+    for (let s = 14; s < L - 8; s += 34, i++) {
+      // Alternate sides so lamps stagger like a real street.
+      const side = i % 2 ? 1 : -1;
+      const x = ax + ux * s - uz * offset * side;
+      const z = az + uz * s + ux * offset * side;
+      if (nearJunction(x, z, r)) continue;
+      // The lamp arm reaches back over the road.
+      out.push({ x, z, heading: Math.atan2(-ux * side, uz * side) });
+    }
+  }
+  return out;
+}
+
+/** Closed driving loops (centre lines, clockwise as seen on the map); cars keep to the right lane. */
+export const TRAFFIC_LOOPS: V2[][] = [
+  [
+    [-110, -130],
+    [110, -130],
+    [110, 0],
+    [-110, 0],
+  ],
+  [
+    [110, 0],
+    [110, 130],
+    [-110, 130],
+    [-110, 0],
+  ],
+  [
+    [-110, 130],
+    [110, 130],
+    [110, 220],
+    [-110, 220],
+  ],
+  [
+    [110, 0],
+    [330, 0],
+    [330, 300],
+    [-110, 300],
+    [-110, 220],
+    [110, 220],
+  ],
+  // West boulevard: out to the edge of town and back (a long, thin loop).
+  [
+    [-425, 0.05],
+    [-110, 0.05],
+    [-110, -0.05],
+    [-425, -0.05],
+  ],
+];
+
+/** Sidewalk walking loops for pedestrians (inside each block, along the sidewalks). */
+export const WALK_LOOPS: V2[][] = (() => {
+  const k = FRONT - ROAD.sidewalk / 2;
+  const block = (x0: number, z0: number, x1: number, z1: number): V2[] => [
+    [x0 + k, z0 + k],
+    [x1 - k, z0 + k],
+    [x1 - k, z1 - k],
+    [x0 + k, z1 - k],
+  ];
+  return [
+    block(-110, -130, 110, 0),
+    block(-110, 0, 110, 130),
+    block(-110, 130, 110, 220),
+    block(-110, 220, 110, 300),
+    block(110, 0, 330, 300),
+    [
+      [-225, 300 + k],
+      [325, 300 + k],
+      [325, 300 + k + 0.5],
+      [-225, 300 + k + 0.5],
+    ],
+    [
+      [-420, -k],
+      [-120, -k],
+      [-120, -k - 0.5],
+      [-420, -k - 0.5],
+    ],
+  ];
+})();

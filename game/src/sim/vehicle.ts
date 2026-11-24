@@ -2,7 +2,7 @@ import type { Collider, DynamicRayCastVehicleController, RigidBody, World } from
 import { groups, LAYER, SOLID, type Rapier } from "./rapier";
 import { clamp, damp, headingOf, quatFromHeading, rotate, uprightness, type Quat, type Vec3 } from "./math";
 
-export type VehicleId = "truck" | "car";
+export type VehicleId = "truck" | "car" | "trail" | "hauler";
 
 /**
  * A raycast vehicle (the classic Bullet/Rapier design): a rigid chassis with four
@@ -93,6 +93,56 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 10,
     allWheelDrive: false,
     comDrop: 0.4,
+  },
+  trail: {
+    id: "trail",
+    name: "Ridgeback 4x4",
+    mass: 2000,
+    half: [2.7, 0.55, 1.02],
+    wheelFront: 1.72,
+    wheelRear: -1.62,
+    track: 0.98,
+    wheelY: -0.38,
+    wheelRadius: 0.52,
+    suspensionRest: 0.5,
+    suspensionTravel: 0.5,
+    stiffness: 22,
+    compression: 2.6,
+    relaxation: 3.2,
+    frictionSlip: 2.8,
+    sideFriction: 1.05,
+    engine: 5800,
+    brake: 95,
+    maxSteer: 0.58,
+    topSpeed: 28,
+    reverseSpeed: 9,
+    allWheelDrive: true,
+    comDrop: 0.55,
+  },
+  hauler: {
+    id: "hauler",
+    name: "Haul HD",
+    mass: 2700,
+    half: [2.95, 0.6, 1.05],
+    wheelFront: 1.95,
+    wheelRear: -1.8,
+    track: 0.98,
+    wheelY: -0.32,
+    wheelRadius: 0.46,
+    suspensionRest: 0.42,
+    suspensionTravel: 0.32,
+    stiffness: 34,
+    compression: 3.4,
+    relaxation: 4,
+    frictionSlip: 2.6,
+    sideFriction: 1.1,
+    engine: 8200,
+    brake: 130,
+    maxSteer: 0.5,
+    topSpeed: 31,
+    reverseSpeed: 8,
+    allWheelDrive: false,
+    comDrop: 0.5,
   },
 };
 
@@ -189,9 +239,9 @@ export class VehicleController {
   }
 
   /** Puts the vehicle somewhere, upright and still. */
-  place(x: number, z: number, heading: number) {
+  place(x: number, z: number, heading: number, groundY = 0) {
     const s = this.spec;
-    this.body.setTranslation({ x, y: s.wheelRadius + s.suspensionRest - s.wheelY + 0.1, z }, true);
+    this.body.setTranslation({ x, y: groundY + s.wheelRadius + s.suspensionRest - s.wheelY + 0.1, z }, true);
     this.body.setRotation(quatFromHeading(heading), true);
     this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
@@ -242,7 +292,7 @@ export class VehicleController {
       this.flipped += dt;
       if (this.flipped > 2.2) {
         const p = this.position;
-        this.place(p.x, p.z, this.heading);
+        this.place(p.x, p.z, this.heading, Math.max(0, p.y - 1.5));
         this.flipped = 0;
       }
     } else this.flipped = 0;

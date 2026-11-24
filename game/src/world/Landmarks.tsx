@@ -1,24 +1,12 @@
 import { useMemo } from "react";
 import * as THREE from "three";
-import { TextSprite } from "@/components/community/TextSprite";
 import { Decal } from "../render/decal";
 import { glass, groundAsphalt, lumber, mat, siteHomeMaterial } from "../render/materials";
 import { Pond } from "./Water";
 import { GEAR_GARAGE, MACHINES, POUR_SPOT, SURVEY_STAKES } from "../story/missions";
 import { useGame } from "../story/store";
-import { LANDMARKS, PEN, TOWER, TOWER_LEGS } from "./map";
-
-function B({ size, position, color, rotation, emissive, cast = true }: { size: [number, number, number]; position: [number, number, number]; color: string; rotation?: [number, number, number]; emissive?: string; cast?: boolean }) {
-  return (
-    <mesh position={position} rotation={rotation} material={mat(color, { emissive })} castShadow={cast} receiveShadow>
-      <boxGeometry args={size} />
-    </mesh>
-  );
-}
-
-function Label({ text, at, accent = false }: { text: string; at: [number, number, number]; accent?: boolean }) {
-  return <TextSprite text={text} position={at} size={accent ? 0.026 : 0.02} background={accent ? "#f59e0b" : "rgba(20,28,40,0.78)"} color="#ffffff" bold />;
-}
+import { LANDMARKS, PEN, SIGNS, TOWER, TOWER_LEGS } from "./map";
+import { B, Sign } from "./props";
 
 /** A clean modern sales pavilion: glass curtain wall with mullions, white render, cedar accent, entrance canopy. */
 function SalesCentre() {
@@ -88,7 +76,6 @@ function SalesCentre() {
           <B size={[0.05, 1.1, 1.8]} position={[x + dx, 9.3, front - 4 + 0.95]} color={dx < 0 ? "#d52b1e" : "#1f3a5f"} />
         </group>
       ))}
-      <Label text="CAIVAN SALES CENTRE" at={[x, h + 2.5, z]} accent />
     </group>
   );
 }
@@ -98,9 +85,9 @@ function GearGarage() {
   return (
     <group name="GearGarage">
       <B size={[3.6, 2.6, 2.6]} position={[x + 1.5, 1.3, z + 2]} color="#2b3a4a" />
-      <B size={[4.4, 0.25, 3.6]} position={[x + 1.5, 2.85, z + 1.6]} color="#f59e0b" />
-      <B size={[3.4, 0.9, 0.3]} position={[x + 1.5, 1.1, z + 0.65]} color="#f59e0b" />
-      <Label text="GEAR GARAGE" at={[x + 1.5, 4.2, z + 1.6]} accent />
+      <B size={[4.4, 0.25, 3.6]} position={[x + 1.5, 2.85, z + 1.6]} color="#e3a01b" />
+      <B size={[3.4, 0.9, 0.3]} position={[x + 1.5, 1.1, z + 0.65]} color="#e3a01b" />
+      <Decal text="GEAR GARAGE" color="#1d2126" position={[x + 1.5, 2.85, z - 0.21]} rotation={[0, Math.PI, 0]} height={0.2} />
     </group>
   );
 }
@@ -117,6 +104,7 @@ function Factory() {
         <B key={dx} size={[10, 3, d]} position={[x + dx, h + 1.2, z]} rotation={[0, 0, 0.45]} color="#8d99a6" />
       ))}
       <B size={[w + 0.2, 1.6, d + 0.2]} position={[x, h - 1.4, z]} color="#1f3a5f" />
+      <Decal text="CAIVAN PANEL FACTORY" color="#ffffff" position={[x, h - 1.4, z + d / 2 + 0.12]} rotation={[0, 0, 0]} height={1.05} />
       {[-18, 0, 18].map((dx) => (
         <B key={dx} size={[8, 6, 0.3]} position={[x + dx, 3, z + d / 2 + 0.1]} color="#5d6d7e" />
       ))}
@@ -142,7 +130,6 @@ function Factory() {
           </group>
         );
       })}
-      <Label text="CAIVAN PANEL FACTORY" at={[x, h + 6, z]} accent />
     </group>
   );
 }
@@ -168,10 +155,10 @@ function WaterTower() {
       <mesh position={[0, TOWER.tankBottom + 4.5, 0]} material={mat("#1f3a5f")}>
         <cylinderGeometry args={[TOWER.tankRadius + 0.03, TOWER.tankRadius + 0.03, 1.4, 24, 1, true]} />
       </mesh>
+      <TankLettering />
       <mesh position={[0, TOWER.deckY + 0.6, 0]} rotation={[Math.PI / 2, 0, 0]} material={mat("#f59e0b")}>
         <torusGeometry args={[TOWER.tankRadius - 0.2, 0.06, 6, 32]} />
       </mesh>
-      <Label text="CAIVAN RIDGE" at={[0, TOWER.deckY + 3, 0]} />
     </group>
   );
 }
@@ -220,7 +207,6 @@ function Farm() {
           <cylinderGeometry args={[0.6, 0.6, 1.2, 10]} />
         </mesh>
       ))}
-      <Label text="HILLSIDE GOAT FARM" at={[px, 4, pz]} accent />
     </group>
   );
 }
@@ -245,7 +231,6 @@ function Park() {
           <B size={[2.4, 0.6, 0.12]} position={[x + dx - 4, 0.85, z - 14.3]} color="#8b6b4a" />
         </group>
       ))}
-      <Label text="RIDGE PARK" at={[x, 3, z - 14]} />
     </group>
   );
 }
@@ -278,6 +263,47 @@ function JobSiteProps() {
   );
 }
 
+/** "CAIVAN RIDGE" wrapped around the tank, on both sides. */
+function TankLettering() {
+  const m = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 1024;
+    c.height = 128;
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = "#1f3a5f";
+    ctx.font = '700 84px "Inter", "Helvetica Neue", system-ui, sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("CAIVAN RIDGE", 512, 68);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    return new THREE.MeshStandardMaterial({ map: t, transparent: true, depthWrite: false, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2 });
+  }, []);
+  const y = TOWER.tankBottom + 2.6;
+  return (
+    <>
+      {[0, Math.PI].map((rot) => (
+        <mesh key={rot} position={[0, y, 0]} rotation={[0, rot, 0]} material={m}>
+          {/* The tank tapers 0.8 m over its height; follow it so the letters sit on the steel. */}
+          <cylinderGeometry args={[TOWER.tankRadius - 0.8 + (0.8 * 3.7) / (TOWER.deckY - TOWER.tankBottom) + 0.03, TOWER.tankRadius - 0.8 + (0.8 * 1.5) / (TOWER.deckY - TOWER.tankBottom) + 0.03, 2.2, 32, 1, true, -0.85, 1.7]} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+/** Monument signs at the street for every landmark (real signage instead of floating labels). */
+function Signs() {
+  return (
+    <>
+      {SIGNS.map((s) => (
+        <Sign key={s.text} text={s.text} sub={s.sub} at={[s.x, s.z]} heading={s.heading} width={s.width} />
+      ))}
+    </>
+  );
+}
+
 export function Landmarks() {
   return (
     <group name="Landmarks">
@@ -288,6 +314,7 @@ export function Landmarks() {
       <Farm />
       <Park />
       <JobSiteProps />
+      <Signs />
     </group>
   );
 }

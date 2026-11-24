@@ -99,7 +99,30 @@ export const OUTFITS = {
     hat: { kind: "cap", color: "#1e5aa8" },
     scale: 0.62,
   },
+  rosa: {
+    skin: "#c48a64",
+    shirt: "#6b7f5a",
+    pants: "#3d3a36",
+    shoes: "#4a3424",
+    hair: "#d9d4cc",
+    longHair: true,
+    hat: { kind: "straw", color: "#c9a85c" },
+  },
 } satisfies Record<string, Outfit>;
+
+/** Everyday clothes for the people walking around town (muted, real-world colours). */
+export const TOWNSFOLK: Outfit[] = [
+  { skin: "#e0b08f", shirt: "#3a4b5c", pants: "#2c2f36", shoes: "#1f1f22", hair: "#3b2a1e" },
+  { skin: "#8d5a3b", shirt: "#d8d2c4", pants: "#4a5160", shoes: "#2a2a2a", hair: "#151010", longHair: true },
+  { skin: "#c68863", shirt: "#7a2e2e", pants: "#30343c", shoes: "#3a2a20", hair: "#241810" },
+  { skin: "#f0c8a8", shirt: "#56705a", pants: "#6b5a46", shoes: "#3b2b1d", hair: "#a87a42", longHair: true },
+  { skin: "#6e4630", shirt: "#e9e4da", pants: "#1f3a5f", shoes: "#f2f2f2", hair: "#0f0c0a", hat: { kind: "cap", color: "#2b2f36" } },
+  { skin: "#d9a77f", shirt: "#2f3a4a", pants: "#8c8578", shoes: "#3a2a20", hair: "#1a1310" },
+  { skin: "#a8714d", shirt: "#b88a3a", pants: "#2e2e3a", shoes: "#2a2a2a", hair: "#1c1410", longHair: true },
+  { skin: "#e8b796", shirt: "#495a6e", pants: "#3a3f4a", shoes: "#4a3424", hair: "#cfc8bc" },
+  { skin: "#9a6646", shirt: "#3c6e6e", pants: "#4a4a4a", shoes: "#222222", hair: "#151010" },
+  { skin: "#dcae88", shirt: "#8a4a5c", pants: "#2c2f36", shoes: "#2d2d2d", hair: "#201812", longHair: true, scale: 0.7 },
+];
 
 export type Pose = "auto" | "sit" | "ride" | "fly" | "wave";
 

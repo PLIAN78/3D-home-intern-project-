@@ -8,6 +8,15 @@ import { sfx } from "../core/sfx";
 import { endFrame, wasPressed } from "../core/input";
 import { host } from "../core/simHost";
 import { VEHICLES } from "../sim/vehicle";
+import type { Ride } from "../sim/simulation";
+import { gearOfRide } from "../entities/Player";
+import { DEPOT, DROP_RADIUS, PICKUPS, ROSA } from "./sidequests";
+
+function rideName(r: Ride) {
+  if (r.kind === "heli") return "Fly the Skylark";
+  if (r.kind === "animal") return r.id === "horse" ? "Ride Biscuit" : "Ride Peanut";
+  return `Get in the ${VEHICLES[r.id].name}`;
+}
 
 const REACH = 3.2;
 
@@ -24,7 +33,7 @@ export function Director() {
   useFrame(() => {
     const g = useGame.getState();
     const b = runtime.body;
-    const busy = g.phase !== "playing" || g.dialog !== null || g.minigame !== null || g.shopOpen;
+    const busy = g.phase !== "playing" || g.dialog !== null || g.minigame !== null || g.shopOpen || g.mapOpen;
     if (busy) {
       endFrame();
       return;
@@ -75,6 +84,34 @@ export function Director() {
       }
     }
 
+    // Rosa and Peanut, up in the hills
+    const sim = host.sim;
+    const onFoot = b.control.kind === "foot";
+    if (dist2d(b.x, b.z, ROSA.position) < REACH + 2.5 && onFoot) offer(g.elephant === "found" ? "Say hi to Rosa" : "Talk to Rosa", () => g.askAboutElephant());
+    if (g.elephant !== "found" && sim?.animals.elephant) {
+      const pe = sim.animals.elephant;
+      if (Math.hypot(b.x - pe.x, b.z - pe.z) < pe.spec.radius + REACH + 1 && onFoot) {
+        offer(g.elephant === "asked" ? "Calm Peanut down" : "Say hello to the elephant", () => {
+          if (g.elephant === "asked") {
+            g.openDialog("peanut_found");
+            g.findElephant();
+          } else g.toast("She seems lost. Someone in the cottage up the hill might know her.");
+        });
+      }
+    }
+
+    // Delivery runs from the factory dock (pickups only)
+    const inPickup = b.control.kind === "vehicle" && PICKUPS.includes(b.control.id);
+    const now = sim?.time ?? 0;
+    if (!g.delivery && dist2d(b.x, b.z, DEPOT) < DROP_RADIUS + 2) {
+      if (inPickup) offer("Load panels for a delivery", () => g.startDelivery(now));
+      else if (onFoot) offer("Ask Raj about deliveries", () => g.openDialog("depot_intro"));
+    }
+    if (g.delivery && dist2d(b.x, b.z, g.delivery.drop.at) < DROP_RADIUS) {
+      if (inPickup) offer(`Unload panels at ${g.delivery.drop.label}`, () => g.finishDelivery(now));
+      else if (!prompt) prompt = "i|Bring a pickup to unload the panels";
+    }
+
     // Goats that reach the pen
     for (const goat of runtime.goats) {
       if (goat.following && inPen(goat.x, goat.z)) {
@@ -94,11 +131,12 @@ export function Director() {
     }
 
     // Getting in and out (F). Shown only when nothing else is on offer.
-    const sim = host.sim;
     if (!prompt && sim) {
-      const ride = sim.nearestRide();
-      if (ride) prompt = `F|${ride.kind === "horse" ? "Ride Biscuit" : `Get in the ${VEHICLES[ride.id].name}`}`;
-      else if (sim.control.kind !== "foot" && Math.abs(b.speed) < 2) prompt = `F|${sim.control.kind === "horse" ? "Get off" : "Get out"}`;
+      const ride = sim.nearestRide((r) => g.owned[gearOfRide(r)]);
+      const c = sim.control;
+      if (ride) prompt = `F|${rideName(ride)}`;
+      else if (c.kind === "heli" && b.grounded) prompt = "F|Climb out";
+      else if (c.kind !== "foot" && c.kind !== "heli" && Math.abs(b.speed) < 2) prompt = `F|${c.kind === "animal" ? "Get off" : "Get out"}`;
     }
 
     g.setPrompt(prompt);

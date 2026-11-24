@@ -1,6 +1,6 @@
 /** Every line of dialogue in the game. Family friendly, a little silly, and true to what Caivan's teams do. */
 
-export type Speaker = "Maya" | "You" | "Priya Patel" | "Arjun Patel" | "Raj" | "Gail" | "The Nguyens" | "Phone";
+export type Speaker = "Maya" | "You" | "Priya Patel" | "Arjun Patel" | "Raj" | "Gail" | "The Nguyens" | "Rosa" | "Phone";
 
 export interface Choice {
   text: string;
@@ -30,7 +30,11 @@ export type DialogId =
   | "nguyen_keys"
   | "maya_call_photo"
   | "gail_goats"
-  | "goat_home";
+  | "goat_home"
+  | "rosa_elephant"
+  | "rosa_thanks"
+  | "peanut_found"
+  | "depot_intro";
 
 export const DIALOGS: Record<DialogId, Line[]> = {
   maya_welcome: [
@@ -42,7 +46,7 @@ export const DIALOGS: Record<DialogId, Line[]> = {
   stake_2: [{ speaker: "You", text: "Front-right stake: a gopher moved it a bit. Nudged it back. Sorry, buddy." }],
   stake_3: [{ speaker: "You", text: "Rear stake: perfect. This lot is ready to excavate!" }],
   maya_call_patels: [
-    { speaker: "Phone", text: "📞 Maya is calling…" },
+    { speaker: "Phone", text: "Incoming call: Maya" },
     { speaker: "Maya", text: "Great work on the stakes! Next: the Patel family is touring our model home on Maple Run, Lot 204." },
     { speaker: "Maya", text: "They have questions. Be honest and helpful. That's the Caivan way." },
   ],
@@ -78,7 +82,7 @@ export const DIALOGS: Record<DialogId, Line[]> = {
     { speaker: "Priya Patel", text: "Thank you! We're going to talk to Maya about Lot 206." },
   ],
   raj_call: [
-    { speaker: "Phone", text: "📞 Raj from the Panel Factory is calling…" },
+    { speaker: "Phone", text: "Incoming call: Raj, Panel Factory" },
     { speaker: "Raj", text: "Hey! Three machines on the panel line are jammed and we've got walls to build. Can you come to the factory, east on Caivan Boulevard?" },
   ],
   raj_brief: [
@@ -86,13 +90,13 @@ export const DIALOGS: Record<DialogId, Line[]> = {
     { speaker: "Raj", text: "Reset each machine: press Space when the needle hits the green. Three machines, glowing yellow." },
   ],
   maya_call_pour: [
-    { speaker: "Phone", text: "📞 Maya is calling…" },
+    { speaker: "Phone", text: "Incoming call: Maya" },
     { speaker: "Maya", text: "The panels are moving again, thanks to you! Now it's pour day on Maple Run, Lot 207." },
     { speaker: "Maya", text: "Fill the foundation forms with concrete. Hold Space, and let go when it's in the green band. Not too much!" },
   ],
   pour_done: [{ speaker: "Maya", text: "Beautiful pour! That's a foundation a family will stand on for a hundred years." }],
   maya_call_opening: [
-    { speaker: "Phone", text: "📞 Maya is calling…" },
+    { speaker: "Phone", text: "Incoming call: Maya" },
     { speaker: "Maya", text: "It's here: Grand Opening day! The Nguyen family's home on Lot 42 is finished." },
     { speaker: "Maya", text: "Head to Ridgeview Crescent and hand them their keys. You've earned this one." },
   ],
@@ -102,7 +106,7 @@ export const DIALOGS: Record<DialogId, Line[]> = {
     { speaker: "The Nguyens", text: "Thank you! The kids already picked their rooms. Twice." },
   ],
   maya_call_photo: [
-    { speaker: "Phone", text: "📞 Maya is calling…" },
+    { speaker: "Phone", text: "Incoming call: Maya" },
     { speaker: "Maya", text: "Bonus paid! One last thing: the Grand Opening photo is taken from the top of the water tower." },
     { speaker: "Maya", text: "Only one way up there. Treat yourself to a SkyHopper jetpack at the Sales Centre Gear Garage, then fly up and smile!" },
   ],
@@ -111,4 +115,27 @@ export const DIALOGS: Record<DialogId, Line[]> = {
     { speaker: "Gail", text: "Walk up to a goat and press E. They'll follow you. Bring them back to the pen. I'll pay $300 a goat!" },
   ],
   goat_home: [{ speaker: "Gail", text: "Welcome home, you little rascal! Here's your reward." }],
+  rosa_elephant: [
+    { speaker: "Rosa", text: "You drove all the way up here? Bless you. I'm Rosa. I run the old sanctuary cottage." },
+    { speaker: "Rosa", text: "My elephant, Peanut, followed a herd of deer into the hills this morning and hasn't come back." },
+    {
+      speaker: "Rosa",
+      text: "She's gentle but she gets shy. How would you approach her?",
+      choices: [
+        { text: "Slowly, and talk to her calmly so she knows I'm a friend.", good: true, reply: "Exactly right. She'll trust you." },
+        { text: "Honk the horn until she comes back.", good: false, reply: "Oh dear, no. She'd run to the next valley." },
+        { text: "Bribe her with a sandwich.", good: false, reply: "Peanut only eats apples and hay, I'm afraid." },
+      ],
+    },
+    { speaker: "Rosa", text: "I've marked where I last saw her on your map, west of here. Find her, and she's yours to ride whenever you like." },
+  ],
+  rosa_thanks: [{ speaker: "Rosa", text: "Peanut hasn't stopped humming since you brought her home. Visit any time!" }],
+  peanut_found: [
+    { speaker: "You", text: "There you are, Peanut. Everyone's been looking for you." },
+    { speaker: "You", text: "She lowered her trunk and let me climb on. I think we're friends now." },
+  ],
+  depot_intro: [
+    { speaker: "Raj", text: "Got a pickup? Good. Back up to the dock and I'll load a pallet of wall panels." },
+    { speaker: "Raj", text: "Deliveries pay $400, plus $150 if you're quick. Drive carefully, but not too carefully." },
+  ],
 };

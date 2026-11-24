@@ -6,6 +6,7 @@ import { bindInput } from "./core/input";
 import { Blueprints, Goats, Npcs, ObjectiveMarker } from "./entities/Npcs";
 import { Player } from "./entities/Player";
 import { Vehicles } from "./entities/Vehicles";
+import { Town } from "./entities/Town";
 import { FollowCamera } from "./render/FollowCamera";
 import { PostFX } from "./render/PostFX";
 import { useQuality } from "./render/quality";
@@ -13,6 +14,7 @@ import { Director } from "./story/Director";
 import { useGame } from "./story/store";
 import { DialogBox, Ending, MiniGame, Shop, Title } from "./ui/Overlays";
 import { Hud } from "./ui/Hud";
+import { FullMap } from "./ui/MapView";
 import { GameEnvironment } from "./world/Environment";
 import { World } from "./world/World";
 
@@ -29,6 +31,10 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       if (useGame.getState().phase !== "playing") return;
       if (e.code === "KeyH") toggleHelp();
+      if (e.code === "KeyM") {
+        const g = useGame.getState();
+        if (!g.dialog && !g.minigame && !g.shopOpen) g.toggleMap();
+      }
       if (e.code === "KeyG") {
         useQuality.getState().toggle();
         useGame.getState().toast(`Graphics: ${useQuality.getState().level === "high" ? "high" : "fast"}`);
@@ -63,6 +69,7 @@ export function App() {
             {/* Frame order is set by priorities: physics (−30), camera (−20), rules (−10), then drawing. */}
             <Player />
             <Vehicles />
+            <Town />
             <FollowCamera />
             <Director />
             <PostFX />
@@ -73,6 +80,7 @@ export function App() {
       <DialogBox />
       <MiniGame />
       <Shop />
+      <FullMap />
       <Ending />
       {phase === "title" && <Title />}
     </div>

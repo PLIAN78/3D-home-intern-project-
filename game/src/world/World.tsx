@@ -13,8 +13,11 @@ import { useGame } from "../story/store";
 import { Grass } from "./Grass";
 import { Landmarks } from "./Landmarks";
 import { CAIVAN_RIDGE, collisionBoxes, HERO_LOT_ID, lotById, progressFor } from "./map";
-import { Countryside, RoadMarkings } from "./Terrain";
+import { Countryside, RoadMarkings } from "./Countryside";
 import { Vegetation } from "./Vegetation";
+import { CottageScene } from "./Cottage";
+import { District } from "./District";
+import { StreetLights } from "./StreetLights";
 
 /** Lawns, roads, curbs, sidewalks and driveways from Home Studio's community site builder, with PBR surfaces. */
 function Ground() {
@@ -120,6 +123,9 @@ export function World() {
       <Vegetation />
       <Grass />
       <Landmarks />
+      <District />
+      <CottageScene />
+      <StreetLights />
     </group>
   );
 }

@@ -4,6 +4,7 @@ import { cameraKeys, mouse } from "../core/input";
 import { runtime } from "../core/runtime";
 import { host } from "../core/simHost";
 import { angleDelta } from "../sim/math";
+import { terrainHeight } from "../world/terrain";
 
 const target = new THREE.Vector3();
 const desired = new THREE.Vector3();
@@ -15,8 +16,12 @@ const RIG = {
   foot: { dist: 6.2, lift: 1.55, fov: 55 },
   jetpack: { dist: 8.5, lift: 1.5, fov: 58 },
   horse: { dist: 8, lift: 2.3, fov: 56 },
+  elephant: { dist: 12, lift: 4.2, fov: 56 },
   truck: { dist: 9.5, lift: 2.1, fov: 56 },
+  trail: { dist: 9.8, lift: 2.3, fov: 56 },
+  hauler: { dist: 10.5, lift: 2.3, fov: 56 },
   car: { dist: 8.5, lift: 1.5, fov: 57 },
+  heli: { dist: 17, lift: 2.4, fov: 58 },
 };
 
 /**
@@ -33,7 +38,7 @@ export function FollowCamera() {
     const dt = Math.min(rawDt, 1 / 15);
     const keys = cameraKeys();
     const c = sim.control;
-    const kind = c.kind === "vehicle" ? c.id : c.kind === "horse" ? "horse" : sim.player.jetpack ? "jetpack" : "foot";
+    const kind = c.kind === "vehicle" || c.kind === "animal" ? c.id : c.kind === "heli" ? "heli" : sim.player.jetpack ? "jetpack" : "foot";
     const rig = RIG[kind];
 
     runtime.cameraYaw += mouse.dx * 0.005 + keys.yaw * 2.2 * dt;
@@ -41,14 +46,13 @@ export function FollowCamera() {
     runtime.cameraDistance = THREE.MathUtils.clamp(runtime.cameraDistance * (1 + mouse.wheel * 0.1), 0.5, 2.6);
 
     // Interpolated pose of whatever we follow.
-    const name = c.kind === "vehicle" ? c.id : c.kind === "horse" ? "horse" : "player";
-    const pose = sim.pose(name, host.alpha);
+    const pose = sim.pose(sim.focusName(), host.alpha);
     const f = runtime.body;
     const groundY = c.kind === "vehicle" ? pose.y - 1 : pose.y;
 
     const steered = c.kind !== "foot";
     const idle = performance.now() - mouse.lastMove > 1100 && keys.yaw === 0;
-    const flying = c.kind === "foot" && sim.player.jetpack && !sim.player.grounded;
+    const flying = (c.kind === "foot" && sim.player.jetpack && !sim.player.grounded) || (c.kind === "heli" && !f.grounded);
     if ((steered || flying) && idle && Math.abs(f.speed) > 2) {
       const behind = f.speed < -1 ? f.heading + Math.PI : f.heading;
       runtime.cameraYaw += angleDelta(runtime.cameraYaw, behind) * Math.min(1, dt * (flying ? 1.2 : 2.2));
@@ -65,7 +69,7 @@ export function FollowCamera() {
     const want = Math.max(0.6, free - 0.35);
     const len = target.distanceTo(desired);
     if (want < len) desired.lerpVectors(target, desired, want / len);
-    desired.y = Math.max(desired.y, groundY + 0.4, 0.35);
+    desired.y = Math.max(desired.y, groundY + 0.4, terrainHeight(desired.x, desired.z) + 0.6);
 
     const follow = 1 - Math.exp(-dt * (steered ? 7 : 11));
     camera.position.lerp(desired, want < len ? 1 : follow);

@@ -7,8 +7,10 @@ Everything in *Caivan: Build It!* is free to use, modify and ship.
 | Asset | Source | Licence |
 | --- | --- | --- |
 | "Park" HDRI (sky lighting and reflections) | [Poly Haven](https://polyhaven.com/), bundled by [`@pmndrs/assets`](https://github.com/pmndrs/assets) | CC0 |
-| All textures (grass, asphalt, concrete, dirt, bark, lumber, siding, shingles, OSB, water ripples, leaf cards) | Generated in code: `src/render/textures.ts` | Part of this repo |
-| All models (people, pickup, sports car, wheels, horse, goats, jetpack, trees, buildings) | Built in code: `src/models/`, `src/world/` | Part of this repo |
+| All textures (grass, asphalt, concrete, dirt, bark, lumber, siding, shingles, OSB, brick, logs, standing-seam metal, shop interiors, water ripples, leaf cards) | Generated in code: `src/render/textures.ts`, `src/render/architecture.ts` | Part of this repo |
+| All models (people, pickups, sports car, wheels, helicopter, horse, elephant, goats, jetpack, trees, street lights, buildings) | Built in code: `src/models/`, `src/world/` | Part of this repo |
+| Interface icons | Drawn as SVG in code: `src/ui/icons.tsx` | Part of this repo |
+| Map | Painted in code from the game's own map data: `src/ui/mapRender.ts` | Part of this repo |
 | Houses at each construction stage, Plan 36 | Home Studio's own geometry (`lib/geometry`, `components/viewer`) | Part of this repo |
 | Sound effects | Synthesised in code with Web Audio: `src/core/sfx.ts` | Part of this repo |
 

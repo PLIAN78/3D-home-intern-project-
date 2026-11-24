@@ -4,6 +4,8 @@ import { JETPACK } from "@/game/src/sim/character";
 import { loadRapier } from "@/game/src/sim/rapier";
 import { IDLE_INPUT, Simulation, type SimInput } from "@/game/src/sim/simulation";
 import { collisionBoxes, LANDMARKS, STARTING_STAGES, TOWER } from "@/game/src/world/map";
+import { HELI } from "@/game/src/sim/helicopter";
+import { roadHeightAt, roadPointAt, terrainHeight } from "@/game/src/world/terrain";
 
 /**
  * The physics runs for real here (Rapier's WebAssembly in Node), on the actual
@@ -16,8 +18,8 @@ beforeAll(async () => {
 
 const spawnOnBoulevard = { position: [-60, 0] as [number, number], heading: 0 };
 
-async function sim(trees: { position: [number, number]; scale: number; variant: 0 | 1 | 2 }[] = []) {
-  return Simulation.create({ stages: STARTING_STAGES, trees, spawn: spawnOnBoulevard });
+async function sim(trees: { position: [number, number]; scale: number; variant: 0 | 1 | 2 | 3 }[] = [], town = false) {
+  return Simulation.create({ stages: STARTING_STAGES, trees, spawn: spawnOnBoulevard, town });
 }
 
 function run(s: Simulation, seconds: number, input: Partial<SimInput> = {}) {
@@ -143,11 +145,11 @@ describe("vehicles are separate from the character", () => {
   });
 });
 
-describe("horse", () => {
-  it("mounts, gallops and dismounts", async () => {
+describe("animals", () => {
+  it("mounts the horse, gallops and dismounts", async () => {
     const s = await sim();
-    s.spawnHorse(-58, 0, 0);
-    expect(s.nearestRide()).toMatchObject({ kind: "horse" });
+    s.spawnAnimal("horse", -58, 0, 0);
+    expect(s.nearestRide()).toMatchObject({ kind: "animal", id: "horse" });
     s.mountHorse();
     run(s, 4, { forward: 1, sprint: true });
     expect(s.horse!.speed).toBeGreaterThan(12);
@@ -156,10 +158,153 @@ describe("horse", () => {
     s.exit();
     expect(s.control.kind).toBe("foot");
   });
+
+  it("Peanut the elephant is slower than the horse, can't jump, and pushes trees over", async () => {
+    const tree = { position: [-40, 0] as [number, number], scale: 1, variant: 0 as const };
+    const s = await sim([tree]);
+    s.spawnAnimal("elephant", -56, 0, 0);
+    expect(s.nearestRide((r) => r.kind === "animal")).toMatchObject({ kind: "animal", id: "elephant" });
+    s.board({ kind: "animal", id: "elephant" });
+    run(s, 0.05, { jump: true });
+    run(s, 0.2);
+    expect(s.animals.elephant!.y).toBeLessThan(0.1);
+    run(s, 5, { forward: 1, sprint: true });
+    const pe = s.animals.elephant!;
+    expect(pe.speed).toBeGreaterThan(5);
+    expect(pe.speed).toBeLessThan(9);
+    expect(s.breakables.trees[0].status).toBe("fallen");
+  });
+});
+
+describe("helicopter", () => {
+  it("spools up, climbs, flies forward, lands and lets you out", async () => {
+    const s = await sim();
+    s.spawnHeli(-57, 3, 0);
+    run(s, 0.2);
+    expect(s.nearestRide()).toMatchObject({ kind: "heli" });
+    s.board({ kind: "heli" });
+    const h = s.heli!;
+    // The rotor has to spool before it lifts.
+    run(s, 0.5, { jumpHeld: true });
+    expect(h.y).toBeLessThan(0.5);
+    run(s, 5, { jumpHeld: true });
+    expect(h.rotor).toBeGreaterThan(0.9);
+    expect(h.y).toBeGreaterThan(15);
+    const x0 = h.x;
+    run(s, 5, { forward: 1 });
+    expect(h.x - x0).toBeGreaterThan(60);
+    expect(h.speed).toBeGreaterThan(HELI.cruise * 0.6);
+    expect(s.exit()).toBe(true); // bailing out mid-air is allowed by the sim; the game asks you to land first
+    s.board({ kind: "heli" });
+    // Descend (Shift) to the ground and stop.
+    run(s, 6, { sprint: true });
+    run(s, 4, { sprint: true });
+    expect(h.grounded).toBe(true);
+    expect(h.y).toBeLessThan(0.3);
+    expect(s.exit()).toBe(true);
+    expect(s.control.kind).toBe("foot");
+  });
+
+  it("knocks over trees it flies into", async () => {
+    const tree = { position: [-30, 8] as [number, number], scale: 1.2, variant: 0 as const };
+    const s = await sim([tree]);
+    s.spawnHeli(-50, 8, 0);
+    s.board({ kind: "heli" });
+    run(s, 3, { jumpHeld: true }); // spool up and lift off
+    s.teleport(-50, 8, 5, 0);
+    run(s, 4, { forward: 1 });
+    expect(s.breakables.trees[0].status).toBe("fallen");
+  });
+});
+
+describe("hills", () => {
+  it("stands on the heightfield exactly where the terrain says", async () => {
+    const s = await sim();
+    for (const [x, z] of [
+      [-700, 700],
+      [800, -650],
+      [-900, 100],
+    ]) {
+      s.teleport(x, z, 2);
+      run(s, 2);
+      expect(Math.abs(s.player.y - terrainHeight(x, z))).toBeLessThan(0.6);
+      expect(s.player.grounded).toBe(true);
+    }
+  });
+
+  it("drives the 4x4 up Cottage Road", async () => {
+    const s = await sim();
+    const START = 330; // where the road leaves the flat town ground
+    const a = roadPointAt(START);
+    s.spawnVehicle("trail", a.x, a.z, a.heading);
+    run(s, 0.5);
+    s.enterVehicle("trail");
+    let along = START;
+    const steerAlong = () => {
+      const v = s.vehicles.trail!;
+      const p = v.position;
+      // Track progress along the road, and aim a little ahead of it.
+      const from = along;
+      for (let k = from; k < from + 30; k += 1) {
+        const q = roadPointAt(k);
+        if (Math.hypot(q.x - p.x, q.z - p.z) < 6) along = k;
+      }
+      const ahead = roadPointAt(along + 14);
+      const want = Math.atan2(ahead.z - p.z, ahead.x - p.x);
+      let d = want - v.heading;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      return Math.max(-1, Math.min(1, d * 2.5));
+    };
+    for (let i = 0; i < 20 * 6; i++) run(s, 1 / 6, { forward: 0.7, side: steerAlong() });
+    const p = s.vehicles.trail!.position;
+    // Up at the cottage end of the road, on the road surface.
+    expect(along).toBeGreaterThan(START + 150);
+    expect(p.y).toBeGreaterThan(roadHeightAt(START) + 10);
+    expect(Math.abs(p.y - 1 - terrainHeight(p.x, p.z))).toBeLessThan(1.5);
+  });
+});
+
+describe("town life", () => {
+  it("moves traffic along the roads and pedestrians along the sidewalks", async () => {
+    const s = await sim([], true);
+    const town = s.town!;
+    expect(town.cars.length).toBeGreaterThan(10);
+    expect(town.walkers.length).toBeGreaterThan(10);
+    const start = town.cars.map((c) => [c.x, c.z]);
+    const walkStart = town.walkers.map((w) => [w.x, w.z]);
+    run(s, 6);
+    const moved = town.cars.filter((c, i) => Math.hypot(c.x - start[i][0], c.z - start[i][1]) > 20).length;
+    expect(moved).toBeGreaterThan(town.cars.length * 0.6);
+    const walked = town.walkers.filter((w, i) => Math.hypot(w.x - walkStart[i][0], w.z - walkStart[i][1]) > 2).length;
+    expect(walked).toBeGreaterThan(town.walkers.length * 0.4);
+  });
+
+  it("stops for the player standing in the lane", async () => {
+    const s = await sim([], true);
+    const car = s.town!.cars[0];
+    run(s, 1);
+    // Stand 25 m ahead of the first car, in its lane.
+    const ahead = car.path.at(car.s + 25);
+    s.teleport(ahead.x, ahead.z, 0);
+    run(s, 6);
+    expect(Math.hypot(car.x - ahead.x, car.z - ahead.z)).toBeGreaterThan(2.5);
+    expect(car.speed).toBeLessThan(0.5);
+  });
 });
 
 describe("breaking things", () => {
   const tree = { position: [-20, 0] as [number, number], scale: 1, variant: 0 as const };
+
+  it("street lights snap off at a lower speed than trees", async () => {
+    const pole = { position: [-30, 0] as [number, number], scale: 1, variant: 3 as const };
+    const s = await sim([pole]);
+    s.spawnVehicle("hauler", -44, 0, 0);
+    run(s, 0.5);
+    s.enterVehicle("hauler");
+    run(s, 4, { forward: 0.5 });
+    expect(s.breakables.trees[0].status).toBe("fallen");
+  });
 
   it("a fast truck knocks a tree over and keeps going; a slow bump doesn't", async () => {
     const s = await sim([tree]);
@@ -193,8 +338,8 @@ describe("breaking things", () => {
     const frame = collisionBoxes(STARTING_STAGES).find((b) => b.kind === "frame")!;
     expect(frame).toBeTruthy();
     const cx = (frame.x0 + frame.x1) / 2;
-    // Line up south of the frame (Maple Run lots), drive north into it.
-    s.spawnVehicle("truck", cx, frame.z1 + 30, -Math.PI / 2);
+    // Line up across Maple Run from the frame, in a front yard, and drive south into it.
+    s.spawnVehicle("truck", cx, frame.z0 - 20, Math.PI / 2);
     run(s, 0.5);
     s.enterVehicle("truck");
     run(s, 5, { forward: 1 });

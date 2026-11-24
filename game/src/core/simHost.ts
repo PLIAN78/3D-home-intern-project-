@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
 import { Simulation } from "../sim/simulation";
-import { CAIVAN_RIDGE, SPAWN, STARTING_STAGES } from "../world/map";
+import { CAIVAN_RIDGE, SPAWN, STARTING_STAGES, streetLights } from "../world/map";
+import { ELEPHANT_SPOT, HILL_TREES } from "../world/terrain";
 import { VEHICLE_SPOTS } from "../story/missions";
+import type { TreeInput } from "../sim/breakables";
+
+/** Every tree you can knock over: the community's, then the woods on the hills. */
+export const TREES: TreeInput[] = [...CAIVAN_RIDGE.trees, ...HILL_TREES];
+/** Street lights, in the same breakable list after the trees (variant 3 is a pole). */
+export const LIGHTS = streetLights();
+export const BREAKABLE_TREES: TreeInput[] = [...TREES, ...LIGHTS.map((l) => ({ position: [l.x, l.z] as [number, number], scale: 1, variant: 3 as const }))];
+/** Index of the first street light in the breakables list. */
+export const FIRST_LIGHT = TREES.length;
 
 /**
  * The one physics simulation the game runs. Created once (Rapier's WebAssembly
@@ -13,10 +23,12 @@ export const host: { sim: Simulation | null; alpha: number } = { sim: null, alph
 let creating: Promise<Simulation> | null = null;
 
 export function createSim(): Promise<Simulation> {
-  creating ??= Simulation.create({ stages: STARTING_STAGES, trees: CAIVAN_RIDGE.trees, spawn: SPAWN }).then((sim) => {
+  creating ??= Simulation.create({ stages: STARTING_STAGES, trees: BREAKABLE_TREES, spawn: SPAWN, town: true }).then((sim) => {
     // The company pickup waits in the Sales Centre lot from day one.
     const t = VEHICLE_SPOTS.truck;
     sim.spawnVehicle("truck", t.position[0], t.position[1], t.heading);
+    // Peanut is out in the hills from the start, waiting to be found.
+    sim.spawnAnimal("elephant", ELEPHANT_SPOT[0], ELEPHANT_SPOT[1], 0.6);
     host.sim = sim;
     return sim;
   });

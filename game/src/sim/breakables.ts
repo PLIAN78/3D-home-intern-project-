@@ -4,7 +4,8 @@ import { groups, LAYER, type Rapier } from "./rapier";
 import type { Vec3 } from "./math";
 
 /** A tree's physical size, from its variant and scale (matches how it is drawn). */
-export function treeShape(variant: 0 | 1 | 2, scale: number) {
+export function treeShape(variant: TreeVariant, scale: number) {
+  if (variant === 3) return { height: 7.4, trunkRadius: 0.11, trunkHeight: 7.4, canopyRadius: 0, canopyY: 7 };
   const height = (variant === 1 ? 9.5 : variant === 2 ? 6.5 : 7.5) * scale;
   const trunkRadius = (variant === 1 ? 0.2 : 0.17) * scale + 0.08;
   const trunkHeight = height * (variant === 1 ? 0.3 : 0.45);
@@ -13,10 +14,15 @@ export function treeShape(variant: 0 | 1 | 2, scale: number) {
   return { height, trunkRadius, trunkHeight, canopyRadius, canopyY };
 }
 
+/** 0–2: kinds of tree; 3: a street light pole (same physics: stands until hit, falls, comes back). */
+export type TreeVariant = 0 | 1 | 2 | 3;
+
 export interface TreeInput {
   position: [number, number];
   scale: number;
-  variant: 0 | 1 | 2;
+  variant: TreeVariant;
+  /** Ground height at the foot (trees on the hills); 0 in town. */
+  y?: number;
 }
 
 export type TreeStatus = "standing" | "fallen";
@@ -24,9 +30,10 @@ export type TreeStatus = "standing" | "fallen";
 export interface TreeBody {
   index: number;
   x: number;
+  y: number;
   z: number;
   scale: number;
-  variant: 0 | 1 | 2;
+  variant: TreeVariant;
   body: RigidBody;
   colliders: Collider[];
   status: TreeStatus;
@@ -57,7 +64,7 @@ export type BreakEvent =
   | { kind: "frame-back"; lotId: string };
 
 /** How hard you have to hit things to knock them over (m/s ≈ ×3.6 for km/h). */
-export const BREAK_SPEED = { tree: 7, frame: 6 };
+export const BREAK_SPEED = { tree: 7, frame: 6, pole: 4 };
 /** Seconds before a crew stands a tree back up or re-frames a house (if you're not watching). */
 export const RESPAWN = { tree: 30, frame: 40, force: 120, awayFrom: 35 };
 
@@ -88,7 +95,7 @@ export class Breakables {
   ) {
     trees.forEach((t, index) => {
       const s = treeShape(t.variant, t.scale);
-      const body = world.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(t.position[0], 0, t.position[1]).setCcdEnabled(true));
+      const body = world.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(t.position[0], t.y ?? 0, t.position[1]).setCcdEnabled(true));
       const g = groups(LAYER.BREAKABLE);
       const trunk = world.createCollider(
         R.ColliderDesc.cylinder(s.trunkHeight / 2, s.trunkRadius)
@@ -98,19 +105,23 @@ export class Breakables {
           .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS),
         body,
       );
-      const canopy = world.createCollider(
-        R.ColliderDesc.ball(s.canopyRadius * 0.8)
-          .setTranslation(0, s.canopyY, 0)
-          .setDensity(18)
-          .setFriction(0.9)
-          .setCollisionGroups(g)
-          .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS),
-        body,
-      );
-      const tree: TreeBody = { index, x: t.position[0], z: t.position[1], scale: t.scale, variant: t.variant, body, colliders: [trunk, canopy], status: "standing", timer: 0 };
+      const colliders = [trunk];
+      if (t.variant !== 3) {
+        colliders.push(
+          world.createCollider(
+            R.ColliderDesc.ball(s.canopyRadius * 0.8)
+              .setTranslation(0, s.canopyY, 0)
+              .setDensity(18)
+              .setFriction(0.9)
+              .setCollisionGroups(g)
+              .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS),
+            body,
+          ),
+        );
+      }
+      const tree: TreeBody = { index, x: t.position[0], y: t.y ?? 0, z: t.position[1], scale: t.scale, variant: t.variant, body, colliders, status: "standing", timer: 0 };
       this.trees.push(tree);
-      this.owner.set(trunk.handle, { kind: "tree", index });
-      this.owner.set(canopy.handle, { kind: "tree", index });
+      for (const c of colliders) this.owner.set(c.handle, { kind: "tree", index });
     });
   }
 
@@ -257,7 +268,7 @@ export class Breakables {
 
   private standUp(t: TreeBody) {
     t.body.setBodyType(this.R.RigidBodyType.Fixed, true);
-    t.body.setTranslation({ x: t.x, y: 0, z: t.z }, true);
+    t.body.setTranslation({ x: t.x, y: t.y, z: t.z }, true);
     t.body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
     for (const c of t.colliders) c.setCollisionGroups(groups(LAYER.BREAKABLE));
     t.status = "standing";

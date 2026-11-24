@@ -1,7 +1,6 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { TextSprite } from "@/components/community/TextSprite";
 import { BLUEPRINTS, inPen } from "../story/collectibles";
 import { currentStep, NPC_SPOTS, stepTarget, type NpcId } from "../story/missions";
 import { runtime, type GoatState } from "../core/runtime";
@@ -13,7 +12,7 @@ import { angleDelta } from "../sim/math";
 import { PEN, TOWER } from "../world/map";
 
 /** An NPC that turns to face you and waves when you come close. */
-function Npc({ id, people, label = true }: { id: NpcId; people: { outfit: Outfit; offset: [number, number] }[]; label?: boolean }) {
+function Npc({ id, people }: { id: NpcId; people: { outfit: Outfit; offset: [number, number] }[] }) {
   const spot = NPC_SPOTS[id];
   const ref = useRef<THREE.Group>(null);
   const near = useRef(false);
@@ -37,7 +36,6 @@ function Npc({ id, people, label = true }: { id: NpcId; people: { outfit: Outfit
           </group>
         ))}
       </group>
-      {label && <TextSprite text={spot.name} position={[0, 2.35, 0]} size={0.018} />}
     </group>
   );
 }

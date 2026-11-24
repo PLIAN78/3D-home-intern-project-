@@ -349,3 +349,60 @@ export function osbMaps() {
     }, 1.5);
   });
 }
+
+/** Running-bond brick with recessed mortar joints, 1 m tile (4 bricks across, 13 courses). Tinted by colour. */
+export function brickMaps() {
+  return cached("brick", () => {
+    const grain = makeNoise(96, 307);
+    const tone = makeNoise(16, 311);
+    const courses = 13;
+    const across = 4;
+    return paint(512, (u, v) => {
+      const row = Math.floor(v * courses);
+      const rv = (v * courses) % 1;
+      const bu = (u * across + (row % 2) * 0.5) % 1;
+      const brickId = Math.floor(u * across + (row % 2) * 0.5) + row * 7;
+      const mortar = rv < 0.13 || bu < 0.035;
+      // Each brick a slightly different fired colour.
+      const shade = 0.82 + ((Math.sin(brickId * 12.9898) * 43758.5453) % 1 + 1) % 1 * 0.3 + (tone(u, v) - 0.5) * 0.12;
+      const g = (grain(u, v) - 0.5) * 18;
+      if (mortar) {
+        const m = 205 + g;
+        return { c: [m, m * 0.98, m * 0.94], h: 0, r: 0.95 };
+      }
+      const t = 225 * shade + g;
+      return { c: [t, t, t], h: 0.6 + grain(u, v) * 0.15, r: 0.85 };
+    }, 3);
+  });
+}
+
+/** Round logs stacked horizontally (log-cabin walls), 1 m tile: four logs with chinking between. */
+export function logMaps() {
+  return cached("logs", () => {
+    const grain = makeFbm(6, 3, 331);
+    const fine = makeNoise(128, 337);
+    const logs = 4;
+    return paint(512, (u, v) => {
+      const lv = (v * logs) % 1;
+      // Round profile: brightest along each log's crown, darker toward the seams.
+      const crown = Math.sin(lv * Math.PI);
+      const seam = lv < 0.05 || lv > 0.95;
+      const streak = grain(u * 0.6, v * 6) * 0.6 + fine(u * 4, v) * 0.4;
+      const t = seam ? 120 : 150 + crown * 70 + (streak - 0.5) * 60;
+      return { c: seam ? [t, t * 0.95, t * 0.88] : [t, t * 0.78, t * 0.55], h: seam ? 0 : crown, r: seam ? 0.95 : 0.75 };
+    }, 4);
+  });
+}
+
+/** Standing-seam metal roofing, 1 m tile: raised seams every 0.33 m. */
+export function standingSeamMaps() {
+  return cached("seam", () => {
+    const tone = makeFbm(4, 2, 349);
+    return paint(256, (u, v) => {
+      const pu = (u * 3) % 1;
+      const rib = Math.max(0, 1 - Math.abs(pu - 0.5) / 0.03);
+      const t = 215 + rib * 25 + (tone(u, v) - 0.5) * 14;
+      return { c: [t, t, t], h: rib, r: 0.45 - rib * 0.1 };
+    }, 3);
+  });
+}

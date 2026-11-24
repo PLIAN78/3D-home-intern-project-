@@ -3,13 +3,15 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { host, useSim } from "../core/simHost";
 import { useSimVersion } from "../core/simVersion";
-import { HorseModel } from "../models/animals";
+import { ElephantModel, HorseModel } from "../models/animals";
+import { HeliModel } from "../models/heli";
 import { Human, OUTFITS } from "../models/human";
-import { BODY_COLORS, CarBody, DRIVER_SEAT, TruckBody, Wheel } from "../models/vehicles";
-import { lumber } from "../render/materials";
+import { BODY_COLORS, BODY_SCALE, CarBody, DRIVER_SEAT, TruckBody, Wheel } from "../models/vehicles";
+import { chrome, lumber, mat } from "../render/materials";
+import type { AnimalId } from "../sim/animal";
 import { VEHICLES, type VehicleId } from "../sim/vehicle";
 
-/** Every vehicle in the world, each a separate physics body that stays where it's parked. */
+/** Every vehicle, animal and the helicopter: each a separate physics body that stays where it's left. */
 export function Vehicles() {
   const sim = useSim();
   useSimVersion((s) => s.version);
@@ -19,10 +21,66 @@ export function Vehicles() {
       {(Object.keys(sim.vehicles) as VehicleId[]).map((id) => (
         <VehicleEntity key={id} id={id} />
       ))}
-      {sim.horse && <HorseEntity />}
+      {(Object.keys(sim.animals) as AnimalId[]).map((id) => (
+        <AnimalEntity key={id} id={id} />
+      ))}
+      {sim.heli && <HeliEntity />}
       <Debris />
     </>
   );
+}
+
+/** Extra parts that make each pickup its own truck. */
+function Extras({ id }: { id: VehicleId }) {
+  const black = mat("#141518", { rough: 0.55, metal: 0.3 });
+  if (id === "trail")
+    return (
+      <group>
+        {/* Roof rack with a light bar, a front bull bar and a spare wheel in the bed. */}
+        <mesh material={black} position={[-0.15, 0.97, 0]}>
+          <boxGeometry args={[1.05, 0.05, 1.7]} />
+        </mesh>
+        {[-0.62, 0.32].map((x) => (
+          <mesh key={x} material={black} position={[x, 0.93, 0]}>
+            <boxGeometry args={[0.06, 0.08, 1.72]} />
+          </mesh>
+        ))}
+        <mesh material={mat("#f4f1e8", { emissive: "#fff3d0", emissiveIntensity: 0.4 })} position={[0.42, 0.97, 0]}>
+          <boxGeometry args={[0.08, 0.1, 1.3]} />
+        </mesh>
+        <mesh material={black} position={[2.86, -0.18, 0]}>
+          <boxGeometry args={[0.1, 0.5, 1.5]} />
+        </mesh>
+        {[-0.5, 0.5].map((z) => (
+          <mesh key={z} material={black} position={[2.82, 0.0, z]}>
+            <boxGeometry args={[0.16, 0.08, 0.08]} />
+          </mesh>
+        ))}
+        <mesh material={mat("#151617", { rough: 0.9 })} position={[-1.9, 0.12, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.36, 0.14, 10, 22]} />
+        </mesh>
+      </group>
+    );
+  if (id === "hauler")
+    return (
+      <group>
+        {/* Chrome grille surround, running boards and cab marker lights. */}
+        <mesh material={chrome()} position={[2.96, -0.06, 0]}>
+          <boxGeometry args={[0.05, 0.42, 1.5]} />
+        </mesh>
+        {[1, -1].map((side) => (
+          <mesh key={side} material={black} position={[0.1, -0.5, side * 1.1]}>
+            <boxGeometry args={[1.6, 0.05, 0.2]} />
+          </mesh>
+        ))}
+        {[-0.25, 0, 0.25].map((z) => (
+          <mesh key={z} material={mat("#ffb347", { emissive: "#ff9a1f", emissiveIntensity: 0.8 })} position={[0.38, 0.97, z]}>
+            <boxGeometry args={[0.06, 0.04, 0.1]} />
+          </mesh>
+        ))}
+      </group>
+    );
+  return null;
 }
 
 function VehicleEntity({ id }: { id: VehicleId }) {
@@ -30,15 +88,17 @@ function VehicleEntity({ id }: { id: VehicleId }) {
   const wheels = useRef<(THREE.Group | null)[]>([]);
   const driver = useRef<THREE.Group>(null);
   const spec = VEHICLES[id];
-  const hubs = useMemo(
-    () => [
+  // The Haul HD runs dual rear wheels: two extra hubs just outboard of the rear pair.
+  const hubs = useMemo(() => {
+    const h: [number, number, number][] = [
       [spec.wheelFront, spec.wheelY, spec.track],
       [spec.wheelFront, spec.wheelY, -spec.track],
       [spec.wheelRear, spec.wheelY, spec.track],
       [spec.wheelRear, spec.wheelY, -spec.track],
-    ],
-    [spec],
-  );
+    ];
+    if (id === "hauler") h.push([spec.wheelRear, spec.wheelY, spec.track + 0.3], [spec.wheelRear, spec.wheelY, -spec.track - 0.3]);
+    return h;
+  }, [spec, id]);
 
   useFrame(() => {
     const s = host.sim;
@@ -47,23 +107,26 @@ function VehicleEntity({ id }: { id: VehicleId }) {
     const p = s.pose(id, host.alpha);
     root.current.position.set(p.x, p.y, p.z);
     root.current.quaternion.set(p.q.x, p.q.y, p.q.z, p.q.w);
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < hubs.length; i++) {
       const w = wheels.current[i];
       if (!w) continue;
-      const st = v.wheel(i);
+      const st = v.wheel(i < 4 ? i : i - 2);
       const [x, y, z] = hubs[i];
       w.position.set(x, y - st.suspension, z);
-      w.rotation.set(0, st.steer, 0);
+      w.rotation.set(0, i < 4 ? st.steer : 0, 0);
       const spin = w.children[0];
       if (spin) spin.rotation.z = -st.spin;
     }
     if (driver.current) driver.current.visible = s.control.kind === "vehicle" && s.control.id === id;
   });
 
-  const seat = DRIVER_SEAT[id];
+  const pickup = id !== "car";
   return (
     <group ref={root} name={`vehicle-${id}`}>
-      {id === "truck" ? <TruckBody color={BODY_COLORS.truck} /> : <CarBody color={BODY_COLORS.car} />}
+      <group scale={BODY_SCALE[id]}>
+        {pickup ? <TruckBody color={BODY_COLORS[id]} livery={id === "truck"} /> : <CarBody color={BODY_COLORS.car} />}
+        <Extras id={id} />
+      </group>
       {hubs.map((_, i) => (
         <Wheel
           key={i}
@@ -71,38 +134,68 @@ function VehicleEntity({ id }: { id: VehicleId }) {
             wheels.current[i] = el;
           }}
           radius={spec.wheelRadius}
-          width={id === "truck" ? 0.32 : 0.3}
+          width={pickup ? (id === "trail" ? 0.38 : 0.32) : 0.3}
           side={i % 2 === 0 ? 1 : -1}
-          rimColor={id === "truck" ? "#9aa1aa" : "#2b2d31"}
+          rimColor={id === "truck" ? "#9aa1aa" : id === "trail" ? "#1b1c1f" : id === "hauler" ? "#d8dbe0" : "#2b2d31"}
         />
       ))}
-      <group ref={driver} position={seat} visible={false}>
+      <group ref={driver} position={DRIVER_SEAT[id]} visible={false}>
         <Human outfit={OUTFITS.player} pose="sit" />
       </group>
     </group>
   );
 }
 
-function HorseEntity() {
+/** Saddle height for the rider on each animal. */
+const SADDLE: Record<AnimalId, [number, number, number]> = { horse: [0.02, 0.9, 0], elephant: [0.3, 2.68, 0] };
+
+function AnimalEntity({ id }: { id: AnimalId }) {
   const root = useRef<THREE.Group>(null);
-  const riderOn = useRef(false);
+  const rider = useRef<THREE.Group>(null);
   useFrame(() => {
     const s = host.sim;
-    if (!s?.horse || !root.current) return;
-    const p = s.pose("horse", host.alpha);
+    if (!s?.animals[id] || !root.current) return;
+    const p = s.pose(id, host.alpha);
     root.current.position.set(p.x, p.y, p.z);
     root.current.quaternion.set(p.q.x, p.q.y, p.q.z, p.q.w);
-    riderOn.current = s.control.kind === "horse";
-    const rider = root.current.getObjectByName("rider");
-    if (rider) rider.visible = riderOn.current;
+    if (rider.current) rider.current.visible = s.control.kind === "animal" && s.control.id === id;
   });
-  const speed = () => host.sim?.horse?.speed ?? 0;
+  const speed = () => host.sim?.animals[id]?.speed ?? 0;
   return (
-    <group ref={root} name="horse">
-      <HorseModel speed={speed} />
-      <group name="rider" visible={false}>
-        <group position={[0.02, 0.9, 0]}>
+    <group ref={root} name={id}>
+      {id === "horse" ? <HorseModel speed={speed} /> : <ElephantModel speed={speed} />}
+      <group ref={rider} visible={false}>
+        <group position={SADDLE[id]}>
           <Human outfit={OUTFITS.player} pose="ride" motion={{ speed }} />
+        </group>
+      </group>
+    </group>
+  );
+}
+
+/** The Skylark, banking and pitching with the controls; the pilot shows through the canopy. */
+function HeliEntity() {
+  const root = useRef<THREE.Group>(null);
+  const tilt = useRef<THREE.Group>(null);
+  const pilot = useRef<THREE.Group>(null);
+  useFrame(() => {
+    const s = host.sim;
+    const h = s?.heli;
+    if (!s || !h || !root.current) return;
+    const p = s.pose("heli", host.alpha);
+    root.current.position.set(p.x, p.y, p.z);
+    root.current.quaternion.set(p.q.x, p.q.y, p.q.z, p.q.w);
+    // Nose dips when flying forward; banks into turns.
+    if (tilt.current) tilt.current.rotation.set(h.roll, 0, -h.pitch);
+    if (pilot.current) pilot.current.visible = s.control.kind === "heli";
+  });
+  const rotor = () => host.sim?.heli?.rotor ?? 0;
+  return (
+    <group ref={root} name="heli">
+      <group ref={tilt}>
+        <HeliModel rotor={rotor} />
+        <group ref={pilot} position={[0.55, 0.62, -0.32]} visible={false}>
+          <Human outfit={OUTFITS.player} pose="sit" />
         </group>
       </group>
     </group>

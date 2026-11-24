@@ -3,7 +3,8 @@ import type { StageId } from "@/lib/models/construction";
 import type { ModeId } from "./economy";
 import { STARTING_STAGES } from "../world/map";
 import { DIALOGS, type DialogId } from "./dialogs";
-import { BLUEPRINT_VALUE, buy, canBuy, GOAT_VALUE, money, STARTING_OWNED, type GearId, type Owned } from "./economy";
+import { BLUEPRINT_VALUE, buy, canBuy, DELIVERY_BONUS, DELIVERY_PAY, ELEPHANT_REWARD, GEAR, GOAT_VALUE, money, STARTING_OWNED, type GearId, type Owned } from "./economy";
+import { deliveryLimit, nextDrop, type Delivery, type ElephantQuest } from "./sidequests";
 import { advance, currentMission, currentStep, START, type MinigameKind, type Progress } from "./missions";
 import { resetRuntime } from "../core/runtime";
 import { sfx } from "../core/sfx";
@@ -41,6 +42,13 @@ interface GameState {
   dialog: DialogState | null;
   minigame: { kind: MinigameKind; title: string } | null;
   shopOpen: boolean;
+  /** Full-screen map (M). */
+  mapOpen: boolean;
+  /** Rosa's lost elephant. */
+  elephant: ElephantQuest;
+  /** The delivery run in progress, if any, and how many are done. */
+  delivery: Delivery | null;
+  deliveries: number;
   prompt: string | null;
   toasts: Toast[];
   showHelp: boolean;
@@ -56,6 +64,13 @@ interface GameState {
   openMinigame: (kind: MinigameKind, title: string) => void;
   finishMinigame: (success: boolean) => void;
   setShop: (open: boolean) => void;
+  setMap: (open: boolean) => void;
+  toggleMap: () => void;
+  askAboutElephant: () => void;
+  findElephant: () => void;
+  startDelivery: (now: number) => void;
+  finishDelivery: (now: number) => void;
+  cancelDelivery: () => void;
   buyGear: (id: GearId) => void;
   collectBlueprint: (id: string) => void;
   goatHome: (id: string) => void;
@@ -82,6 +97,10 @@ const initial = () => ({
   dialog: null,
   minigame: null,
   shopOpen: false,
+  mapOpen: false,
+  elephant: "none" as ElephantQuest,
+  delivery: null as Delivery | null,
+  deliveries: 0,
   prompt: null,
   toasts: [] as Toast[],
   showHelp: true,
@@ -189,6 +208,44 @@ export const useGame = create<GameState>((set, get) => ({
 
   setShop: (open) => set({ shopOpen: open, prompt: open ? null : get().prompt }),
 
+  setMap: (open) => set({ mapOpen: open }),
+  toggleMap: () => set((s) => ({ mapOpen: !s.mapOpen })),
+
+  askAboutElephant: () => {
+    if (get().elephant === "none") set({ elephant: "asked" });
+    get().openDialog(get().elephant === "found" ? "rosa_thanks" : "rosa_elephant");
+  },
+
+  findElephant: () => {
+    if (get().elephant === "found") return;
+    sfx("fanfare");
+    set((s) => ({ elephant: "found", owned: { ...s.owned, elephant: true } }));
+    get().pay(ELEPHANT_REWARD, "Found Peanut for Rosa");
+    get().toast(`${GEAR.elephant.name} is yours to ride. Press ${GEAR.elephant.key} to call her.`);
+  },
+
+  startDelivery: (now) => {
+    if (get().delivery) return;
+    const drop = nextDrop(get().deliveries);
+    sfx("pickup");
+    set({ delivery: { drop, started: now, limit: deliveryLimit(drop) } });
+    get().toast(`Panels loaded. Deliver to ${drop.label} within ${deliveryLimit(drop)} s for a bonus.`);
+  },
+
+  finishDelivery: (now) => {
+    const d = get().delivery;
+    if (!d) return;
+    const onTime = now - d.started <= d.limit;
+    set((s) => ({ delivery: null, deliveries: s.deliveries + 1 }));
+    get().pay(DELIVERY_PAY + (onTime ? DELIVERY_BONUS : 0), onTime ? "Delivery, on time" : "Delivery");
+  },
+
+  cancelDelivery: () => {
+    if (!get().delivery) return;
+    set({ delivery: null });
+    get().toast("Delivery cancelled. The panels went back to the factory.");
+  },
+
   buyGear: (id) => {
     const s = get();
     const check = canBuy(s.cash, s.owned, id);
@@ -200,7 +257,7 @@ export const useGame = create<GameState>((set, get) => ({
     const next = buy(s.cash, s.owned, id);
     sfx("fanfare");
     set({ cash: next.cash, owned: next.owned });
-    get().toast("New gear! Press its number key to use it.");
+    get().toast(`${GEAR[id].name} bought. Press ${GEAR[id].key} to use it.`);
     // "Buy the jetpack" story step completes itself.
     const step = currentStep(get().progress);
     if (step?.kind === "own" && step.gear === id) get().completeStep();

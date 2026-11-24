@@ -3,7 +3,7 @@ import type { SimInput } from "../sim/simulation";
 /**
  * Keyboard and mouse state. WASD moves (or drives), Space jumps / thrusts the
  * jetpack / handbrake, Shift sprints, E talks or uses, F gets in and out,
- * 1–5 call your gear, arrow keys or mouse drag turn the camera, wheel zooms.
+ * 1–9 call your gear, M opens the map, arrow keys or mouse drag turn the camera, wheel zooms.
  */
 
 const held = new Set<string>();
