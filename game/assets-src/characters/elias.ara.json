@@ -1,0 +1,48 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "elias",
+  "seed": 24035,
+  "gender": 1,
+  "african": 0,
+  "asian": 0.15,
+  "caucasian": 0.85,
+  "muscle": 0.37,
+  "weight": 0.38,
+  "height": 0.27,
+  "eyes": "blackbrown",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "short03",
+  "hairTint": "#ffffff",
+  "hairColor": "#eeece6",
+  "facialHair": "none",
+  "beardColor": "#eeece6",
+  "outfit": "none",
+  "accessories": [],
+  "garmentStyles": {
+   "camp_shirt": {
+    "pattern": "linen",
+    "color": "#7d2b2b",
+    "color2": "#7d2b2b"
+   },
+   "trousers": {
+    "pattern": "solid",
+    "color": "#5d5446",
+    "color2": "#5d5446"
+   }
+  },
+  "ageYears": 69,
+  "top": "camp_shirt",
+  "bottom": "trousers",
+  "shoes": "sneakers",
+  "hat": "baseball_cap"
+ }
+}

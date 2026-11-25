@@ -78,7 +78,7 @@ export function JetSkiRider({ outfit = 0, color, speed }: { outfit?: number; col
     <group>
       <JetSkiModel speed={speed} color={color} />
       <group position={[-0.32, -0.12, 0]}>
-        <Human outfit={TOWNSFOLK[outfit % TOWNSFOLK.length]} pose="ride" />
+        <Human outfit={TOWNSFOLK[outfit % TOWNSFOLK.length]} pose="ride" seat="moto" />
       </group>
     </group>
   );

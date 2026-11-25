@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { attributions } from "../assets/catalog";
 import { BLUEPRINTS } from "../story/collectibles";
 import { DIALOGS } from "../story/dialogs";
 import { canBuy, GEAR, money, SHOP_ORDER } from "../story/economy";
@@ -277,8 +278,37 @@ export function Shop() {
   );
 }
 
+/** Who made the 3D models: everything whose licence asks for credit, plus the sources of the rest. */
+function Credits({ onClose }: { onClose: () => void }) {
+  const credits = attributions();
+  return (
+    <div className="credits-list" role="dialog" aria-label="Credits">
+      <div className="eyebrow">3D model credits</div>
+      <p className="muted small">People: generated with Ara 3D Gen (MIT) from MakeHuman&apos;s CC0 assets, animated with the CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu; created with funding from NSF EIA-0196217).</p>
+      {credits.length > 0 && (
+        <ul>
+          {credits.map((c) => (
+            <li key={c.name + c.creator}>
+              <a href={c.source} target="_blank" rel="noreferrer">
+                {c.name}
+              </a>{" "}
+              by {c.creator} · {c.license}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="muted small">Full list with licences: CREDITS.md and ASSETS.md in the game&apos;s source.</p>
+      <button className="secondary" onClick={onClose}>
+        Back
+      </button>
+    </div>
+  );
+}
+
 export function Title() {
   const start = useGame((s) => s.start);
+  const [credits, setCredits] = useState(false);
+  if (credits) return <div className="title-screen"><div className="title-card"><Credits onClose={() => setCredits(false)} /></div></div>;
   return (
     <div className="title-screen">
       <div className="title-card">
@@ -294,6 +324,9 @@ export function Title() {
           <kbd>S</kbd>
           <kbd>D</kbd> move · <kbd>E</kbd> talk · <kbd>F</kbd> get in · <kbd>1</kbd>–<kbd>6</kbd> your gear · <kbd>M</kbd> map
         </p>
+        <button className="link credits-link" onClick={() => setCredits(true)}>
+          Credits
+        </button>
       </div>
     </div>
   );

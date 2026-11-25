@@ -1,0 +1,14 @@
+{
+  "name": "caivan-asset-pipeline",
+  "private": true,
+  "type": "module",
+  "description": "Builds the game's 3D assets: run `npm install` here once, then `node build.mjs`. Not part of the game bundle.",
+  "dependencies": {
+    "@gltf-transform/core": "^4.3.0",
+    "@gltf-transform/extensions": "^4.3.0",
+    "@gltf-transform/functions": "^4.3.0",
+    "ara3d": "0.18.1",
+    "meshoptimizer": "^0.25.0",
+    "sharp": "^0.34.0"
+  }
+}

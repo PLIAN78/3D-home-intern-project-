@@ -1,0 +1,48 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "town4",
+  "seed": 63811,
+  "gender": 1,
+  "african": 0.9,
+  "asian": 0.05,
+  "caucasian": 0.05,
+  "muscle": 0.29000000000000004,
+  "weight": 0.31000000000000005,
+  "height": 0.37,
+  "eyes": "grey",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "short02",
+  "hairTint": "#0f0c0a",
+  "hairColor": "#0f0c0a",
+  "facialHair": "none",
+  "beardColor": "#0f0c0a",
+  "outfit": "none",
+  "accessories": [],
+  "garmentStyles": {
+   "camp_shirt": {
+    "pattern": "linen",
+    "color": "#e9e4da",
+    "color2": "#e9e4da"
+   },
+   "trousers": {
+    "pattern": "solid",
+    "color": "#1f3a5f",
+    "color2": "#1f3a5f"
+   }
+  },
+  "ageYears": 31,
+  "top": "camp_shirt",
+  "bottom": "trousers",
+  "shoes": "shoes03",
+  "hat": "baseball_cap"
+ }
+}

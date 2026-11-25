@@ -168,7 +168,7 @@ function VehicleEntity({ id }: { id: VehicleId }) {
         />
       ))}
       <group ref={driver} position={DRIVER_SEAT[id]} visible={false}>
-        <Human outfit={outfit} pose="sit" />
+        <Human outfit={outfit} pose="drive" />
       </group>
     </group>
   );
@@ -198,7 +198,7 @@ function BoatEntity({id}:{id:string}) {
       <group ref={tilt}>
         {jetski?<JetSkiModel speed={speed} color={JETSKI_COLORS[id.split("-")[0]]} />:<BoatModel speed={speed} />}
         <group ref={skipper} position={jetski?[-0.32, -0.12, 0]:[-0.5, 0.02, 0.48]} visible={false}>
-          <Human outfit={outfit} pose={jetski?"ride":"sit"} />
+          <Human outfit={outfit} pose={jetski?"ride":"drive"} seat={jetski?"moto":"boat"} />
         </group>
       </group>
     </group>
@@ -265,7 +265,7 @@ function HeliEntity() {
       <group ref={tilt}>
         <HeliModel rotor={rotor} />
         <group ref={pilot} position={[0.55, 0.62, -0.32]} visible={false}>
-          <Human outfit={outfit} pose="sit" />
+          <Human outfit={outfit} pose="drive" seat="heli" />
         </group>
       </group>
     </group>
@@ -294,7 +294,7 @@ function ParkedHeliEntity({ id }: { id: string }) {
       <group ref={tilt}>
         <HeliModel rotor={rotor} color="#c2463a" label="OWAWA AIR" />
         <group ref={pilot} position={[0.55, 0.62, -0.32]} visible={false}>
-          <Human outfit={outfit} pose="sit" />
+          <Human outfit={outfit} pose="drive" seat="heli" />
         </group>
       </group>
     </group>

@@ -44,3 +44,7 @@ public/pdf.worker.min.mjs
 
 # game build output
 /dist-game
+
+# Asset pipeline (game/scripts/assets): its own node_modules, and downloaded originals
+game/scripts/assets/node_modules
+game/assets-raw

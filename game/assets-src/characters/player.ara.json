@@ -1,0 +1,56 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "player",
+  "seed": 74432,
+  "gender": 1,
+  "african": 0.1,
+  "asian": 0.5,
+  "caucasian": 0.4,
+  "muscle": 0.62,
+  "weight": 0.41000000000000003,
+  "height": 0.5900000000000001,
+  "eyes": "grey",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "short04",
+  "hairTint": "#2b1d14",
+  "hairColor": "#2b1d14",
+  "facialHair": "mustache_stubble",
+  "beardColor": "#2b1d14",
+  "outfit": "none",
+  "accessories": [
+   "gloves",
+   "reflective_vest"
+  ],
+  "garmentStyles": {
+   "uniform_shirt": {
+    "pattern": "solid",
+    "color": "#2f4f75",
+    "color2": "#2f4f75"
+   },
+   "cargo_pants": {
+    "pattern": "solid",
+    "color": "#3a3f4a",
+    "color2": "#3a3f4a"
+   },
+   "reflective_vest": {
+    "pattern": "solid",
+    "color": "#f2b707",
+    "color2": "#f2b707"
+   }
+  },
+  "ageYears": 28,
+  "top": "uniform_shirt",
+  "bottom": "cargo_pants",
+  "shoes": "combat_boots",
+  "hat": "hard_hat"
+ }
+}

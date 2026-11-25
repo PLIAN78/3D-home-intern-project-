@@ -1,0 +1,56 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "raj",
+  "seed": 43810,
+  "gender": 1,
+  "african": 0.4,
+  "asian": 0.35,
+  "caucasian": 0.25,
+  "muscle": 0.62,
+  "weight": 0.5900000000000001,
+  "height": 0.63,
+  "eyes": "brown",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "short01",
+  "hairTint": "#121010",
+  "hairColor": "#121010",
+  "facialHair": "stubble",
+  "beardColor": "#121010",
+  "outfit": "none",
+  "accessories": [
+   "gloves",
+   "reflective_vest"
+  ],
+  "garmentStyles": {
+   "uniform_shirt": {
+    "pattern": "solid",
+    "color": "#3c6e47",
+    "color2": "#3c6e47"
+   },
+   "cargo_pants": {
+    "pattern": "solid",
+    "color": "#2f3b4c",
+    "color2": "#2f3b4c"
+   },
+   "reflective_vest": {
+    "pattern": "solid",
+    "color": "#ff7a00",
+    "color2": "#ff7a00"
+   }
+  },
+  "ageYears": 34,
+  "top": "uniform_shirt",
+  "bottom": "cargo_pants",
+  "shoes": "combat_boots",
+  "hat": "hard_hat"
+ }
+}

@@ -1,0 +1,50 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "tran",
+  "seed": 52312,
+  "gender": 0,
+  "african": 0,
+  "asian": 0.15,
+  "caucasian": 0.85,
+  "muscle": 0.64,
+  "weight": 0.49,
+  "height": 0.54,
+  "eyes": "blackbrown",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "long01",
+  "hairTint": "#121010",
+  "hairColor": "#121010",
+  "facialHair": "none",
+  "beardColor": "#121010",
+  "outfit": "none",
+  "accessories": [
+   "watch_silver"
+  ],
+  "garmentStyles": {
+   "silk_blouse": {
+    "pattern": "satin",
+    "color": "#8a4a5c",
+    "color2": "#8a4a5c"
+   },
+   "trousers": {
+    "pattern": "solid",
+    "color": "#2c2f36",
+    "color2": "#2c2f36"
+   }
+  },
+  "ageYears": 28,
+  "top": "silk_blouse",
+  "bottom": "trousers",
+  "shoes": "heels",
+  "hat": "none"
+ }
+}

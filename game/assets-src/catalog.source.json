@@ -1,0 +1,2502 @@
+{
+ "_doc": "Every game asset: where it came from, its licence, and how scripts/assets/build.mjs processes it. Distances are metres from the camera where each LOD takes over.",
+ "assets": [
+  {
+   "id": "person-player",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player (site supervisor)",
+   "source": {
+    "file": "characters/player.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/player.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 2048,
+     "texture": 2048,
+     "ratio": 1,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#c68863",
+    "shirt": "#2f4f75",
+    "pants": "#3a3f4a",
+    "shoes": "#4a3424",
+    "vest": "#f2b707",
+    "hat": "hardhat",
+    "hair": "#2b1d14"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-maya",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Maya (sales)",
+   "source": {
+    "file": "characters/maya.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/maya.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#8d5a3b",
+    "shirt": "#ffffff",
+    "pants": "#1f3a5f",
+    "shoes": "#222222",
+    "hair": "#1c1410",
+    "longHair": true,
+    "role": "office"
+   },
+   "tags": [
+    "female",
+    "adult",
+    "office"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-priya",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Priya",
+   "source": {
+    "file": "characters/priya.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/priya.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#a8714d",
+    "shirt": "#c2185b",
+    "pants": "#2e2e3a",
+    "shoes": "#3a2a20",
+    "hair": "#1a1310",
+    "longHair": true
+   },
+   "tags": [
+    "female",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-arjun",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Arjun",
+   "source": {
+    "file": "characters/arjun.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/arjun.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#9a6646",
+    "shirt": "#4b6a88",
+    "pants": "#4a4a4a",
+    "shoes": "#2a2a2a",
+    "hair": "#151010"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-raj",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Raj (site lead)",
+   "source": {
+    "file": "characters/raj.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/raj.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#7d5236",
+    "shirt": "#3c6e47",
+    "pants": "#2f3b4c",
+    "shoes": "#3b2b1d",
+    "vest": "#ff7a00",
+    "hat": "hardhat",
+    "hair": "#121010"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-gail",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Gail (farmer)",
+   "source": {
+    "file": "characters/gail.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/gail.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#e8b796",
+    "shirt": "#7a4b2a",
+    "pants": "#4b5d73",
+    "shoes": "#5a3b22",
+    "hat": "straw",
+    "hair": "#b9b2a6",
+    "old": true
+   },
+   "tags": [
+    "male",
+    "older",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-nguyen-a",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Mr Nguyen",
+   "source": {
+    "file": "characters/nguyen-a.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/nguyen-a.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#d9a77f",
+    "shirt": "#e0a000",
+    "pants": "#30343c",
+    "shoes": "#2d2d2d",
+    "hair": "#1a1612"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-nguyen-b",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Mrs Nguyen",
+   "source": {
+    "file": "characters/nguyen-b.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/nguyen-b.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#dcae88",
+    "shirt": "#3f7cac",
+    "pants": "#5a4636",
+    "shoes": "#2d2d2d",
+    "hair": "#201812",
+    "longHair": true
+   },
+   "tags": [
+    "female",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-kid",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Neighbour kid",
+   "source": {
+    "file": "characters/kid.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/kid.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#d6a27c",
+    "shirt": "#e53935",
+    "pants": "#1e5aa8",
+    "shoes": "#f2f2f2",
+    "hair": "#2a1e14",
+    "hat": "cap",
+    "kid": true
+   },
+   "tags": [
+    "male",
+    "child",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-rosa",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Rosa",
+   "source": {
+    "file": "characters/rosa.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/rosa.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#c48a64",
+    "shirt": "#6b7f5a",
+    "pants": "#3d3a36",
+    "shoes": "#4a3424",
+    "hair": "#d9d4cc",
+    "longHair": true,
+    "hat": "straw",
+    "old": true
+   },
+   "tags": [
+    "female",
+    "older",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-marco",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Marco (crew boss)",
+   "source": {
+    "file": "characters/marco.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/marco.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#c68863",
+    "shirt": "#4a5160",
+    "pants": "#3a3f4a",
+    "shoes": "#3b2b1d",
+    "vest": "#ff7a00",
+    "hat": "hardhat",
+    "hair": "#2b1d14"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-tran",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Ms Tran",
+   "source": {
+    "file": "characters/tran.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/tran.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#e8c4a0",
+    "shirt": "#8a4a5c",
+    "pants": "#2c2f36",
+    "shoes": "#2a2a2a",
+    "hair": "#121010",
+    "longHair": true,
+    "role": "office"
+   },
+   "tags": [
+    "female",
+    "adult",
+    "office"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-elias",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Elias (fisherman)",
+   "source": {
+    "file": "characters/elias.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/elias.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#d6a986",
+    "shirt": "#7d2b2b",
+    "pants": "#5d5446",
+    "shoes": "#3b2b1d",
+    "hair": "#eeece6",
+    "hat": "cap",
+    "old": true
+   },
+   "tags": [
+    "male",
+    "older",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-sam",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Sam",
+   "source": {
+    "file": "characters/sam.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/sam.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#6e4630",
+    "shirt": "#2f6f4f",
+    "pants": "#30343c",
+    "shoes": "#1f1f22",
+    "hair": "#0f0c0a",
+    "vest": "#f2b707"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-crew0",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Site crew 0",
+   "source": {
+    "file": "characters/crew0.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/crew0.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#8d5a3b",
+    "shirt": "#3a4b5c",
+    "pants": "#4a5160",
+    "shoes": "#3b2b1d",
+    "vest": "#d7f000",
+    "hat": "hardhat",
+    "hair": "#151010"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-crew1",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Site crew 1",
+   "source": {
+    "file": "characters/crew1.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/crew1.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#e0b08f",
+    "shirt": "#7a2e2e",
+    "pants": "#30343c",
+    "shoes": "#3a2a20",
+    "vest": "#ff7a00",
+    "hat": "hardhat",
+    "hair": "#7a5432"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-crew2",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Site crew 2",
+   "source": {
+    "file": "characters/crew2.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/crew2.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#6e4630",
+    "shirt": "#56705a",
+    "pants": "#3a3f4a",
+    "shoes": "#2a2a2a",
+    "vest": "#d7f000",
+    "hat": "hardhat",
+    "hair": "#0f0c0a"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-crew3",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Site crew 3",
+   "source": {
+    "file": "characters/crew3.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/crew3.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#d9a77f",
+    "shirt": "#2f3a4a",
+    "pants": "#6b5a46",
+    "shoes": "#3b2b1d",
+    "vest": "#ff7a00",
+    "hat": "hardhat",
+    "hair": "#a87a42",
+    "longHair": true
+   },
+   "tags": [
+    "female",
+    "adult",
+    "worker"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-jordan",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Jordan (office)",
+   "source": {
+    "file": "characters/jordan.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/jordan.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#8d5a3b",
+    "shirt": "#e9e4da",
+    "pants": "#2c2f36",
+    "shoes": "#1f1f22",
+    "hair": "#151010",
+    "longHair": true,
+    "role": "office"
+   },
+   "tags": [
+    "female",
+    "adult",
+    "office"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-daniel",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Daniel (office)",
+   "source": {
+    "file": "characters/daniel.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/daniel.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#5c3b28",
+    "shirt": "#2c3440",
+    "pants": "#2a2d33",
+    "shoes": "#1a1a1a",
+    "hair": "#0f0c0a",
+    "role": "office"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "office"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-mei",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Mei (office)",
+   "source": {
+    "file": "characters/mei.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/mei.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#e8c4a0",
+    "shirt": "#56705a",
+    "pants": "#3a3f4a",
+    "shoes": "#2a2a2a",
+    "hair": "#121010",
+    "longHair": true,
+    "role": "office"
+   },
+   "tags": [
+    "female",
+    "adult",
+    "office"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-lucas",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Lucas (office)",
+   "source": {
+    "file": "characters/lucas.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/lucas.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#e0b08f",
+    "shirt": "#8a4a5c",
+    "pants": "#4a5160",
+    "shoes": "#3a2a20",
+    "hair": "#7a5432",
+    "role": "office"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "office"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-sofia",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Sofia (office)",
+   "source": {
+    "file": "characters/sofia.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/sofia.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#c68863",
+    "shirt": "#d8d2c4",
+    "pants": "#1f3a5f",
+    "shoes": "#2a2a2a",
+    "hair": "#2b1d14",
+    "longHair": true,
+    "role": "office"
+   },
+   "tags": [
+    "female",
+    "adult",
+    "office"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-town0",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 0",
+   "source": {
+    "file": "characters/town0.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/town0.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#e0b08f",
+    "shirt": "#3a4b5c",
+    "pants": "#2c2f36",
+    "shoes": "#1f1f22",
+    "hair": "#3b2a1e"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-town1",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 1",
+   "source": {
+    "file": "characters/town1.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/town1.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#8d5a3b",
+    "shirt": "#d8d2c4",
+    "pants": "#4a5160",
+    "shoes": "#2a2a2a",
+    "hair": "#151010",
+    "longHair": true
+   },
+   "tags": [
+    "female",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-town2",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 2",
+   "source": {
+    "file": "characters/town2.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/town2.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#c68863",
+    "shirt": "#7a2e2e",
+    "pants": "#30343c",
+    "shoes": "#3a2a20",
+    "hair": "#241810"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-town3",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 3",
+   "source": {
+    "file": "characters/town3.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/town3.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#f0c8a8",
+    "shirt": "#56705a",
+    "pants": "#6b5a46",
+    "shoes": "#3b2b1d",
+    "hair": "#a87a42",
+    "longHair": true
+   },
+   "tags": [
+    "female",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-town4",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 4",
+   "source": {
+    "file": "characters/town4.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/town4.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#6e4630",
+    "shirt": "#e9e4da",
+    "pants": "#1f3a5f",
+    "shoes": "#f2f2f2",
+    "hair": "#0f0c0a",
+    "hat": "cap"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-town5",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 5",
+   "source": {
+    "file": "characters/town5.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/town5.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#d9a77f",
+    "shirt": "#2f3a4a",
+    "pants": "#8c8578",
+    "shoes": "#3a2a20",
+    "hair": "#1a1310"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-town6",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 6",
+   "source": {
+    "file": "characters/town6.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/town6.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#a8714d",
+    "shirt": "#b88a3a",
+    "pants": "#2e2e3a",
+    "shoes": "#2a2a2a",
+    "hair": "#1c1410",
+    "longHair": true
+   },
+   "tags": [
+    "female",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-town7",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 7",
+   "source": {
+    "file": "characters/town7.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/town7.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#e8b796",
+    "shirt": "#495a6e",
+    "pants": "#3a3f4a",
+    "shoes": "#4a3424",
+    "hair": "#cfc8bc",
+    "old": true
+   },
+   "tags": [
+    "male",
+    "older",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-town8",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 8",
+   "source": {
+    "file": "characters/town8.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/town8.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#9a6646",
+    "shirt": "#3c6e6e",
+    "pants": "#4a4a4a",
+    "shoes": "#222222",
+    "hair": "#151010"
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-town9",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 9",
+   "source": {
+    "file": "characters/town9.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/town9.ara.json"
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 1024,
+     "texture": 1024,
+     "ratio": 0.55,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "outfit": {
+    "skin": "#dcae88",
+    "shirt": "#8a4a5c",
+    "pants": "#2c2f36",
+    "shoes": "#2d2d2d",
+    "hair": "#201812",
+    "longHair": true,
+    "kid": true
+   },
+   "tags": [
+    "female",
+    "child",
+    "casual"
+   ],
+   "process": {
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   }
+  },
+  {
+   "id": "person-player-none-short",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (no hat, short hair)",
+   "source": {
+    "file": "characters/player-none-short.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/player-none-short.ara.json"
+   },
+   "process": {
+    "regions": {
+     "skin": "^Skin$",
+     "shirt": "Uniform shirt|Epaulettes",
+     "pants": "Cargo pants",
+     "shoes": "^Shoes$|Boot shafts",
+     "hair": "^Hair$|Beard",
+     "hat": "Hard hat|^Cap|^Hat$",
+     "vest": "Reflective vest",
+     "tape": "Reflective tape"
+    },
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 2048,
+     "texture": 2048,
+     "ratio": 1,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ]
+  },
+  {
+   "id": "person-player-none-long",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (no hat, long hair)",
+   "source": {
+    "file": "characters/player-none-long.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/player-none-long.ara.json"
+   },
+   "process": {
+    "regions": {
+     "skin": "^Skin$",
+     "shirt": "Uniform shirt|Epaulettes",
+     "pants": "Cargo pants",
+     "shoes": "^Shoes$|Boot shafts",
+     "hair": "^Hair$|Beard",
+     "hat": "Hard hat|^Cap|^Hat$",
+     "vest": "Reflective vest",
+     "tape": "Reflective tape"
+    },
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 2048,
+     "texture": 2048,
+     "ratio": 1,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ]
+  },
+  {
+   "id": "person-player-hardhat-short",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (hardhat, short hair)",
+   "source": {
+    "file": "characters/player-hardhat-short.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/player-hardhat-short.ara.json"
+   },
+   "process": {
+    "regions": {
+     "skin": "^Skin$",
+     "shirt": "Uniform shirt|Epaulettes",
+     "pants": "Cargo pants",
+     "shoes": "^Shoes$|Boot shafts",
+     "hair": "^Hair$|Beard",
+     "hat": "Hard hat|^Cap|^Hat$",
+     "vest": "Reflective vest",
+     "tape": "Reflective tape"
+    },
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 2048,
+     "texture": 2048,
+     "ratio": 1,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ]
+  },
+  {
+   "id": "person-player-cap-short",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (cap, short hair)",
+   "source": {
+    "file": "characters/player-cap-short.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/player-cap-short.ara.json"
+   },
+   "process": {
+    "regions": {
+     "skin": "^Skin$",
+     "shirt": "Uniform shirt|Epaulettes",
+     "pants": "Cargo pants",
+     "shoes": "^Shoes$|Boot shafts",
+     "hair": "^Hair$|Beard",
+     "hat": "Hard hat|^Cap|^Hat$",
+     "vest": "Reflective vest",
+     "tape": "Reflective tape"
+    },
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 2048,
+     "texture": 2048,
+     "ratio": 1,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ]
+  },
+  {
+   "id": "person-player-cap-long",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (cap, long hair)",
+   "source": {
+    "file": "characters/player-cap-long.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/player-cap-long.ara.json"
+   },
+   "process": {
+    "regions": {
+     "skin": "^Skin$",
+     "shirt": "Uniform shirt|Epaulettes",
+     "pants": "Cargo pants",
+     "shoes": "^Shoes$|Boot shafts",
+     "hair": "^Hair$|Beard",
+     "hat": "Hard hat|^Cap|^Hat$",
+     "vest": "Reflective vest",
+     "tape": "Reflective tape"
+    },
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 2048,
+     "texture": 2048,
+     "ratio": 1,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ]
+  },
+  {
+   "id": "person-player-straw-short",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (straw, short hair)",
+   "source": {
+    "file": "characters/player-straw-short.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/player-straw-short.ara.json"
+   },
+   "process": {
+    "regions": {
+     "skin": "^Skin$",
+     "shirt": "Uniform shirt|Epaulettes",
+     "pants": "Cargo pants",
+     "shoes": "^Shoes$|Boot shafts",
+     "hair": "^Hair$|Beard",
+     "hat": "Hard hat|^Cap|^Hat$",
+     "vest": "Reflective vest",
+     "tape": "Reflective tape"
+    },
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 2048,
+     "texture": 2048,
+     "ratio": 1,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ]
+  },
+  {
+   "id": "person-player-straw-long",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (straw, long hair)",
+   "source": {
+    "file": "characters/player-straw-long.glb",
+    "url": "https://github.com/olatunde85/3d-gen",
+    "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+    "creatorUrl": "https://github.com/makehumancommunity",
+    "license": "CC0-1.0",
+    "spec": "game/assets-src/characters/player-straw-long.ara.json"
+   },
+   "process": {
+    "regions": {
+     "skin": "^Skin$",
+     "shirt": "Uniform shirt|Epaulettes",
+     "pants": "Cargo pants",
+     "shoes": "^Shoes$|Boot shafts",
+     "hair": "^Hair$|Beard",
+     "hat": "Hard hat|^Cap|^Hat$",
+     "vest": "Reflective vest",
+     "tape": "Reflective tape"
+    },
+    "inflate": {
+     "Reflective vest|Reflective tape": 0.008
+    }
+   },
+   "lods": [
+    {
+     "distance": 0,
+     "atlas": 2048,
+     "texture": 2048,
+     "ratio": 1,
+     "alpha": "MASK"
+    },
+    {
+     "distance": 18,
+     "atlas": 256,
+     "texture": 256,
+     "ratio": 0.12,
+     "drop": [
+      "Eyebrow",
+      "Eyelash",
+      "Skin details",
+      "Teeth",
+      "Tongue"
+     ]
+    }
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ]
+  },
+  {
+   "id": "people-clips",
+   "category": "people",
+   "kind": "clips",
+   "name": "Shared people animations",
+   "source": {
+    "file": "characters/clips/clips.glb",
+    "url": "http://mocap.cs.cmu.edu",
+    "creator": "CMU Graphics Lab Motion Capture Database, retargeted by Ara 3D Gen",
+    "creatorUrl": "https://github.com/olatunde85/3d-gen",
+    "license": "CMU mocap: free to use, including commercially (not resold on its own)"
+   },
+   "lods": [
+    {
+     "distance": 0
+    }
+   ],
+   "collision": {
+    "shape": "none"
+   }
+  }
+ ]
+}

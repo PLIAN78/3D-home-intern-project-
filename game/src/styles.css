@@ -1401,3 +1401,16 @@ svg.crane-game {
   text-decoration: underline;
   font: inherit;
 }
+
+/* Title screen: model credits */
+.credits-link { margin-top: 10px; background: none; border: 0; color: inherit; opacity: 0.75; text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; }
+.credits-link:hover { opacity: 1; }
+.credits-list { text-align: left; max-height: 70vh; overflow: auto; }
+.credits-list ul { margin: 8px 0 12px; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.credits-list a { color: inherit; }
+
+/* ?bench results */
+.bench-panel { position: fixed; left: 50%; top: 80px; transform: translateX(-50%); z-index: 50; background: rgba(20, 22, 26, 0.92); color: #f2f2f2; padding: 14px 18px; border-radius: 10px; font-size: 13px; }
+.bench-panel table { border-collapse: collapse; }
+.bench-panel th, .bench-panel td { padding: 3px 9px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.bench-panel th:first-child, .bench-panel td:first-child { text-align: left; }

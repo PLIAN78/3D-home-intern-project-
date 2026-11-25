@@ -1,0 +1,58 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "player-straw-long",
+  "seed": 74432,
+  "gender": 1,
+  "african": 0,
+  "asian": 0.15,
+  "caucasian": 0.85,
+  "muscle": 0.62,
+  "weight": 0.41000000000000003,
+  "height": 0.5900000000000001,
+  "eyes": "grey",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "long01",
+  "hairTint": "#ffffff",
+  "hairColor": "#e6e6e6",
+  "facialHair": "stubble",
+  "beardColor": "#d0d0d0",
+  "outfit": "none",
+  "accessories": [
+   "gloves",
+   "reflective_vest"
+  ],
+  "garmentStyles": {
+   "uniform_shirt": {
+    "pattern": "solid",
+    "color": "#f2f2f2",
+    "color2": "#f2f2f2"
+   },
+   "cargo_pants": {
+    "pattern": "solid",
+    "color": "#f2f2f2",
+    "color2": "#f2f2f2"
+   },
+   "reflective_vest": {
+    "pattern": "solid",
+    "color": "#f2f2f2",
+    "color2": "#f2f2f2"
+   }
+  },
+  "ageYears": 28,
+  "top": "uniform_shirt",
+  "bottom": "cargo_pants",
+  "shoes": "combat_boots",
+  "hat": "fedora01",
+  "skin": "young_caucasian_male",
+  "skinTint": "#ffffff"
+ }
+}

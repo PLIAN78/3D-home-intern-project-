@@ -3,6 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { fabric, mat, reflective, skin } from "../render/materials";
+import { REALISTIC } from "../assets/crowd";
+import { PersonModel } from "./PersonModel";
 
 /**
  * People: a jointed figure (hips, knees, ankles, shoulders, elbows, neck) built
@@ -124,7 +126,7 @@ export const TOWNSFOLK: Outfit[] = [
   { skin: "#dcae88", shirt: "#8a4a5c", pants: "#2c2f36", shoes: "#2d2d2d", hair: "#201812", longHair: true, scale: 0.7 },
 ];
 
-export type Pose = "auto" | "sit" | "ride" | "fly" | "wave" | "swim";
+export type Pose = "auto" | "sit" | "drive" | "ride" | "fly" | "wave" | "swim";
 
 /** Live values the figure reads every frame (so it never re-renders React). */
 export interface Motion {
@@ -204,7 +206,17 @@ interface Joints {
   chest: THREE.Mesh | null;
 }
 
-export function Human({
+/**
+ * A person. Draws the realistic character from the asset registry (models/
+ * PersonModel.tsx) when realistic models are on, with this jointed figure as
+ * the stand-in while it loads; "?classic" draws only the jointed figure.
+ */
+export function Human({ seat, ...props }: { outfit: Outfit; motion?: Motion; pose?: Pose | (() => Pose); seat?: "moto" | "boat" | "heli" }) {
+  if (!REALISTIC) return <JointedHuman {...props} />;
+  return <PersonModel {...props} seat={seat} fallback={<JointedHuman {...props} />} />;
+}
+
+function JointedHuman({
   outfit,
   motion,
   pose: poseProp = "auto",
@@ -267,7 +279,8 @@ export function Human({
     const lean = motion?.lean?.() ?? { pitch: 0, roll: 0 };
     const set = (g: THREE.Group | null, x: number, y: number, z: number) =>
       g?.rotation.set(x, y, z);
-    const pose = typeof poseProp === "function" ? poseProp() : poseProp;
+    const rawPose = typeof poseProp === "function" ? poseProp() : poseProp;
+    const pose = rawPose === "drive" ? "sit" : rawPose;
 
     if (pose === "sit" || pose === "ride") {
       const ride = pose === "ride";

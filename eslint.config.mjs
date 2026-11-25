@@ -15,6 +15,9 @@ const eslintConfig = defineConfig([
     // Vendored / generated assets
     "public/pdf.worker.min.mjs",
     ".data/**",
+    // The game's vendored Basis transcoder and the asset pipeline's own packages
+    "game/public/basis/**",
+    "game/scripts/assets/node_modules/**",
     // The game's static build (npm run game:build)
     "dist-game/**",
   ]),

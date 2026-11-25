@@ -1,0 +1,48 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "kid",
+  "seed": 16551,
+  "gender": 1,
+  "african": 0,
+  "asian": 0.15,
+  "caucasian": 0.85,
+  "muscle": 0.53,
+  "weight": 0.5700000000000001,
+  "height": 0.56,
+  "eyes": "blackbrown",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "short04",
+  "hairTint": "#2a1e14",
+  "hairColor": "#2a1e14",
+  "facialHair": "none",
+  "beardColor": "#2a1e14",
+  "outfit": "none",
+  "accessories": [],
+  "garmentStyles": {
+   "oversized_tee": {
+    "pattern": "jersey",
+    "color": "#e53935",
+    "color2": "#e53935"
+   },
+   "cargo_shorts": {
+    "pattern": "solid",
+    "color": "#1e5aa8",
+    "color2": "#1e5aa8"
+   }
+  },
+  "ageYears": 13,
+  "top": "oversized_tee",
+  "bottom": "cargo_shorts",
+  "shoes": "sneakers",
+  "hat": "baseball_cap"
+ }
+}

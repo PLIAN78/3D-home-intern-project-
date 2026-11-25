@@ -1,0 +1,2503 @@
+{
+ "generated": "2026-11-25",
+ "assets": {
+  "people-clips": {
+   "id": "people-clips",
+   "category": "people",
+   "kind": "clips",
+   "name": "Shared people animations",
+   "source": "http://mocap.cs.cmu.edu",
+   "creator": "CMU Graphics Lab Motion Capture Database, retargeted by Ara 3D Gen",
+   "creatorUrl": "https://github.com/olatunde85/3d-gen",
+   "license": "CMU mocap: free to use, including commercially (not resold on its own)",
+   "dimensions": null,
+   "collision": {
+    "shape": "none"
+   },
+   "lods": [
+    {
+     "file": "models/people/people-clips/lod0.glb",
+     "distance": 0,
+     "triangles": 0,
+     "bytes": 259404,
+     "texture": 0
+    }
+   ],
+   "variants": [],
+   "animations": [
+    {
+     "name": "Idle",
+     "seconds": 3.2
+    },
+    {
+     "name": "Walk",
+     "seconds": 1.067
+    },
+    {
+     "name": "Run",
+     "seconds": 0.733
+    },
+    {
+     "name": "Tread water",
+     "seconds": 2
+    },
+    {
+     "name": "Swim forward (front crawl)",
+     "seconds": 1.4
+    },
+    {
+     "name": "Sit idle (chair)",
+     "seconds": 1.625
+    },
+    {
+     "name": "Wave",
+     "seconds": 1.6
+    },
+    {
+     "name": "Drive car",
+     "seconds": 4
+    },
+    {
+     "name": "Ride horse (trot)",
+     "seconds": 0.8
+    },
+    {
+     "name": "Ride motorcycle",
+     "seconds": 3
+    },
+    {
+     "name": "Drive boat (helm)",
+     "seconds": 5
+    },
+    {
+     "name": "Pilot helicopter (fly / hover)",
+     "seconds": 6
+    },
+    {
+     "name": "Jump (in air)",
+     "seconds": 0.8
+    },
+    {
+     "name": "Look around",
+     "seconds": 6
+    },
+    {
+     "name": "Talk with gestures",
+     "seconds": 4
+    },
+    {
+     "name": "Texting",
+     "seconds": 3
+    },
+    {
+     "name": "Phone call",
+     "seconds": 5
+    },
+    {
+     "name": "Carry walk",
+     "seconds": 1.267
+    },
+    {
+     "name": "Carry idle",
+     "seconds": 3.6
+    },
+    {
+     "name": "Clap",
+     "seconds": 1
+    },
+    {
+     "name": "Cheer",
+     "seconds": 0.8
+    }
+   ],
+   "rig": {
+    "hipsY": 1.0258
+   },
+   "tags": []
+  },
+  "person-arjun": {
+   "id": "person-arjun",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Arjun",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.221,
+    1.868,
+    0.522
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-arjun/lod0.glb",
+     "distance": 0,
+     "triangles": 30896,
+     "bytes": 609948,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-arjun/lod1.glb",
+     "distance": 18,
+     "triangles": 6287,
+     "bytes": 131624,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.0219
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-crew0": {
+   "id": "person-crew0",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Site crew 0",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.138,
+    1.752,
+    0.486
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-crew0/lod0.glb",
+     "distance": 0,
+     "triangles": 16506,
+     "bytes": 261284,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-crew0/lod1.glb",
+     "distance": 18,
+     "triangles": 3464,
+     "bytes": 57092,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.9376
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ]
+  },
+  "person-crew1": {
+   "id": "person-crew1",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Site crew 1",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.128,
+    1.747,
+    0.478
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-crew1/lod0.glb",
+     "distance": 0,
+     "triangles": 18201,
+     "bytes": 304880,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-crew1/lod1.glb",
+     "distance": 18,
+     "triangles": 3464,
+     "bytes": 57740,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.9379
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ]
+  },
+  "person-crew2": {
+   "id": "person-crew2",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Site crew 2",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.186,
+    1.822,
+    0.511
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-crew2/lod0.glb",
+     "distance": 0,
+     "triangles": 35537,
+     "bytes": 641516,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-crew2/lod1.glb",
+     "distance": 18,
+     "triangles": 7300,
+     "bytes": 126948,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.9831
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ]
+  },
+  "person-crew3": {
+   "id": "person-crew3",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Site crew 3",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    0.966,
+    1.613,
+    0.408
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-crew3/lod0.glb",
+     "distance": 0,
+     "triangles": 16713,
+     "bytes": 274460,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-crew3/lod1.glb",
+     "distance": 18,
+     "triangles": 3510,
+     "bytes": 59156,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.8383
+   },
+   "tags": [
+    "female",
+    "adult",
+    "worker"
+   ]
+  },
+  "person-daniel": {
+   "id": "person-daniel",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Daniel (office)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.279,
+    1.982,
+    0.55
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-daniel/lod0.glb",
+     "distance": 0,
+     "triangles": 33805,
+     "bytes": 641888,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-daniel/lod1.glb",
+     "distance": 18,
+     "triangles": 6912,
+     "bytes": 148160,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.089
+   },
+   "tags": [
+    "male",
+    "adult",
+    "office"
+   ]
+  },
+  "person-elias": {
+   "id": "person-elias",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Elias (fisherman)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.008,
+    1.579,
+    0.449
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-elias/lod0.glb",
+     "distance": 0,
+     "triangles": 16827,
+     "bytes": 292848,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-elias/lod1.glb",
+     "distance": 18,
+     "triangles": 3520,
+     "bytes": 60960,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.8529
+   },
+   "tags": [
+    "male",
+    "older",
+    "casual"
+   ]
+  },
+  "person-gail": {
+   "id": "person-gail",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Gail (farmer)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.071,
+    1.709,
+    0.447
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-gail/lod0.glb",
+     "distance": 0,
+     "triangles": 28993,
+     "bytes": 638832,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-gail/lod1.glb",
+     "distance": 18,
+     "triangles": 5869,
+     "bytes": 129676,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.9245
+   },
+   "tags": [
+    "male",
+    "older",
+    "casual"
+   ]
+  },
+  "person-jordan": {
+   "id": "person-jordan",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Jordan (office)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.035,
+    1.733,
+    0.434
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-jordan/lod0.glb",
+     "distance": 0,
+     "triangles": 15513,
+     "bytes": 259008,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-jordan/lod1.glb",
+     "distance": 18,
+     "triangles": 3229,
+     "bytes": 58696,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.9198
+   },
+   "tags": [
+    "female",
+    "adult",
+    "office"
+   ]
+  },
+  "person-kid": {
+   "id": "person-kid",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Neighbour kid",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    0.913,
+    1.49,
+    0.427
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-kid/lod0.glb",
+     "distance": 0,
+     "triangles": 14626,
+     "bytes": 236804,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-kid/lod1.glb",
+     "distance": 18,
+     "triangles": 2992,
+     "bytes": 51896,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.7897
+   },
+   "tags": [
+    "male",
+    "child",
+    "casual"
+   ]
+  },
+  "person-lucas": {
+   "id": "person-lucas",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Lucas (office)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.143,
+    1.748,
+    0.482
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-lucas/lod0.glb",
+     "distance": 0,
+     "triangles": 12833,
+     "bytes": 222872,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-lucas/lod1.glb",
+     "distance": 18,
+     "triangles": 2668,
+     "bytes": 47612,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.9507
+   },
+   "tags": [
+    "male",
+    "adult",
+    "office"
+   ]
+  },
+  "person-marco": {
+   "id": "person-marco",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Marco (crew boss)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.078,
+    1.652,
+    0.456
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-marco/lod0.glb",
+     "distance": 0,
+     "triangles": 33757,
+     "bytes": 610236,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-marco/lod1.glb",
+     "distance": 18,
+     "triangles": 6913,
+     "bytes": 122184,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.8748
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ]
+  },
+  "person-maya": {
+   "id": "person-maya",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Maya (sales)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    0.913,
+    1.486,
+    0.389
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-maya/lod0.glb",
+     "distance": 0,
+     "triangles": 12486,
+     "bytes": 241604,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-maya/lod1.glb",
+     "distance": 18,
+     "triangles": 2570,
+     "bytes": 53480,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.77
+   },
+   "tags": [
+    "female",
+    "adult",
+    "office"
+   ]
+  },
+  "person-mei": {
+   "id": "person-mei",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Mei (office)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    0.93,
+    1.55,
+    0.381
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-mei/lod0.glb",
+     "distance": 0,
+     "triangles": 13713,
+     "bytes": 262904,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-mei/lod1.glb",
+     "distance": 18,
+     "triangles": 2845,
+     "bytes": 59348,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.8202
+   },
+   "tags": [
+    "female",
+    "adult",
+    "office"
+   ]
+  },
+  "person-nguyen-a": {
+   "id": "person-nguyen-a",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Mr Nguyen",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.184,
+    1.831,
+    0.5
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-nguyen-a/lod0.glb",
+     "distance": 0,
+     "triangles": 10969,
+     "bytes": 237972,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-nguyen-a/lod1.glb",
+     "distance": 18,
+     "triangles": 2089,
+     "bytes": 40740,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.0051
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-nguyen-b": {
+   "id": "person-nguyen-b",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Mrs Nguyen",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.025,
+    1.706,
+    0.425
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-nguyen-b/lod0.glb",
+     "distance": 0,
+     "triangles": 14972,
+     "bytes": 291404,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-nguyen-b/lod1.glb",
+     "distance": 18,
+     "triangles": 3124,
+     "bytes": 66040,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.907
+   },
+   "tags": [
+    "female",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-player": {
+   "id": "person-player",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player (site supervisor)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.204,
+    1.875,
+    0.511
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-player/lod0.glb",
+     "distance": 0,
+     "triangles": 36178,
+     "bytes": 584760,
+     "texture": 2048
+    },
+    {
+     "file": "models/people/person-player/lod1.glb",
+     "distance": 18,
+     "triangles": 3834,
+     "bytes": 61856,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.0157
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ]
+  },
+  "person-player-cap-long": {
+   "id": "person-player-cap-long",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (cap, long hair)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.223,
+    1.896,
+    0.53
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-player-cap-long/lod0.glb",
+     "distance": 0,
+     "triangles": 38372,
+     "bytes": 731800,
+     "texture": 2048
+    },
+    {
+     "file": "models/people/person-player-cap-long/lod1.glb",
+     "distance": 18,
+     "triangles": 4088,
+     "bytes": 75540,
+     "texture": 256
+    }
+   ],
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.0406
+   },
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ],
+   "regions": {
+    "skin": {
+     "id": 1,
+     "base": [
+      0.877,
+      0.66,
+      0.537
+     ]
+    },
+    "shoes": {
+     "id": 4,
+     "base": [
+      0.03,
+      0.027,
+      0.033
+     ]
+    },
+    "pants": {
+     "id": 3,
+     "base": [
+      0.945,
+      0.945,
+      0.945
+     ]
+    },
+    "shirt": {
+     "id": 2,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "vest": {
+     "id": 7,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "tape": {
+     "id": 8,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "hat": {
+     "id": 6,
+     "base": [
+      0.077,
+      0.077,
+      0.085
+     ]
+    },
+    "hair": {
+     "id": 5,
+     "base": [
+      0.21,
+      0.168,
+      0.151
+     ]
+    }
+   }
+  },
+  "person-player-cap-short": {
+   "id": "person-player-cap-short",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (cap, short hair)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.223,
+    1.896,
+    0.518
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-player-cap-short/lod0.glb",
+     "distance": 0,
+     "triangles": 36002,
+     "bytes": 663260,
+     "texture": 2048
+    },
+    {
+     "file": "models/people/person-player-cap-short/lod1.glb",
+     "distance": 18,
+     "triangles": 3805,
+     "bytes": 64888,
+     "texture": 256
+    }
+   ],
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.0406
+   },
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ],
+   "regions": {
+    "skin": {
+     "id": 1,
+     "base": [
+      0.877,
+      0.66,
+      0.537
+     ]
+    },
+    "shoes": {
+     "id": 4,
+     "base": [
+      0.03,
+      0.027,
+      0.033
+     ]
+    },
+    "pants": {
+     "id": 3,
+     "base": [
+      0.945,
+      0.945,
+      0.945
+     ]
+    },
+    "shirt": {
+     "id": 2,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "vest": {
+     "id": 7,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "tape": {
+     "id": 8,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "hat": {
+     "id": 6,
+     "base": [
+      0.077,
+      0.077,
+      0.085
+     ]
+    },
+    "hair": {
+     "id": 5,
+     "base": [
+      0.298,
+      0.339,
+      0.339
+     ]
+    }
+   }
+  },
+  "person-player-hardhat-short": {
+   "id": "person-player-hardhat-short",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (hardhat, short hair)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.223,
+    1.91,
+    0.518
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-player-hardhat-short/lod0.glb",
+     "distance": 0,
+     "triangles": 33048,
+     "bytes": 551316,
+     "texture": 2048
+    },
+    {
+     "file": "models/people/person-player-hardhat-short/lod1.glb",
+     "distance": 18,
+     "triangles": 3457,
+     "bytes": 58844,
+     "texture": 256
+    }
+   ],
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.0406
+   },
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ],
+   "regions": {
+    "skin": {
+     "id": 1,
+     "base": [
+      0.877,
+      0.66,
+      0.537
+     ]
+    },
+    "shoes": {
+     "id": 4,
+     "base": [
+      0.03,
+      0.027,
+      0.033
+     ]
+    },
+    "pants": {
+     "id": 3,
+     "base": [
+      0.945,
+      0.945,
+      0.945
+     ]
+    },
+    "shirt": {
+     "id": 2,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "vest": {
+     "id": 7,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "tape": {
+     "id": 8,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "hat": {
+     "id": 6,
+     "base": [
+      0.888,
+      0.462,
+      0.012
+     ]
+    },
+    "hair": {
+     "id": 5,
+     "base": [
+      1,
+      1,
+      1
+     ]
+    }
+   }
+  },
+  "person-player-none-long": {
+   "id": "person-player-none-long",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (no hat, long hair)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.223,
+    1.896,
+    0.53
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-player-none-long/lod0.glb",
+     "distance": 0,
+     "triangles": 34856,
+     "bytes": 714384,
+     "texture": 2048
+    },
+    {
+     "file": "models/people/person-player-none-long/lod1.glb",
+     "distance": 18,
+     "triangles": 3675,
+     "bytes": 72884,
+     "texture": 256
+    }
+   ],
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.0406
+   },
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ],
+   "regions": {
+    "skin": {
+     "id": 1,
+     "base": [
+      0.877,
+      0.66,
+      0.537
+     ]
+    },
+    "shoes": {
+     "id": 4,
+     "base": [
+      0.03,
+      0.027,
+      0.033
+     ]
+    },
+    "pants": {
+     "id": 3,
+     "base": [
+      0.945,
+      0.945,
+      0.945
+     ]
+    },
+    "shirt": {
+     "id": 2,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "vest": {
+     "id": 7,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "tape": {
+     "id": 8,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "hair": {
+     "id": 5,
+     "base": [
+      0.21,
+      0.168,
+      0.151
+     ]
+    },
+    "hat": {
+     "id": 6,
+     "base": [
+      1,
+      1,
+      1
+     ]
+    }
+   }
+  },
+  "person-player-none-short": {
+   "id": "person-player-none-short",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (no hat, short hair)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.223,
+    1.901,
+    0.518
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-player-none-short/lod0.glb",
+     "distance": 0,
+     "triangles": 34092,
+     "bytes": 654336,
+     "texture": 2048
+    },
+    {
+     "file": "models/people/person-player-none-short/lod1.glb",
+     "distance": 18,
+     "triangles": 3584,
+     "bytes": 63068,
+     "texture": 256
+    }
+   ],
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.0406
+   },
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ],
+   "regions": {
+    "skin": {
+     "id": 1,
+     "base": [
+      0.877,
+      0.66,
+      0.537
+     ]
+    },
+    "shoes": {
+     "id": 4,
+     "base": [
+      0.03,
+      0.027,
+      0.033
+     ]
+    },
+    "pants": {
+     "id": 3,
+     "base": [
+      0.945,
+      0.945,
+      0.945
+     ]
+    },
+    "shirt": {
+     "id": 2,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "vest": {
+     "id": 7,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "tape": {
+     "id": 8,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "hair": {
+     "id": 5,
+     "base": [
+      0.298,
+      0.339,
+      0.339
+     ]
+    },
+    "hat": {
+     "id": 6,
+     "base": [
+      1,
+      1,
+      1
+     ]
+    }
+   }
+  },
+  "person-player-straw-long": {
+   "id": "person-player-straw-long",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (straw, long hair)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.223,
+    1.911,
+    0.53
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-player-straw-long/lod0.glb",
+     "distance": 0,
+     "triangles": 35404,
+     "bytes": 857932,
+     "texture": 2048
+    },
+    {
+     "file": "models/people/person-player-straw-long/lod1.glb",
+     "distance": 18,
+     "triangles": 3741,
+     "bytes": 74812,
+     "texture": 256
+    }
+   ],
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.0406
+   },
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ],
+   "regions": {
+    "skin": {
+     "id": 1,
+     "base": [
+      0.877,
+      0.66,
+      0.537
+     ]
+    },
+    "shoes": {
+     "id": 4,
+     "base": [
+      0.03,
+      0.027,
+      0.033
+     ]
+    },
+    "pants": {
+     "id": 3,
+     "base": [
+      0.945,
+      0.945,
+      0.945
+     ]
+    },
+    "shirt": {
+     "id": 2,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "vest": {
+     "id": 7,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "tape": {
+     "id": 8,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "hair": {
+     "id": 5,
+     "base": [
+      0.21,
+      0.168,
+      0.151
+     ]
+    },
+    "hat": {
+     "id": 6,
+     "base": [
+      0.398,
+      0.383,
+      0.375
+     ]
+    }
+   }
+  },
+  "person-player-straw-short": {
+   "id": "person-player-straw-short",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Player, wardrobe base (straw, short hair)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.223,
+    1.911,
+    0.518
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-player-straw-short/lod0.glb",
+     "distance": 0,
+     "triangles": 33924,
+     "bytes": 798648,
+     "texture": 2048
+    },
+    {
+     "file": "models/people/person-player-straw-short/lod1.glb",
+     "distance": 18,
+     "triangles": 3564,
+     "bytes": 66128,
+     "texture": 256
+    }
+   ],
+   "variants": [
+    {
+     "name": "wardrobe",
+     "material": "tinted per region from the player's outfit (skin, shirt, pants, shoes, hair, hat, vest)"
+    }
+   ],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.0406
+   },
+   "tags": [
+    "player",
+    "male",
+    "worker",
+    "tintable"
+   ],
+   "regions": {
+    "skin": {
+     "id": 1,
+     "base": [
+      0.877,
+      0.66,
+      0.537
+     ]
+    },
+    "shoes": {
+     "id": 4,
+     "base": [
+      0.03,
+      0.027,
+      0.033
+     ]
+    },
+    "pants": {
+     "id": 3,
+     "base": [
+      0.945,
+      0.945,
+      0.945
+     ]
+    },
+    "shirt": {
+     "id": 2,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "vest": {
+     "id": 7,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "tape": {
+     "id": 8,
+     "base": [
+      0.888,
+      0.888,
+      0.888
+     ]
+    },
+    "hair": {
+     "id": 5,
+     "base": [
+      0.298,
+      0.339,
+      0.339
+     ]
+    },
+    "hat": {
+     "id": 6,
+     "base": [
+      0.398,
+      0.383,
+      0.375
+     ]
+    }
+   }
+  },
+  "person-priya": {
+   "id": "person-priya",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Priya",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.012,
+    1.7,
+    0.449
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-priya/lod0.glb",
+     "distance": 0,
+     "triangles": 13509,
+     "bytes": 257064,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-priya/lod1.glb",
+     "distance": 18,
+     "triangles": 2811,
+     "bytes": 56612,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.8996
+   },
+   "tags": [
+    "female",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-raj": {
+   "id": "person-raj",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Raj (site lead)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.258,
+    1.97,
+    0.538
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-raj/lod0.glb",
+     "distance": 0,
+     "triangles": 18229,
+     "bytes": 298528,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-raj/lod1.glb",
+     "distance": 18,
+     "triangles": 3469,
+     "bytes": 57680,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 1.0777
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ]
+  },
+  "person-rosa": {
+   "id": "person-rosa",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Rosa",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.013,
+    1.707,
+    0.492
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-rosa/lod0.glb",
+     "distance": 0,
+     "triangles": 15280,
+     "bytes": 329784,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-rosa/lod1.glb",
+     "distance": 18,
+     "triangles": 3181,
+     "bytes": 63400,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.9198
+   },
+   "tags": [
+    "female",
+    "older",
+    "casual"
+   ]
+  },
+  "person-sam": {
+   "id": "person-sam",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Sam",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.108,
+    1.621,
+    0.475
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-sam/lod0.glb",
+     "distance": 0,
+     "triangles": 19570,
+     "bytes": 332196,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-sam/lod1.glb",
+     "distance": 18,
+     "triangles": 3763,
+     "bytes": 61032,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.863
+   },
+   "tags": [
+    "male",
+    "adult",
+    "worker"
+   ]
+  },
+  "person-sofia": {
+   "id": "person-sofia",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Sofia (office)",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.047,
+    1.744,
+    0.437
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-sofia/lod0.glb",
+     "distance": 0,
+     "triangles": 13130,
+     "bytes": 258016,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-sofia/lod1.glb",
+     "distance": 18,
+     "triangles": 2718,
+     "bytes": 59112,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.9381
+   },
+   "tags": [
+    "female",
+    "adult",
+    "office"
+   ]
+  },
+  "person-town0": {
+   "id": "person-town0",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 0",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.094,
+    1.678,
+    0.498
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-town0/lod0.glb",
+     "distance": 0,
+     "triangles": 11003,
+     "bytes": 245244,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-town0/lod1.glb",
+     "distance": 18,
+     "triangles": 2263,
+     "bytes": 49248,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.8996
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-town1": {
+   "id": "person-town1",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 1",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    0.933,
+    1.533,
+    0.415
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-town1/lod0.glb",
+     "distance": 0,
+     "triangles": 11849,
+     "bytes": 255812,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-town1/lod1.glb",
+     "distance": 18,
+     "triangles": 2448,
+     "bytes": 57192,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.7965
+   },
+   "tags": [
+    "female",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-town2": {
+   "id": "person-town2",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 2",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.072,
+    1.64,
+    0.472
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-town2/lod0.glb",
+     "distance": 0,
+     "triangles": 14031,
+     "bytes": 297012,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-town2/lod1.glb",
+     "distance": 18,
+     "triangles": 2530,
+     "bytes": 54580,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.8738
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-town3": {
+   "id": "person-town3",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 3",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    0.932,
+    1.538,
+    0.383
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-town3/lod0.glb",
+     "distance": 0,
+     "triangles": 14870,
+     "bytes": 318744,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-town3/lod1.glb",
+     "distance": 18,
+     "triangles": 3108,
+     "bytes": 65592,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.7941
+   },
+   "tags": [
+    "female",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-town4": {
+   "id": "person-town4",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 4",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.155,
+    1.747,
+    0.513
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-town4/lod0.glb",
+     "distance": 0,
+     "triangles": 13046,
+     "bytes": 253020,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-town4/lod1.glb",
+     "distance": 18,
+     "triangles": 2703,
+     "bytes": 55108,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.9381
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-town5": {
+   "id": "person-town5",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 5",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.097,
+    1.659,
+    0.462
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-town5/lod0.glb",
+     "distance": 0,
+     "triangles": 12195,
+     "bytes": 291628,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-town5/lod1.glb",
+     "distance": 18,
+     "triangles": 2045,
+     "bytes": 44240,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.8951
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-town6": {
+   "id": "person-town6",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 6",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    0.911,
+    1.494,
+    0.385
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-town6/lod0.glb",
+     "distance": 0,
+     "triangles": 13164,
+     "bytes": 273920,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-town6/lod1.glb",
+     "distance": 18,
+     "triangles": 2734,
+     "bytes": 60172,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.7769
+   },
+   "tags": [
+    "female",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-town7": {
+   "id": "person-town7",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 7",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.038,
+    1.638,
+    0.47
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-town7/lod0.glb",
+     "distance": 0,
+     "triangles": 9558,
+     "bytes": 248684,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-town7/lod1.glb",
+     "distance": 18,
+     "triangles": 1803,
+     "bytes": 41960,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.8953
+   },
+   "tags": [
+    "male",
+    "older",
+    "casual"
+   ]
+  },
+  "person-town8": {
+   "id": "person-town8",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 8",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.095,
+    1.672,
+    0.486
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-town8/lod0.glb",
+     "distance": 0,
+     "triangles": 12595,
+     "bytes": 275156,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-town8/lod1.glb",
+     "distance": 18,
+     "triangles": 2217,
+     "bytes": 50280,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.9036
+   },
+   "tags": [
+    "male",
+    "adult",
+    "casual"
+   ]
+  },
+  "person-town9": {
+   "id": "person-town9",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Townsperson 9",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    0.754,
+    1.264,
+    0.352
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-town9/lod0.glb",
+     "distance": 0,
+     "triangles": 14874,
+     "bytes": 266808,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-town9/lod1.glb",
+     "distance": 18,
+     "triangles": 3044,
+     "bytes": 57840,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.685
+   },
+   "tags": [
+    "female",
+    "child",
+    "casual"
+   ]
+  },
+  "person-tran": {
+   "id": "person-tran",
+   "category": "people",
+   "kind": "skinned",
+   "name": "Ms Tran",
+   "source": "https://github.com/olatunde85/3d-gen",
+   "creator": "Generated with Ara 3D Gen from MakeHuman assets",
+   "creatorUrl": "https://github.com/makehumancommunity",
+   "license": "CC0-1.0",
+   "dimensions": [
+    1.007,
+    1.709,
+    0.41
+   ],
+   "collision": {
+    "shape": "capsule",
+    "radius": 0.3,
+    "height": 1.8,
+    "note": "the character controller's capsule (sim/character.ts); the model is visual only"
+   },
+   "lods": [
+    {
+     "file": "models/people/person-tran/lod0.glb",
+     "distance": 0,
+     "triangles": 13761,
+     "bytes": 269424,
+     "texture": 1024
+    },
+    {
+     "file": "models/people/person-tran/lod1.glb",
+     "distance": 18,
+     "triangles": 2862,
+     "bytes": 60484,
+     "texture": 256
+    }
+   ],
+   "variants": [],
+   "animations": null,
+   "rig": {
+    "hipsY": 0.9212
+   },
+   "tags": [
+    "female",
+    "adult",
+    "office"
+   ]
+  }
+ }
+}

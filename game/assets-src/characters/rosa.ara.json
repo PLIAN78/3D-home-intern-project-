@@ -1,0 +1,48 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "rosa",
+  "seed": 77458,
+  "gender": 0,
+  "african": 0.1,
+  "asian": 0.5,
+  "caucasian": 0.4,
+  "muscle": 0.47000000000000003,
+  "weight": 0.6000000000000001,
+  "height": 0.5700000000000001,
+  "eyes": "darkbrown",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "long01",
+  "hairTint": "#ffffff",
+  "hairColor": "#d9d4cc",
+  "facialHair": "none",
+  "beardColor": "#d9d4cc",
+  "outfit": "none",
+  "accessories": [],
+  "garmentStyles": {
+   "oversized_tee": {
+    "pattern": "jersey",
+    "color": "#6b7f5a",
+    "color2": "#6b7f5a"
+   },
+   "trousers": {
+    "pattern": "solid",
+    "color": "#3d3a36",
+    "color2": "#3d3a36"
+   }
+  },
+  "ageYears": 68,
+  "top": "oversized_tee",
+  "bottom": "trousers",
+  "shoes": "sneakers",
+  "hat": "fedora01"
+ }
+}

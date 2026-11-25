@@ -1,0 +1,48 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "town9",
+  "seed": 17620,
+  "gender": 0,
+  "african": 0,
+  "asian": 0.15,
+  "caucasian": 0.85,
+  "muscle": 0.35,
+  "weight": 0.37,
+  "height": 0.39,
+  "eyes": "brown",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "ponytail01",
+  "hairTint": "#201812",
+  "hairColor": "#201812",
+  "facialHair": "none",
+  "beardColor": "#201812",
+  "outfit": "none",
+  "accessories": [],
+  "garmentStyles": {
+   "oversized_tee": {
+    "pattern": "jersey",
+    "color": "#8a4a5c",
+    "color2": "#8a4a5c"
+   },
+   "cargo_shorts": {
+    "pattern": "solid",
+    "color": "#2c2f36",
+    "color2": "#2c2f36"
+   }
+  },
+  "ageYears": 13,
+  "top": "oversized_tee",
+  "bottom": "cargo_shorts",
+  "shoes": "sneakers",
+  "hat": "none"
+ }
+}

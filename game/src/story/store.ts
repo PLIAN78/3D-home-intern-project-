@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { registerPlayerOutfit } from "../assets/crowd";
 import type { StageId } from "@/lib/models/construction";
 import type { ModeId } from "./economy";
 import { STARTING_STAGES } from "../world/map";
@@ -561,3 +562,6 @@ export function objective(progress: Progress) {
   const step = currentStep(progress);
   return m && step ? { chapter: m.chapter, title: m.title, text: step.text } : null;
 }
+
+// Realistic people tint the player's model with the outfit from the wardrobe (models/PersonModel.tsx).
+registerPlayerOutfit(() => useGame.getState().outfit);

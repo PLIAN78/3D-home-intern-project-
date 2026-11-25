@@ -1,0 +1,56 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "marco",
+  "seed": 56757,
+  "gender": 1,
+  "african": 0.1,
+  "asian": 0.5,
+  "caucasian": 0.4,
+  "muscle": 0.62,
+  "weight": 0.35000000000000003,
+  "height": 0.38,
+  "eyes": "grey",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "short04",
+  "hairTint": "#2b1d14",
+  "hairColor": "#2b1d14",
+  "facialHair": "short_beard",
+  "beardColor": "#2b1d14",
+  "outfit": "none",
+  "accessories": [
+   "gloves",
+   "reflective_vest"
+  ],
+  "garmentStyles": {
+   "uniform_shirt": {
+    "pattern": "solid",
+    "color": "#4a5160",
+    "color2": "#4a5160"
+   },
+   "cargo_pants": {
+    "pattern": "solid",
+    "color": "#3a3f4a",
+    "color2": "#3a3f4a"
+   },
+   "reflective_vest": {
+    "pattern": "solid",
+    "color": "#ff7a00",
+    "color2": "#ff7a00"
+   }
+  },
+  "ageYears": 33,
+  "top": "uniform_shirt",
+  "bottom": "cargo_pants",
+  "shoes": "combat_boots",
+  "hat": "hard_hat"
+ }
+}

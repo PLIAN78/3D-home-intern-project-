@@ -1,4 +1,6 @@
 import { Suspense, useEffect, useRef } from "react";
+import { AssetSystem } from "./assets/AssetSystem";
+import { BENCH, BenchResults, Benchmark, finishBench } from "./assets/Benchmark";
 import { Canvas } from "@react-three/fiber";
 import { PerformanceMonitor } from "@react-three/drei";
 import * as THREE from "three";
@@ -75,6 +77,8 @@ export function App() {
         >
           {/* Drop to fast graphics automatically if the frame rate can't keep up. */}
           <PerformanceMonitor onDecline={() => quality.auto && useQuality.getState().set("low", true)} flipflops={2} />
+          <AssetSystem />
+          {BENCH && <Benchmark onDone={finishBench} />}
           <Suspense fallback={null}>
             <GameEnvironment />
             {phase !== "title" && <>
@@ -104,7 +108,8 @@ export function App() {
       <JobOverlay />
       <V6Panel />
       <Ending />
-      {phase === "title" && <Title />}
+      {phase === "title" && !BENCH && <Title />}
+      <BenchResults />
     </div>
   );
 }

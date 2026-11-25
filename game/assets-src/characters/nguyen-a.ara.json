@@ -1,0 +1,48 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "nguyen-a",
+  "seed": 40557,
+  "gender": 1,
+  "african": 0,
+  "asian": 0.15,
+  "caucasian": 0.85,
+  "muscle": 0.54,
+  "weight": 0.5700000000000001,
+  "height": 0.56,
+  "eyes": "darkbrown",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "buzz",
+  "hairTint": "#1a1612",
+  "hairColor": "#1a1612",
+  "facialHair": "none",
+  "beardColor": "#1a1612",
+  "outfit": "none",
+  "accessories": [],
+  "garmentStyles": {
+   "uniform_shirt_long": {
+    "pattern": "solid",
+    "color": "#e0a000",
+    "color2": "#e0a000"
+   },
+   "trousers": {
+    "pattern": "solid",
+    "color": "#30343c",
+    "color2": "#30343c"
+   }
+  },
+  "ageYears": 37,
+  "top": "uniform_shirt_long",
+  "bottom": "trousers",
+  "shoes": "loafers",
+  "hat": "none"
+ }
+}

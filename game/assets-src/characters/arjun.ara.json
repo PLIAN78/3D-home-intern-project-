@@ -1,0 +1,48 @@
+{
+ "kind": "ara-character",
+ "version": 1,
+ "params": {
+  "name": "arjun",
+  "seed": 72003,
+  "gender": 1,
+  "african": 0.4,
+  "asian": 0.35,
+  "caucasian": 0.25,
+  "muscle": 0.45,
+  "weight": 0.4,
+  "height": 0.5800000000000001,
+  "eyes": "darkbrown",
+  "eyelashes": "none",
+  "teeth": "none",
+  "tongue": false,
+  "faceShapes": false,
+  "detail": "low",
+  "rig": "game_lite",
+  "restPose": "A",
+  "animations": false,
+  "hair": "short04",
+  "hairTint": "#151010",
+  "hairColor": "#151010",
+  "facialHair": "short_beard",
+  "beardColor": "#151010",
+  "outfit": "none",
+  "accessories": [],
+  "garmentStyles": {
+   "uniform_shirt_long": {
+    "pattern": "solid",
+    "color": "#4b6a88",
+    "color2": "#4b6a88"
+   },
+   "trousers": {
+    "pattern": "solid",
+    "color": "#4a4a4a",
+    "color2": "#4a4a4a"
+   }
+  },
+  "ageYears": 29,
+  "top": "uniform_shirt_long",
+  "bottom": "trousers",
+  "shoes": "loafers",
+  "hat": "none"
+ }
+}
