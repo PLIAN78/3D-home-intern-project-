@@ -5,7 +5,7 @@ import { waterNormalMap } from "../render/textures";
 import { B, Sign } from "./props";
 import { mat } from "../render/materials";
 import { groundAt, LAKE_Y, PLAY_HALF } from "./terrain";
-import { BEACH, bankProfile, SHORES, type Shore } from "./shores";
+import { BEACH, bankProfile, SHORES, type Shore } from "./shoreline";
 import { MEADOW_WAY_Z } from "./meadows";
 import { riverWidth, riverZ } from "./v6";
 

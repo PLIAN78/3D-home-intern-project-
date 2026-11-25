@@ -250,7 +250,7 @@ describe("v6.3 University of Vataloo campus", () => {
 
 import { BUSINESSES, CITY_BLOCKS, CITY_LOOPS, NORTH_ROADS, riverfrontZ } from "../game/src/world/v6";
 import { MALL, MALL_DOORS, MALL_STORES, LOST_BEAR, mallBoxes, inMall } from "../game/src/world/mall";
-import { SHORES, BEACH } from "../game/src/world/shores";
+import { SHORES, BEACH } from "../game/src/world/shoreline";
 import { signalAt, mayGo, signalPoints, SIGNAL_CYCLE } from "../game/src/world/signals";
 import { OWAWA_ROADS } from "../game/src/world/owawa";
 import { useV6 as v6, v6Offer as offer } from "../game/src/story/v6Store";

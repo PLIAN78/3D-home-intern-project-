@@ -2,7 +2,7 @@ import { riverZ,riverWidth,ISLANDS,ISLAND_WALKS,NORTH_ROADS,RAIL_PATH,STATION_AC
 import { MEADOW_PAVING, MEADOW_STREET_NAMES, MEADOW_X, MEADOW_Z } from "../world/meadows";
 import { CAMPUS_BUILDINGS, CAMPUS_LAWNS, COLUMBIA_Z, CREEK_WIDTH, LAUREL_CREEK, RING } from "../world/campus";
 import { CITY_STREET_NAMES } from "../world/owawaCity";
-import { BEACH, SHORES } from "../world/shores";
+import { BEACH, SHORES } from "../world/shoreline";
 
 /** Short names for the campus buildings, as on the campus map. */
 const CAMPUS_SHORT: Record<string, string> = {
