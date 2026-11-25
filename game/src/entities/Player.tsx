@@ -61,6 +61,8 @@ export function Player() {
   const root = useRef<THREE.Group>(null);
   const tilt = useRef<THREE.Group>(null);
   const jetVisible = useRef<THREE.Group>(null);
+  const swimBlend = useRef(0);
+  const wasSwimming = useRef(false);
 
   useFrame((_, rawDt) => {
     const s = host.sim;
@@ -138,7 +140,16 @@ export function Player() {
       grp.position.set(pose.x, pose.y, pose.z);
       grp.quaternion.set(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
     }
-    if (tilt.current) tilt.current.rotation.set(-s.player.roll, 0, -s.player.pitch);
+    if (tilt.current) {
+      // Swimming: lie flat in the water (head forward), bobbing a little.
+      const swim = s.player.swimming && s.control.kind === "foot";
+      swimBlend.current += ((swim ? 1 : 0) - swimBlend.current) * Math.min(1, dt * 5);
+      const k = swimBlend.current, bob = Math.sin(performance.now() / 420) * 0.05 * k;
+      tilt.current.rotation.set(-s.player.roll * (1 - k), 0, -s.player.pitch * (1 - k) - 1.38 * k);
+      tilt.current.position.set(0, bob - 0.35 * k, 0);
+      if (swim && !wasSwimming.current) g.toast("Swimming · Shift to swim faster");
+      wasSwimming.current = swim;
+    }
     if (jetVisible.current) jetVisible.current.visible = s.player.jetpack;
   }, -30);
 
@@ -152,7 +163,7 @@ export function Player() {
           <group position={[0, -1, 0]}>
             <Human
               outfit={outfit}
-              pose={() => (useGame.getState().panel === "desk" ? "sit" : "auto")}
+              pose={() => (useGame.getState().panel === "desk" ? "sit" : p.swimming ? "swim" : "auto")}
               motion={{ speed: () => (p.grounded ? p.speed : 0), airborne: () => !p.grounded }}
             />
             <group ref={jetVisible} visible={false}>

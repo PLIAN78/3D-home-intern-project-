@@ -1,9 +1,9 @@
 /** V6 world contract. All coordinates are metres; +z is south. Runtime imports: pure data only (meadows.ts). */
 import { MEADOW_BUILDINGS, MEADOW_ROADS } from "./meadows";
 import { buildNorthCity, businessSpots, cityLoops } from "./owawaCity";
-import { CAMPUS_BUILDINGS, CAMPUS_LOOPS, CAMPUS_ROADS, CAMPUS_WALKS, DOOR_PATHS, LAUREL_CREEK, CREEK_WIDTH } from "./campus";
+import { CAMPUS_BUILDINGS, CAMPUS_LOOPS, CAMPUS_ROADS, CAMPUS_TREE_SPOTS, CAMPUS_WALKWAYS } from "./campus";
 export type Point = [number, number];
-export const V6_VERSION = "6.2.0";
+export const V6_VERSION = "6.4.0";
 /** Water surface of Heron Lake and the Owawa River (terrain.ts LAKE_Y). */
 export const WATER_LEVEL = -1.4;
 export const riverZ = (x: number) => -555 + x * 0.07 + 24 * Math.sin(x / 240);
@@ -24,7 +24,7 @@ export const NORTH_SHORE_Z = (x: number) => {
 export function inNorthCity(x: number,z:number,pad=0) {
   return x>-950-pad && x<955+pad && z>-945-pad && z<NORTH_SHORE_Z(x)+pad;
 }
-export const CAMPUS = { x0:490,z0:505,x1:940,z1:930 };
+export const CAMPUS = { x0:495,z0:505,x1:965,z1:1000 };
 export const AIRPORT = { x0:-940,z0:-310,x1:-635,z1:270 };
 export const SUBURBS = [
  {x0:-600,z0:-260,x1:-455,z1:370},
@@ -46,6 +46,8 @@ export interface V6Building {
  id:string; name:string; at:Point; size:[number,number,number];
  kind:"condo"|"shop"|"campus"|"historic"|"terminal"|"gym"|"tower";
  tone:number; level:"ground"|"city"|"island";
+ /** Campus buildings: rotated wings (the box above covers them all) and the door, just outside. */
+ wings?:{c:Point;w:number;d:number;h:number;rot:number}[]; door?:Point;
 }
 export interface V6Road { id:string; from:Point; to:Point; width:number; sidewalkWidth:number; boulevardWidth:number }
 const dims={width:9,sidewalkWidth:2,boulevardWidth:2};
@@ -71,7 +73,7 @@ export const RIVER_WALK:Point[] = Array.from({length:25},(_,i)=>{const x=-930+i*
 export const NORTH_ROADS:V6Road[] = RIVER_WALK.slice(1).map((p,i)=>rd("riverfront-"+i,RIVER_WALK[i],p));
 // The two north-shore bridgeheads: a short stub on the river side so the riverfront's
 // curb and sidewalk open for the bridge road (the bridge streets are part of Owawa's grid).
-for(const x of [BRIDGES[0].x,BRIDGES[1].x])NORTH_ROADS.push(rd("bridgehead-"+x,[x,NORTH_SHORE_Z(x)+BRIDGEHEAD_STUB],[x,NORTH_SHORE_Z(x)]));
+for(const x of [BRIDGES[0].x,BRIDGES[1].x])NORTH_ROADS.push(rd("bridgehead-"+x,[x,NORTH_SHORE_Z(x)+BRIDGEHEAD_STUB],[x,riverfrontZ(x)]));
 export function distanceToSegment(x:number,z:number,a:Point,b:Point) {
  const dx=b[0]-a[0],dz=b[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz)));
  return Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t);
@@ -151,18 +153,11 @@ export const BUSINESSES=businessSpots(northCity.buildings);
 export const CITY_LOOPS=cityLoops(northCity.roads);
 for(const [i,at] of ([[530,100],[720,105],[810,245],[-570,95],[-570,265],[65,560],[-245,565]] as Point[]).entries())
  V6_BUILDINGS.push({id:"strip-"+i,name:["RIDGE COFFEE · PHARMACY","GROCER · BAKERY","EASTSIDE STRIP MALL","WEST MARKET","BOOKS · CAFE","SOUTH COMMONS","CYCLE · GARDEN SHOP"][i],at,size:[42,18,7],kind:"shop",tone:i%4,level:"ground"});
-/** Campus footpaths: the walks, the paths from every door, and the paths from the station and St. Jerome's. */
-export const CAMPUS_PATHS:Point[][]=[...CAMPUS_WALKS,...DOOR_PATHS];
-export const CAMPUS_TREES:( {position:Point;y:number;scale:number;variant:0|1|2})[]=[];
-// Trees on the campus lawns and along the creek (a loose grid, jittered), clear of roads, buildings, paths and the water.
-for(let gx=480;gx<935;gx+=21)for(let gz=535;gz<925;gz+=21){
- const x=gx+Math.sin(gx*12.9898+gz*78.233)*6,z=gz+Math.sin(gx*39.346+gz*11.135)*6;
- if(!roadClear(x,z,SUBURB_ROADS,3)||V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+6&&Math.abs(z-b.at[1])<b.size[1]/2+6))continue;
- if(CAMPUS_PATHS.some(p=>p.slice(1).some((b,i)=>distanceToSegment(x,z,p[i],b)<5)))continue;
- if(LAUREL_CREEK.slice(1).some((b,i)=>distanceToSegment(x,z,LAUREL_CREEK[i],b)<CREEK_WIDTH/2+3))continue;
- if((x*7+z*13)%5===0)continue;
- CAMPUS_TREES.push({position:[x,z],y:0,scale:.72+((x+z)%3)*.12,variant:0});
-}
+/** Campus footpaths: the main walks and the paths from every door (campus.ts). */
+export const CAMPUS_PATHS:Point[][]=CAMPUS_WALKWAYS.map(w=>w.points);
+export {CAMPUS_WALKWAYS};
+/** Trees on the campus lawns and along Laurel Creek. */
+export const CAMPUS_TREES:( {position:Point;y:number;scale:number;variant:0|1|2})[]=CAMPUS_TREE_SPOTS.map(([x,z,s],i)=>({position:[x,z],y:0,scale:s,variant:(i%5===0?2:0)}));
 export const STUDENT_LOOPS:Point[][]=CAMPUS_LOOPS;
 export const SUBJECTS=[
  {id:"engineering",question:"A panel line makes 12 panels in 3 minutes. How many in 15 minutes?",choices:["48 panels","60 panels","72 panels"],correct:1,explanation:"12 ÷ 3 = 4 panels/minute; 4 × 15 = 60."},
@@ -255,8 +250,8 @@ const ACCESS: Record<string, AccessSpec> = {
  owawa: { side: 1, along: 0, face: [-1, 0], path: [[685.6, -407.9]], extra: [[[696, -415], [697.5, -432], [698.6, -446], [696.8, -452.5]]] },
  // North through the walkway between lots 49 and 50 to the East Link sidewalk.
  centre: { side: -1, along: 3, face: [1, 0], path: [[457.5, 346.6], [457.5, 308.2]] },
- // East to the campus path toward the quad.
- university: { side: -1, along: 0, face: [0, 1], path: [[476, 558]] },
+ // South-east to Ring Road's outer sidewalk (the campus paths start there).
+ university: { side: -1, along: 0, face: [0, 1], path: [[476, 560], [521.6, 613.8]] },
  // North through the walkway between lots 200 and 201 to the South Return sidewalk.
  south: { side: 1, along: 0, face: [1, 0], path: [[-158.5, 658], [-158.5, 619.2]] },
 };

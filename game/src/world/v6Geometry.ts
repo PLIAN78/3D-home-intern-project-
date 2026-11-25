@@ -2,7 +2,7 @@ import type {Box} from "./map";
 import {CITY_Y,LAKE_Y,groundAt} from "./terrain";
 import {V6_BUILDINGS,RAIL_Y,BRIDGES,STATION_ACCESS,STATION_LIFT,STATION_PLATFORM} from "./v6";
 import {railPosts,RAIL_POST_SIZE} from "./railPosts";
-import {SKYBRIDGE} from "./campus";
+import {SKYBRIDGE,SKYBRIDGES} from "./campus";
 export const buildingY=(b:typeof V6_BUILDINGS[number])=>b.level==="city"?CITY_Y:b.level==="island"?LAKE_Y+2.5:0;
 export {BRIDGES};
 export function v6Boxes():Box[]{
@@ -10,6 +10,8 @@ export function v6Boxes():Box[]{
  const add=(x:number,z:number,w:number,d:number,h:number,y:number,id:string)=>out.push({x0:x-w/2,x1:x+w/2,z0:z-d/2,z1:z+d/2,h,y,id,kind:"landmark"});
  for(const b of V6_BUILDINGS){
   const [w,d,h]=b.size,y=buildingY(b),[x,z]=b.at;
+  // Campus buildings: one turned box per wing.
+  if(b.wings){for(const g of b.wings)out.push({x0:g.c[0]-g.w/2,x1:g.c[0]+g.w/2,z0:g.c[1]-g.d/2,z1:g.c[1]+g.d/2,h:g.h,y,rot:g.rot,id:b.id,kind:"landmark"});continue;}
   if(b.id==="loan-tower"||b.id==="condo-tower"){
    // Tall shells with real lobbies and an upper visitable floor. Door in the south wall.
    add(x,z,w,d,.25,y,b.id);add(x,z,w,d,.25,y+48,b.id);add(x,z,w,d,.25,y+53,b.id);
@@ -37,6 +39,6 @@ export function v6Boxes():Box[]{
  add(-735,-100,10,10,30,0,"control-tower");
  add(-650,145,45,70,14,0,"parking-garage");
  add(-680,130,28,5,3,5.5,"airport-skybridge");
- add(SKYBRIDGE.x,(SKYBRIDGE.z0+SKYBRIDGE.z1)/2,SKYBRIDGE.width,SKYBRIDGE.z1-SKYBRIDGE.z0+2,SKYBRIDGE.height,SKYBRIDGE.y,"campus-skybridge");
+ for(const s of SKYBRIDGES)out.push({x0:s.mid[0]-s.length/2,x1:s.mid[0]+s.length/2,z0:s.mid[1]-SKYBRIDGE.width/2,z1:s.mid[1]+SKYBRIDGE.width/2,h:SKYBRIDGE.height,y:SKYBRIDGE.y,rot:s.heading,id:"campus-skybridge",kind:"landmark"});
  return out;
 }

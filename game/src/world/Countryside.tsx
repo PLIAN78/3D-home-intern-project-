@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { groundGrass, mat } from "../render/materials";
+import { groundHills, mat } from "../render/materials";
 import { HAZE } from "./Environment";
 import { CAIVAN_RIDGE } from "./map";
 import { fbm, FLAT_HALF, naturalHeight, PLAY_HALF, TERRAIN_STEP, terrainHeight } from "./terrain";
@@ -134,8 +134,8 @@ export function Countryside() {
   const forest = useMemo(() => forestGeometry(), []);
   return (
     <group name="Countryside">
-      <mesh geometry={hills} material={groundGrass()} receiveShadow />
-      <mesh geometry={horizon} material={groundGrass()} receiveShadow />
+      <mesh geometry={hills} material={groundHills()} receiveShadow />
+      <mesh geometry={horizon} material={groundHills()} receiveShadow />
       <mesh geometry={forest} material={mat("#3f5a2c", { rough: 0.95 })} />
       {/* Far horizon band, so the sky never meets bare ground */}
       <mesh position={[0, -2, 0]} rotation={[-Math.PI / 2, 0, 0]} material={mat(HAZE, { rough: 1 })}>

@@ -50,6 +50,10 @@ export const JETPACK = {
   hardLanding: 13,
 };
 
+/** Swimming: water deeper than this over your feet (m) floats you; speeds in m/s. */
+export const SWIM_DEPTH = 0.9;
+export const SWIM = { speed: 2.4, fast: 3.8, accel: 6, turnRate: 5 };
+
 /** Centre of the capsule above the feet. */
 const CENTRE = FOOT.halfHeight + FOOT.radius;
 
@@ -77,6 +81,8 @@ export class CharacterController {
   runBoost = 1;
   fuelBurn = 1;
   thrusting = false;
+  /** In deep water (set by the simulation each step): slower, no jumping, the swim stroke. */
+  swimming = false;
   /** Body lean for rendering (radians): forward pitch and sideways roll while flying or running. */
   pitch = 0;
   roll = 0;
@@ -160,8 +166,8 @@ export class CharacterController {
       this.vel.x = nx;
       this.vel.z = nz;
     } else {
-      const top = (intent.sprint ? FOOT.run : FOOT.walk) * this.runBoost;
-      const accel = (this.grounded ? FOOT.groundAccel : FOOT.airAccel) * dt;
+      const top = this.swimming ? (intent.sprint ? SWIM.fast : SWIM.speed) : (intent.sprint ? FOOT.run : FOOT.walk) * this.runBoost;
+      const accel = (this.swimming ? SWIM.accel : this.grounded ? FOOT.groundAccel : FOOT.airAccel) * dt;
       const tx = dirX * top * mag;
       const tz = dirZ * top * mag;
       const dx = tx - this.vel.x;
@@ -175,7 +181,7 @@ export class CharacterController {
     }
 
     // Vertical motion
-    if (this.grounded && intent.jump) {
+    if (this.grounded && intent.jump && !this.swimming) {
       this.vel.y = FOOT.jumpSpeed;
       this.grounded = false;
     }
@@ -196,7 +202,7 @@ export class CharacterController {
     const sp = Math.hypot(this.vel.x, this.vel.z);
     if (sp > 0.4 && (mag > 0 || flying)) {
       const want = Math.atan2(this.vel.z, this.vel.x);
-      this.heading += angleDelta(this.heading, want) * damp(flying ? 4 : FOOT.turnRate, dt);
+      this.heading += angleDelta(this.heading, want) * damp(flying ? 4 : this.swimming ? SWIM.turnRate : FOOT.turnRate, dt);
     }
     // Lean into acceleration: a jetpack pilot tilts the way they're pushing.
     const cosH = Math.cos(this.heading);
@@ -225,6 +231,12 @@ export class CharacterController {
     if (this.grounded && !wasGrounded) {
       if (fallSpeed > JETPACK.hardLanding) this.landedHard = fallSpeed;
       this.vel.y = 0;
+    }
+    // Swimming into the shallows: where the bed rises past the floor you float on, kick up
+    // onto it instead of stalling in the crease between them.
+    if (this.swimming && mag > 0 && Math.hypot(moved.x, moved.z) < 0.5 * Math.hypot(desired.x, desired.z)) {
+      this.vel.y = Math.max(this.vel.y, 3);
+      this.grounded = false;
     }
 
     this.x += moved.x;

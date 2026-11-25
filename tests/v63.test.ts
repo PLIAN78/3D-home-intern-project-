@@ -174,79 +174,8 @@ describe("v6.3 engine sounds and volume", () => {
   });
 });
 
-import { CAMPUS_BUILDINGS, CAMPUS_ROADS, CAMPUS_WALKS, DOOR_PATHS, LAUREL_CREEK, CREEK_WIDTH, PATH_HALF_WIDTH, RING, RING_POINTS, COLUMBIA_Z } from "../game/src/world/campus";
-import { SUBJECTS, SUBURB_ROADS as ALL_ROADS, distanceToSegment as dseg, type Point as P } from "../game/src/world/v6";
-
-describe("v6.3 University of Vataloo campus", () => {
-  const rect = (b: (typeof CAMPUS_BUILDINGS)[number], pad = 0) => ({ x0: b.at[0] - b.size[0] / 2 - pad, x1: b.at[0] + b.size[0] / 2 + pad, z0: b.at[1] - b.size[1] / 2 - pad, z1: b.at[1] + b.size[1] / 2 + pad });
-  const inside = (x: number, z: number, r: ReturnType<typeof rect>) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1;
-  const roadGap = (x: number, z: number) => Math.min(...ALL_ROADS.map((r) => dseg(x, z, r.from, r.to) - r.width / 2 - r.boulevardWidth - r.sidewalkWidth));
-
-  it("runs north to south like the campus map: athletics and math up top, the library mid-south, arts at the bottom", () => {
-    const at = (id: string) => CAMPUS_BUILDINGS.find((b) => b.id === id)!.at;
-    expect(at("gym")[1]).toBeLessThan(at("cafeteria")[1]);
-    expect(at("qnc")[1]).toBeLessThan(at("porter")[1]);
-    expect(at("math")[1]).toBeLessThan(at("porter")[1]);
-    expect(at("porter")[1]).toBeLessThan(at("arts")[1]);
-    expect(at("gym")[0]).toBeLessThan(at("math")[0]);
-    expect(at("qnc")[0]).toBeLessThan(at("math")[0]);
-    expect(at("principal")[0]).toBeLessThan(at("porter")[0]);
-    expect(at("stj")[0]).toBeLessThan(RING.x0);
-    expect(at("engineering")[0]).toBeGreaterThan(RING.x1);
-    for (const s of SUBJECTS) expect(CAMPUS_BUILDINGS.some((b) => b.id === s.id), s.id).toBe(true);
-  });
-
-  it("closes Ring Road into a loop inside Columbia Street, linked to it and to the east suburbs", () => {
-    const ring = CAMPUS_ROADS.filter((r) => r.id.startsWith("vataloo-ring"));
-    expect(ring.length).toBe(RING_POINTS.length);
-    ring.forEach((r, i) => expect(r.to).toEqual(ring[(i + 1) % ring.length].from));
-    for (const id of ["ring-link-west", "ring-link-east"]) {
-      const l = CAMPUS_ROADS.find((r) => r.id === id)!;
-      expect(l.from[1]).toBe(COLUMBIA_Z);
-      expect(Math.min(...ring.map((r) => dseg(l.to[0], l.to[1], r.from, r.to)))).toBeLessThan(0.01);
-    }
-    const approach = CAMPUS_ROADS.find((r) => r.id === "campus-approach")!;
-    expect(approach.to[1]).toBe(COLUMBIA_Z);
-    expect(ALL_ROADS.some((r) => r.id === "east-link" && dseg(approach.from[0], approach.from[1], r.from, r.to) < 0.01)).toBe(true);
-  });
-
-  it("keeps buildings apart and set back from the roads, with paths that miss every building", () => {
-    for (let i = 0; i < CAMPUS_BUILDINGS.length; i++) {
-      const a = rect(CAMPUS_BUILDINGS[i]);
-      for (const [x, z] of [[a.x0, a.z0], [a.x1, a.z0], [a.x0, a.z1], [a.x1, a.z1], [(a.x0 + a.x1) / 2, a.z0], [(a.x0 + a.x1) / 2, a.z1], [a.x0, (a.z0 + a.z1) / 2], [a.x1, (a.z0 + a.z1) / 2]]) expect(roadGap(x, z), CAMPUS_BUILDINGS[i].id).toBeGreaterThan(4);
-      for (let j = i + 1; j < CAMPUS_BUILDINGS.length; j++) {
-        const b = rect(CAMPUS_BUILDINGS[j]);
-        expect(Math.max(b.x0 - a.x1, a.x0 - b.x1, b.z0 - a.z1, a.z0 - b.z1), CAMPUS_BUILDINGS[i].id + "/" + CAMPUS_BUILDINGS[j].id).toBeGreaterThan(5);
-      }
-    }
-    const paths = [...CAMPUS_WALKS, ...DOOR_PATHS];
-    for (const p of paths) for (let k = 0; k < p.length - 1; k++) for (let t = 0; t <= 1; t += 0.02) {
-      const x = p[k][0] + (p[k + 1][0] - p[k][0]) * t, z = p[k][1] + (p[k + 1][1] - p[k][1]) * t;
-      for (const b of CAMPUS_BUILDINGS) {
-        const own = Math.abs(p[0][0] - b.at[0]) < 0.01 && Math.abs(p[0][1] - (b.at[1] + b.size[1] / 2 + 0.3)) < 0.01;
-        expect(inside(x, z, rect(b, own && Math.hypot(x - p[0][0], z - p[0][1]) < PATH_HALF_WIDTH + 1 ? 0 : PATH_HALF_WIDTH)), `path ${JSON.stringify(p)} through ${b.id}`).toBe(false);
-      }
-      // Paths stay off carriageways (they end on sidewalks).
-      expect(roadGap(x, z) + 2 + 2, JSON.stringify(p)).toBeGreaterThan(-0.01);
-    }
-    // Every building has a path from its door (St. Jerome's has its own over the creek).
-    for (const b of CAMPUS_BUILDINGS) expect(paths.some((p) => Math.abs(p[0][0] - b.at[0]) < 0.01 && Math.abs(p[0][1] - (b.at[1] + b.size[1] / 2 + 0.3)) < 0.01), b.id).toBe(true);
-  });
-
-  it("keeps Laurel Creek clear of buildings, with footbridges where paths cross it", () => {
-    for (const b of CAMPUS_BUILDINGS) for (let i = 0; i < LAUREL_CREEK.length - 1; i++) for (let t = 0; t <= 1; t += 0.05) {
-      const x = LAUREL_CREEK[i][0] + (LAUREL_CREEK[i + 1][0] - LAUREL_CREEK[i][0]) * t, z = LAUREL_CREEK[i][1] + (LAUREL_CREEK[i + 1][1] - LAUREL_CREEK[i][1]) * t;
-      expect(inside(x, z, rect(b, CREEK_WIDTH / 2 + 2)), b.id).toBe(false);
-    }
-    const crossings = CAMPUS_WALKS.filter((p) => p.slice(1).some((q, k) => LAUREL_CREEK.slice(1).some((c, j) => {
-      // Segment intersection test.
-      const [a, b2, c0, d] = [p[k], q, LAUREL_CREEK[j], c] as P[];
-      const cross = (o: P, u: P, v: P) => (u[0] - o[0]) * (v[1] - o[1]) - (u[1] - o[1]) * (v[0] - o[0]);
-      return cross(a, b2, c0) * cross(a, b2, d) < 0 && cross(c0, d, a) * cross(c0, d, b2) < 0;
-    })));
-    expect(crossings.length).toBe(2);
-  });
-});
+// The campus tests moved to v64.test.ts with the rebuilt campus.
+import { distanceToSegment as dseg, type Point as P } from "../game/src/world/v6";
 
 import { BUSINESSES, CITY_BLOCKS, CITY_LOOPS, NORTH_ROADS, riverfrontZ } from "../game/src/world/v6";
 import { MALL, MALL_DOORS, MALL_STORES, LOST_BEAR, mallBoxes, inMall } from "../game/src/world/mall";

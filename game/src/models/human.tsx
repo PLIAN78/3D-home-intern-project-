@@ -124,7 +124,7 @@ export const TOWNSFOLK: Outfit[] = [
   { skin: "#dcae88", shirt: "#8a4a5c", pants: "#2c2f36", shoes: "#2d2d2d", hair: "#201812", longHair: true, scale: 0.7 },
 ];
 
-export type Pose = "auto" | "sit" | "ride" | "fly" | "wave";
+export type Pose = "auto" | "sit" | "ride" | "fly" | "wave" | "swim";
 
 /** Live values the figure reads every frame (so it never re-renders React). */
 export interface Motion {
@@ -288,6 +288,29 @@ export function Human({
       set(j.elbowL, 0, 0, ride ? 0.7 : 0.45);
       set(j.elbowR, 0, 0, ride ? 0.7 : 0.45);
       set(j.head, 0, 0, 0.08);
+      return;
+    }
+
+    if (pose === "swim") {
+      // Front crawl (the body is laid flat by the parent): arms wheel over in turn,
+      // legs flutter, the head turns up to look ahead. Treading water when still.
+      const moving = Math.min(1, speed / 1.5);
+      phase.current += dt * (1.6 + speed * 1.1);
+      const p = phase.current;
+      if (j.hips) j.hips.position.set(0, 0.95, 0);
+      set(j.spine, 0, 0, 0);
+      set(j.head, 0, 0, -0.75 * moving - 0.2);
+      set(j.armL, 0.2, 0, -p * moving + (1 - moving) * Math.sin(p * 2) * 0.6);
+      set(j.armR, -0.2, 0, (-p - Math.PI) * moving - (1 - moving) * Math.sin(p * 2) * 0.6);
+      set(j.elbowL, 0, 0, 0.25 + 0.3 * Math.max(0, Math.sin(p)));
+      set(j.elbowR, 0, 0, 0.25 + 0.3 * Math.max(0, Math.sin(p + Math.PI)));
+      const kick = Math.sin(p * 3) * (0.22 + 0.15 * moving);
+      set(j.thighL, 0.05, 0, kick);
+      set(j.thighR, -0.05, 0, -kick);
+      set(j.kneeL, 0, 0, -0.15 - Math.max(0, kick) * 0.6);
+      set(j.kneeR, 0, 0, -0.15 - Math.max(0, -kick) * 0.6);
+      set(j.footL, 0, 0, 0.5);
+      set(j.footR, 0, 0, 0.5);
       return;
     }
 

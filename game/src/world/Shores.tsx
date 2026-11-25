@@ -43,6 +43,8 @@ export function WorldWater() {
  * over the ends of the beach.
  */
 const BANK: [number, string][] = [[-3, "#86836a"], [-1.2, "#9a9172"], [0, "#a39673"], [1.2, "#a8a07c"], [2.2, "#9aa071"], [3.2, "#8f9a6a"], [4.2, "#84965f"], [5, "#7c9358"]];
+/** North of the river the bank is a stone edge into the paving. */
+const QUAY: [number, string][] = [[-3, "#7f7d6e"], [-1.2, "#8a887c"], [0, "#97948a"], [1.2, "#a4a29a"], [2.2, "#acaaa3"], [3.2, "#b0aea8"], [4.2, "#b2b0aa"], [5, "#b4b2ac"]];
 const SAND: [number, string][] = [[-4, "#9d9372"], [-1.5, "#c2b48a"], [0, "#d3c49a"], [2, "#e0d2a8"], [8, "#e6d9b2"], [16, "#e2d4a9"], [BEACH.depth, "#c9c497"], [BEACH.depth + 3, "#8d9b62"]];
 const smooth = (e0: number, e1: number, x: number) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
 
@@ -53,7 +55,9 @@ function bankGeometry(s: Shore) {
   s.points.forEach(([x, z], i) => {
     const [nx, nz] = s.normals[i];
     const w = s.id.startsWith("river-south") ? smooth(BEACH.x0 - 12, BEACH.x0 + 4, x) * (1 - smooth(BEACH.x1 - 4, BEACH.x1 + 12, x)) : 0;
-    BANK.forEach(([bd, bhex], k) => {
+    // Paved north shore (the same line as the ground's paving, terrain groundHills).
+    const north = s.id.startsWith("river-north") || (s.id.startsWith("lake") && z < riverZ(x) - riverWidth(x) / 2);
+    (north ? QUAY : BANK).forEach(([bd, bhex], k) => {
       const [sd, shex] = SAND[k];
       const dd = bd + (sd - bd) * w;
       c.set(bhex).lerp(c2.set(shex), w);
@@ -64,10 +68,18 @@ function bankGeometry(s: Shore) {
       col.push(c.r, c.g, c.b);
     });
   });
+  // Wind every triangle to face up: strips run either way round (the north bank and Heron Bay
+  // run opposite to the south bank), and a downward face lit from below rendered black.
+  const up = (i: number, j: number, k: number) => {
+    const ax = pos[j * 3] - pos[i * 3], az = pos[j * 3 + 2] - pos[i * 3 + 2], bx = pos[k * 3] - pos[i * 3], bz = pos[k * 3 + 2] - pos[i * 3 + 2];
+    return az * bx - ax * bz > 0;
+  };
+  const tri = (i: number, j: number, k: number) => (up(i, j, k) ? idx.push(i, j, k) : idx.push(i, k, j));
   for (let i = 0; i < s.points.length - 1; i++)
     for (let k = 0; k < rows - 1; k++) {
       const a = i * rows + k, b = a + 1, cc = a + rows, d = cc + 1;
-      idx.push(a, b, cc, b, d, cc);
+      tri(a, b, cc);
+      tri(b, d, cc);
     }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));

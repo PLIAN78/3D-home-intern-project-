@@ -1,3 +1,4 @@
+import { PAVE_SETBACK } from "../world/paving";
 import * as THREE from "three";
 import { asphaltMaps, barkMaps, concreteMaps, dirtMaps, grassMaps, lumberMaps, macroVariationTexture, osbMaps, shingleMaps, sidingMaps, type PbrMaps } from "./textures";
 
@@ -149,6 +150,63 @@ export const groundGrass = () => surface("grass", grassMaps(), 3.2, { normalScal
 export const groundAsphalt = () => surface("asphalt", asphaltMaps(), 4, { normalScale: 0.6, macro: 0.18 });
 export const groundConcrete = () => surface("concrete", concreteMaps(), 1.6, { normalScale: 0.5, macro: 0.12 });
 export const groundDirt = () => surface("dirt", dirtMaps(), 3, { normalScale: 1, macro: 0.25 });
+
+/**
+ * The hills and fields, with everything north of the Owawa River paved: grass
+ * south of the river and on Heron Gardens Island, concrete paving across the
+ * north shore down to the water (the river and lake beds stay natural). The
+ * split follows the river's north edge (the same river formula as v6.ts) and
+ * fades out beyond the edge of the playable area.
+ */
+export function groundHills() {
+  let m = physical.get("hills") as unknown as THREE.MeshStandardMaterial | undefined;
+  if (!m) {
+    const g = grassMaps(), c = concreteMaps();
+    const mm = new THREE.MeshStandardMaterial({ map: g.map, normalMap: g.normalMap, roughnessMap: g.roughnessMap, roughness: 1, color: "#ffffff", normalScale: new THREE.Vector2(0.8, 0.8) });
+    worldMapped(mm, 3.2, 0.3);
+    const base = mm.onBeforeCompile;
+    mm.onBeforeCompile = (shader, renderer) => {
+      base.call(mm, shader, renderer);
+      shader.uniforms.uPave = { value: c.map };
+      shader.vertexShader = shader.vertexShader
+        .replace("#include <common>", "#include <common>\nvarying float vWorldY;")
+        .replace("#include <project_vertex>", "#include <project_vertex>\nvWorldY = (modelMatrix * vec4(transformed, 1.0)).y;");
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          `#include <common>
+          uniform sampler2D uPave;
+          varying float vWorldY;
+          float paveAmount(vec2 p, float y) {
+            float rz = -555.0 + p.x * 0.07 + 24.0 * sin(p.x / 240.0);
+            float rw = 100.0 + 14.0 * cos(p.x / 190.0);
+            float edge = rz - rw * 0.5 + ${PAVE_SETBACK.toFixed(1)};
+            float north = smoothstep(edge + 1.0, edge - 1.0, p.y);
+            // Dry ground only (the river and lake beds stay natural), and not the island.
+            float dry = smoothstep(${(-1.4 - 0.07).toFixed(2)}, ${(-1.4 - 0.01).toFixed(2)}, y);
+            float isle = length(vec2((p.x + 650.0) / 100.0, (p.y + 655.0) / 55.0));
+            return north * dry * smoothstep(1.22, 1.32, isle) * smoothstep(-1090.0, -1010.0, p.y) * smoothstep(1090.0, 1010.0, abs(p.x));
+          }`,
+        )
+        .replace(
+          "#include <map_fragment>",
+          `#include <map_fragment>
+          float pave = paveAmount(vWorldXZ, vWorldY);
+          if (pave > 0.0) {
+            vec3 slab = texture2D(uPave, vWorldXZ * 0.42).rgb * vec3(0.78, 0.78, 0.8);
+            // Joints every 3 m, like poured paving.
+            vec2 cell = abs(fract(vWorldXZ / 3.0) - 0.5);
+            slab *= 1.0 - 0.18 * smoothstep(0.47, 0.495, max(cell.x, cell.y));
+            diffuseColor.rgb = mix(diffuseColor.rgb, slab, pave);
+          }`,
+        );
+    };
+    mm.customProgramCacheKey = () => "hills-paved-north";
+    m = mm;
+    physical.set("hills", m as unknown as THREE.MeshPhysicalMaterial);
+  }
+  return m;
+}
 
 /** Concrete on walls, curbs and foundations, using the mesh's own (metric) UVs. */
 export function concreteSurface() {

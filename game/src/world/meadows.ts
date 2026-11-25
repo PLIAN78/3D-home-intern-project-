@@ -25,6 +25,9 @@ export const MEADOW_Z = { ridgeview: -130, fieldstone: -220, clover: -320, meado
 export const MEADOW_WAY_Z = MEADOW_Z.meadow;
 
 export const MEADOW_STREET_NAMES = {
+  heron: "Heron Fields Drive",
+  wren: "Wren Lane",
+  bluebell: "Bluebell Lane",
   fieldstone: "Fieldstone Avenue",
   clover: "Clover Crescent",
   meadow: "Meadow Way",
@@ -34,6 +37,12 @@ export const MEADOW_STREET_NAMES = {
 
 const road = (id: string, from: Point, to: Point): V6Road => ({ id, from, to, ...MEADOW_ROAD_DIMS });
 const { quarry, sorrel, mill, court } = MEADOW_X;
+/**
+ * Heron Fields: North Meadows' streets carry on west of Quarry Lane, between
+ * Lake Road and the community's back fences, with three new cross streets.
+ */
+export const HERON_FIELDS_X = { heron: -262, wren: -138, bluebell: -14 } as const;
+const { heron, wren, bluebell } = HERON_FIELDS_X;
 const { ridgeview, fieldstone, clover, meadow } = MEADOW_Z;
 
 export const MEADOW_ROADS: V6Road[] = [
@@ -47,6 +56,13 @@ export const MEADOW_ROADS: V6Road[] = [
   road("fieldstone", [quarry, fieldstone], [court, fieldstone]),
   road("clover", [quarry, clover], [court, clover]),
   road("meadow-way", [quarry, meadow], [court, meadow]),
+  // Heron Fields
+  road("fieldstone-west", [heron, fieldstone], [quarry, fieldstone]),
+  road("clover-west", [heron, clover], [quarry, clover]),
+  road("meadow-west", [heron, meadow], [quarry, meadow]),
+  road("heron-fields", [heron, fieldstone], [heron, meadow]),
+  road("wren", [wren, fieldstone], [wren, meadow]),
+  road("bluebell", [bluebell, fieldstone], [bluebell, meadow]),
 ];
 
 const BODY = ["#d8d2c6", "#b8a68c", "#e9e6df", "#cfc5b2", "#9aa19a", "#a9937a", "#8f8a82", "#c9c1b3"];
@@ -114,6 +130,21 @@ export const MEADOW_LOTS: Lot[] = (() => {
       [sorrel, mill],
     ])
       out.push(...row(z, side, xa, xb, kind, out.length));
+  // Heron Fields (numbered after North Meadows, so earlier lots keep their ids).
+  const west: [number, -1 | 1, "detached" | "towns"][] = [
+    [fieldstone, 1, "detached"],
+    [fieldstone, -1, "towns"],
+    [clover, 1, "towns"],
+    [clover, -1, "detached"],
+    [meadow, 1, "detached"],
+    [meadow, -1, "detached"],
+  ];
+  for (const [xa, xb] of [[heron, wren], [wren, bluebell], [bluebell, quarry]])
+    for (const [z, side, kind] of west) {
+      // The riverside green stays open north of Meadow Way near the beach.
+      if (z === meadow && side < 0 && xb === quarry) continue;
+      out.push(...row(z, side, xa, xb, kind, out.length));
+    }
   return out;
 })();
 

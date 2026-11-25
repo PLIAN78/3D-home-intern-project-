@@ -32,10 +32,11 @@ function Hangar({x,z,w=48,d=35}:{x:number;z:number;w?:number;d?:number}){
 function Helipad(){
  const {x,z,size}=HELIPAD;
  return <group position={[x,0,z]} name="Helipad">
-  <B size={[size,.12,size]} position={[0,.06,0]} color="#4e575c" cast={false}/>
-  <mesh position={[0,.14,0]} rotation={[-Math.PI/2,0,0]} material={mat("#ece7d9")}><ringGeometry args={[size*.36,size*.4,40]}/></mesh>
-  <Decal text="H" color="#ece7d9" position={[0,.15,0]} rotation={[-Math.PI/2,0,Math.PI/2]} size={[5,6]}/>
-  {[-1,1].flatMap(a=>[-1,1].map(b=><mesh key={a+"-"+b} position={[a*size/2,.25,b*size/2]} material={mat("#e8d36a",{emissive:"#8a7a2a"})}><sphereGeometry args={[.18,6,4]}/></mesh>))}
+  {/* The pad stands 3 cm proud of the apron (they used to share a surface and flickered at the edges). */}
+  <B size={[size,.15,size]} position={[0,.075,0]} color="#4e575c" cast={false}/>
+  <mesh position={[0,.165,0]} rotation={[-Math.PI/2,0,0]} material={mat("#ece7d9")}><ringGeometry args={[size*.36,size*.4,40]}/></mesh>
+  <Decal text="H" color="#ece7d9" position={[0,.175,0]} rotation={[-Math.PI/2,0,Math.PI/2]} size={[5,6]}/>
+  {[-1,1].flatMap(a=>[-1,1].map(b=><mesh key={a+"-"+b} position={[a*size/2,.32,b*size/2]} material={mat("#e8d36a",{emissive:"#8a7a2a"})}><sphereGeometry args={[.18,6,4]}/></mesh>))}
   <Sign text="HELIPAD" sub="F - OWAWA AIR HELICOPTER" at={[size/2+3,0]} heading={0} width={6}/>
  </group>;
 }
@@ -44,7 +45,7 @@ export function AirportScene(){
  return <group name="Owawa Regional Airport - expanded">
   <B size={[42,.16,550]} position={[-875,.08,0]} color="#515c61"/><B size={[13,.14,490]} position={[-805,.07,-10]} color="#626c70"/>
   <B size={[66,.12,215]} position={[-768,.06,99]} color="#9fa6a2"/><B size={[95,.12,130]} position={[-775,.06,-180]} color="#939f9c"/>
-  {[-220,210].map(z=><B key={z} size={[70,.14,13]} position={[-840,.07,z]} color="#687477"/>)}
+  {[-220,210].map(z=><B key={z} size={[70,.15,13]} position={[-840,.075,z]} color="#687477"/>)}
   {Array.from({length:25},(_,i)=><B key={i} size={[.7,.02,7]} position={[-875,.18,-240+i*20]} color="#f1ede1" cast={false}/>)}
   {[-245,245].flatMap(z=>[-1,1].flatMap(side=>[0,1,2,3].map(i=><B key={z+"-"+side+"-"+i} size={[1.5,.02,18]} position={[-875+side*(4+i*3),.18,z]} color="#ece7d9" cast={false}/>)))}
   {[-220,220].map(z=><Decal key={z} text={z<0?"18":"36"} color="#f6f0dc" position={[-875,.2,z]} rotation={[-Math.PI/2,0,0]} size={[11,16]}/>)}

@@ -69,6 +69,11 @@ export interface Box {
   id?: string;
   /** Base height (for buildings on the hills). */
   y?: number;
+  /**
+   * Turned about its centre (radians; local +x points along (cos, sin) in x–z).
+   * x0..z1 are then the box's own extents around its centre, not world bounds.
+   */
+  rot?: number;
 }
 
 export type LandmarkId = "sales" | "factory" | "tower" | "farm" | "park" | "shop" | "school" | "mall" | "cottage" | "office" | "dealer" | "bank" | "clothing" | "subs" | "burger";

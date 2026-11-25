@@ -1,3 +1,4 @@
+import { bayDistance, BAY_SHORE } from "../game/src/world/bay";
 import { inRiver,riverZ,riverWidth } from "../game/src/world/v6";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadRapier } from "@/game/src/sim/rapier";
@@ -26,7 +27,8 @@ describe("Heron Lake", () => {
     const [cx, cz] = LAKE.centre;
     expect(terrainHeight(cx - LAKE.rx * 0.6, cz)).toBeLessThan(LAKE_Y - 3);
     expect(terrainHeight(cx, cz + LAKE.rz * 0.7)).toBeLessThan(LAKE_Y - 2);
-    for (let a = 0; a < Math.PI * 2; a += 0.4) if (Math.abs(cz + Math.sin(a) * LAKE.rz * 1.06-riverZ(cx + Math.cos(a)*LAKE.rx*1.06)) > riverWidth(cx + Math.cos(a)*LAKE.rx*1.06)/2+24) expect(terrainHeight(cx + Math.cos(a) * LAKE.rx * 1.06, cz + Math.sin(a) * LAKE.rz * 1.06)).toBeGreaterThan(LAKE_Y);
+    // (Heron Bay opens the south-west shore, v6.4.)
+    for (let a = 0; a < Math.PI * 2; a += 0.4) if (Math.abs(cz + Math.sin(a) * LAKE.rz * 1.06-riverZ(cx + Math.cos(a)*LAKE.rx*1.06)) > riverWidth(cx + Math.cos(a)*LAKE.rx*1.06)/2+24 && bayDistance(cx + Math.cos(a) * LAKE.rx * 1.06, cz + Math.sin(a) * LAKE.rz * 1.06) < -BAY_SHORE) expect(terrainHeight(cx + Math.cos(a) * LAKE.rx * 1.06, cz + Math.sin(a) * LAKE.rz * 1.06)).toBeGreaterThan(LAKE_Y);
     expect(terrainHeight(cx, cz)).toBeGreaterThan(LAKE_Y + 2);
   });
 

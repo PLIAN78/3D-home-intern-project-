@@ -5,13 +5,15 @@ import { placeholderFor } from "@/lib/geometry/placeholderHouse";
 import { houseOffsetOnLot, lotToWorld } from "@/lib/viewer/placement";
 import { runtime } from "../core/runtime";
 import { noBackfaceFlip } from "../render/materials";
+import { PAVE_SETBACK } from "./paving";
 import { useQuality } from "../render/quality";
 import { useGame } from "../story/store";
 import { CAIVAN_RIDGE, collisionBoxes, LANDMARKS, PAVED } from "./map";
 import {CITY_PAVING,OWAWA_ROADS} from "./owawa";
 import { MEADOW_PAVING } from "./meadows";
-import { CREEK_WIDTH, LAUREL_CREEK } from "./campus";
-import { CAMPUS_PATHS, AIRPORT, NORTH_ROADS, riverZ, riverWidth, STATION_ACCESS, STATION_PATH_WIDTH, ISLAND_WALKS } from "./v6";
+import { BAY_OUTLINE } from "./bay";
+import { CREEK_WIDTH, LAUREL_CREEK, PLAZA_POLYGON, PONDS } from "./campus";
+import { CAMPUS_WALKWAYS, AIRPORT, NORTH_ROADS, riverZ, riverWidth, STATION_ACCESS, STATION_PATH_WIDTH, ISLAND_WALKS } from "./v6";
 import { COUNTRY_ROADS, PLAY_HALF,LAKE } from "./terrain";
 
 /**
@@ -61,7 +63,14 @@ function paintMask(stages: Record<string, string>) {
     }
   }
   // Buildings and dig sites
-  for (const b of collisionBoxes(stages as never)) ctx.fillRect(X(b.x0 - 0.8), Z(b.z0 - 0.8), (b.x1 - b.x0 + 1.6) * k, (b.z1 - b.z0 + 1.6) * k);
+  for (const b of collisionBoxes(stages as never)) {
+    if (!b.rot) { ctx.fillRect(X(b.x0 - 0.8), Z(b.z0 - 0.8), (b.x1 - b.x0 + 1.6) * k, (b.z1 - b.z0 + 1.6) * k); continue; }
+    ctx.save();
+    ctx.translate(X((b.x0 + b.x1) / 2), Z((b.z0 + b.z1) / 2));
+    ctx.rotate(b.rot);
+    ctx.fillRect(((b.x0 - b.x1) / 2 - 0.8) * k, ((b.z0 - b.z1) / 2 - 0.8) * k, (b.x1 - b.x0 + 1.6) * k, (b.z1 - b.z0 + 1.6) * k);
+    ctx.restore();
+  }
   for (const lot of CAIVAN_RIDGE.lots) {
     const st = stages[lot.id];
     if (st === "excavation" || st === "foundation" || st === "framing") {
@@ -121,8 +130,9 @@ function paintMask(stages: Record<string, string>) {
     ctx.stroke();
   }
   // V6: the mask covers the whole playable world, including university paths and airport pavement.
-  ctx.lineWidth=9*k;
-  for(const path of CAMPUS_PATHS){ctx.beginPath();path.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.stroke();}
+  for(const w of CAMPUS_WALKWAYS){ctx.lineWidth=(w.width+1)*k;ctx.beginPath();w.points.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.stroke();}
+  // The campus plaza and ponds.
+  for(const poly of [PLAZA_POLYGON,...PONDS]){ctx.beginPath();poly.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.closePath();ctx.fill();}
   // Heron Gardens Island walkways.
   for(const w of ISLAND_WALKS){ctx.lineWidth=(w.width+1)*k;ctx.beginPath();w.points.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.stroke();}
   // Station forecourts and footpaths.
@@ -131,12 +141,22 @@ function paintMask(stages: Record<string, string>) {
     const f=a.forecourt;ctx.fillRect(X(f.x0-1),Z(f.z0-1),(f.x1-f.x0+2)*k,(f.z1-f.z0+2)*k);
     for(const path of [a.path,...a.extra]){ctx.beginPath();path.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.stroke();}
   }
-  ctx.fillRect(X(891),Z(828),48*k,28*k);
   // Laurel Creek (water) through the campus.
   ctx.lineWidth=(CREEK_WIDTH+3)*k;ctx.beginPath();LAUREL_CREEK.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.stroke();
   ctx.fillRect(X(CITY_PAVING.x0),Z(CITY_PAVING.z0),(CITY_PAVING.x1-CITY_PAVING.x0)*k,(CITY_PAVING.z1-CITY_PAVING.z0)*k);
   ctx.beginPath();ctx.ellipse(X(LAKE.centre[0]),Z(LAKE.centre[1]),LAKE.rx*1.2*k,LAKE.rz*1.2*k,0,0,Math.PI*2);ctx.fill();
+  // Heron Bay and its shallow shore.
+  ctx.lineWidth=12*k;ctx.lineJoin="round";ctx.beginPath();BAY_OUTLINE.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.closePath();ctx.fill();ctx.stroke();
   for(let x=-1050;x<1050;x+=6)ctx.fillRect(X(x),Z(riverZ(x)-riverWidth(x)/2-25),7*k,(riverWidth(x)+50)*k);
+  // Everything north of the river is paved (Countryside's groundHills), the island apart.
+  for(let x=-1050;x<1050;x+=6){
+    const edge=riverZ(x)-riverWidth(x)/2+PAVE_SETBACK,top=-PLAY_HALF-10,u=(x+650)/130;
+    if(Math.abs(u)>=1){ctx.fillRect(X(x),Z(top),7*k,(edge-top)*k);continue;}
+    // Around Heron Gardens Island (its lawns stay).
+    const h=55*1.3*Math.sqrt(1-u*u),z0=-655-h,z1=-655+h;
+    ctx.fillRect(X(x),Z(top),7*k,(z0-top)*k);
+    if(z1<edge)ctx.fillRect(X(x),Z(z1),7*k,(edge-z1)*k);
+  }
   ctx.fillRect(X(AIRPORT.x0),Z(AIRPORT.z0),(AIRPORT.x1-AIRPORT.x0)*k,(AIRPORT.z1-AIRPORT.z0)*k);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.NoColorSpace;

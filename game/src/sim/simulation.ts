@@ -2,6 +2,8 @@ import type { Collider, EventQueue, RigidBody, World } from "@dimforge/rapier3d-
 import type { StageId } from "@/lib/models/construction";
 import { collisionBoxes, FLAT_GROUND_HALF, LANDMARKS, ROAD, TOWER, TRAFFIC_LOOPS, WALK_LOOPS, type Box } from "../world/map";
 import { CITY_Y, inLake, LAKE, LAKE_Y, PLAY_HALF, TERRAIN_STEP, terrainHeight } from "../world/terrain";
+import { BAY_BOUNDS } from "../world/bay";
+import { SWIM_DEPTH } from "./character";
 import { riverZ,riverWidth,PORTS } from "../world/v6";
 import { CITY_TRAFFIC, CITY_WALKS, OWAWA_ROADS } from "../world/owawa";
 import { CITY_LOOPS, NORTH_ROADS } from "../world/v6";
@@ -148,6 +150,13 @@ export class Simulation {
         .setCollisionGroups(groups(LAYER.WATER, LAYER.PLAYER | LAYER.ANIMAL)),
       this.staticBody,
     );
+    // Heron Bay's wading floor (under the land around it, where it does nothing).
+    this.world.createCollider(
+      R.ColliderDesc.cuboid((BAY_BOUNDS.x1 - BAY_BOUNDS.x0) / 2, 0.1, (BAY_BOUNDS.z1 - BAY_BOUNDS.z0) / 2)
+        .setTranslation((BAY_BOUNDS.x0 + BAY_BOUNDS.x1) / 2, LAKE_Y - 1.2, (BAY_BOUNDS.z0 + BAY_BOUNDS.z1) / 2)
+        .setCollisionGroups(groups(LAYER.WATER, LAYER.PLAYER | LAYER.ANIMAL)),
+      this.staticBody,
+    );
     // River wading floor, with the same vehicle exclusions as Heron Lake.
     for(let x=-1000;x<1000;x+=16)this.world.createCollider(R.ColliderDesc.cuboid(8,.1,riverWidth(x)/2).setTranslation(x,LAKE_Y-1.2,riverZ(x)).setCollisionGroups(groups(LAYER.WATER,LAYER.PLAYER|LAYER.ANIMAL)),this.staticBody);
     // The water tank: a drum you can land on (its deck) and stand under.
@@ -193,6 +202,8 @@ export class Simulation {
     return this.world.createCollider(
       this.R.ColliderDesc.cuboid(hx, b.h / 2, hz)
         .setTranslation(b.x0 + hx, (b.y ?? 0) + b.h / 2, b.z0 + hz)
+        // A turned box (campus buildings, skybridges): rot about y, three.js/Rapier angle is −rot.
+        .setRotation(b.rot ? { x: 0, y: Math.sin(-b.rot / 2), z: 0, w: Math.cos(-b.rot / 2) } : { x: 0, y: 0, z: 0, w: 1 })
         .setCollisionGroups(groups(LAYER.STATIC)),
       this.staticBody,
     );
@@ -453,7 +464,12 @@ export class Simulation {
     for (const [id, h] of Object.entries(this.helis)) h.step(dt, c.kind === "heli" && c.id === id ? heliInput : null);
     for(const b of Object.values(this.boats))b.step(dt,c.kind==="boat"&&b===this.boat?input:null);
     for(const [id,p] of Object.entries(this.planes))p.step(dt,c.kind==="plane"&&c.id===id?{forward:input.forward,side:input.side,up:input.jumpHeld,down:input.sprint,brake:input.handbrake&&p.grounded&&input.forward<0}:null);
-    if (c.kind === "foot") this.player.step(dt, input);
+    if (c.kind === "foot") {
+      // Swimming: in the lake, the bay or the river with the water above the waist (the wading floor holds you at the surface).
+      const pl = this.player;
+      pl.swimming = pl.y < LAKE_Y - SWIM_DEPTH && terrainHeight(pl.x, pl.z) < LAKE_Y - SWIM_DEPTH && inLake(pl.x, pl.z);
+      pl.step(dt, input);
+    }
     else this.syncRider();
 
     if (this.town || this.cityTown) {

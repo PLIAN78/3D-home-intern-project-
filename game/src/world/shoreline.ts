@@ -1,5 +1,6 @@
 import { LAKE, LAKE_Y, PLAY_HALF, terrainHeight } from "./terrain";
 import { BRIDGES, ISLANDS, riverWidth, riverZ, type Point } from "./v6";
+import { BAY_OUTLINE, bayDistance } from "./bay";
 
 /**
  * Where water meets land. The terrain mesh is an 8 m grid, so its waterline
@@ -34,6 +35,8 @@ function split(id: string, pts: (Point | null)[], nrm: (Point | null)[]): Shore[
 const nearBridge = (x: number) => BRIDGES.some((b) => Math.abs(x - b.x) < b.width / 2 + 9);
 const nearLake = (x: number, z: number) => Math.hypot((x - LAKE.centre[0]) / LAKE.rx, (z - LAKE.centre[1]) / LAKE.rz) < 1.25;
 const nearIsland = (x: number, z: number) => ISLANDS.some((i) => Math.hypot((x - i.at[0]) / i.rx, (z - i.at[1]) / i.rz) < 1.35);
+/** Heron Bay traces its own shore (the lake's and river's give way near it). */
+const nearBay = (x: number, z: number) => bayDistance(x, z) > -22;
 
 function riverBanks(): Shore[] {
   const out: Shore[] = [];
@@ -45,7 +48,7 @@ function riverBanks(): Shore[] {
       const slope = (riverZ(x + 1) - riverZ(x - 1)) / 2, len = Math.hypot(1, slope), nx = (-slope / len) * side, nz = (1 / len) * side;
       const t = crossing(x, zc, nx, nz, half * 0.7, half * 1.6);
       const p: Point | null = t === null ? null : [x + nx * t, zc + nz * t];
-      const ok = p && !nearBridge(p[0]) && !nearLake(p[0], p[1]) && !nearIsland(p[0], p[1]);
+      const ok = p && !nearBridge(p[0]) && !nearLake(p[0], p[1]) && !nearIsland(p[0], p[1]) && !nearBay(p[0], p[1]);
       pts.push(ok ? p : null);
       nrm.push(ok ? [nx, nz] : null);
     }
@@ -73,10 +76,31 @@ function ellipseShore(id: string, c: Point, rx: number, rz: number, inward: bool
 export const BEACH = { id: "meadows-beach", x0: 160, x1: 330, depth: 24, name: "MEADOWS BEACH" };
 export const onBeach = (x: number) => x > BEACH.x0 && x < BEACH.x1;
 
+/** Heron Bay's shore: rays out across the outline (where it opens into the lake or river there's no crossing). */
+function bayShore(): Shore[] {
+  const pts: (Point | null)[] = [], nrm: (Point | null)[] = [], N = BAY_OUTLINE.length;
+  for (let i = 0; i < N; i++) {
+    const a = BAY_OUTLINE[(i + N - 1) % N], b = BAY_OUTLINE[(i + 1) % N], p = BAY_OUTLINE[i];
+    // Clockwise outline on the map (z down): the outward normal is (dz, −dx) of the tangent.
+    let tx = b[0] - a[0], tz = b[1] - a[1];
+    const l = Math.hypot(tx, tz);
+    tx /= l; tz /= l;
+    const nx = tz, nz = -tx;
+    const t = crossing(p[0] - nx * 12, p[1] - nz * 12, nx, nz, 0, 30);
+    const q: Point | null = t === null ? null : [p[0] - nx * 12 + nx * t, p[1] - nz * 12 + nz * t];
+    // Where the bay opens into the lake there's no shore (the lake's ellipse is water).
+    const ok = q && Math.hypot((q[0] - LAKE.centre[0]) / LAKE.rx, (q[1] - LAKE.centre[1]) / LAKE.rz) > 1 && !nearIsland(q[0], q[1]);
+    pts.push(ok ? q : null);
+    nrm.push(ok ? [nx, nz] : null);
+  }
+  return split("bay", pts, nrm);
+}
+
 export const SHORES: Shore[] = [
   ...riverBanks(),
+  ...bayShore(),
   // The lake's own shore (where the river joins it, the river banks take over).
-  ...ellipseShore("lake", LAKE.centre, LAKE.rx, LAKE.rz, false, () => false),
+  ...ellipseShore("lake", LAKE.centre, LAKE.rx, LAKE.rz, false, (x, z) => nearBay(x, z)),
   ...ISLANDS.flatMap((i) => ellipseShore("island", i.at, i.rx, i.rz, true, () => false)),
 ];
 

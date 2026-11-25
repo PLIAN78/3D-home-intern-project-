@@ -77,7 +77,9 @@ export function v6Offer():{text:string;run:()=>void}|null{
  for(const a of STATION_ACCESS)if(Math.hypot(b.x-(a.door[0]+a.exit[0])/2,b.z-(a.door[1]+a.exit[1])/2)<5.5)return {text:"Express rail · "+a.name,run:()=>v.setPanel({kind:"station",id:a.id})};
  for(const x of V6_BUILDINGS){
   if(Math.abs(b.y-buildingY(x))>5)continue;
-  if(Math.hypot(b.x-x.at[0],b.z-(x.at[1]+x.size[1]/2+3))>5)continue;
+  // At the door: campus buildings know theirs; the rest open in the south wall.
+  const [dx,dz]=x.door??[x.at[0],x.at[1]+x.size[1]/2+3];
+  if(Math.hypot(b.x-dx,b.z-dz)>5)continue;
   if(x.id==="principal")return {text:"Meet Principal Chen · university co-ops",run:()=>v.setPanel({kind:"principal"})};
   if(SUBJECTS.some(q=>q.id===x.id))return {text:"Learn · "+x.name,run:()=>v.setPanel({kind:"lesson",id:x.id})};
   if(x.id==="loan-tower"||x.id==="condo-tower")return {text:"Enter "+x.name+" · elevator to floor 16",run:()=>v.visit(x.id)};

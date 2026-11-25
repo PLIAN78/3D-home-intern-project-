@@ -12,6 +12,7 @@ import {concreteSurface,groundAsphalt,groundConcrete,mat} from "../render/materi
 import {useV6} from "../story/v6Store";
 import {AirportScene} from "./AirportScene";
 import {VatalooCampus} from "./VatalooCampus";
+import {COOP_SPOT,FLOWER_BEDS,PRINCIPAL_SPOT} from "./campus";
 import {StationEntrance} from "./StationEntrance";
 import {Armchair,Bed,Bookshelf,Chair,Counter,DiningSet,FloorLamp,Kitchen,LiftDoors,Plant,Rug,Sofa,Table,TV,WallArt} from "../models/furniture";
 import {Shores} from "./Shores";
@@ -78,7 +79,7 @@ function CivicRoads(){
 function CivicBuilding({b}:{b:V6Building}){
  const group=useRef<THREE.Group>(null),camera=useThree(s=>s.camera);
  useFrame(()=>{if(group.current)group.current.visible=Math.hypot(camera.position.x-b.at[0],camera.position.z-b.at[1])<1100;});
- if(b.level==="ground"&&((b.at[0]>490&&b.at[1]>500)||b.id==="terminal"))return null;
+ if(b.wings||b.id==="terminal")return null;
  // Owawa's blocks are drawn together, merged (OwawaBlocks).
  if(b.id.startsWith("owawa-"))return null;
  const visit=b.id==="loan-tower"||b.id==="condo-tower",[w,d,h]=b.size;
@@ -162,12 +163,12 @@ function CondoSuite({w,d}:{w:number;d:number}){
 }
 function Campus(){
  return <VatalooCampus><Flowers/>{Array.from({length:36},(_,i)=><Student key={i} index={i}/>)}
- <group position={[590,0,761]}><Human outfit={TOWNSFOLK[6]} pose="wave"/></group>
+ <group position={[PRINCIPAL_SPOT[0],0,PRINCIPAL_SPOT[1]]}><Human outfit={TOWNSFOLK[6]} pose="wave"/></group>
  {COOPS.map((c,i)=><Coop key={c.id} id={c.id} index={i}/>)}</VatalooCampus>;
 }
 function Flowers(){
  const ref=useRef<THREE.InstancedMesh>(null);
- useEffect(()=>{if(!ref.current)return;const dummy=new THREE.Object3D(),col=new THREE.Color();for(let i=0;i<720;i++){const beds=[[545,680],[625,675],[675,700],[692,630],[805,655],[807,800],[625,850],[552,770],[735,800],[814,855],[860,565],[555,555]],bed=beds[Math.floor(i/60)],a=i*2.3999,r=.3+(i%13)*.12;dummy.position.set(bed[0]+Math.cos(a)*r,.25,bed[1]+Math.sin(a)*r);dummy.scale.setScalar(.18+(i%4)*.03);dummy.updateMatrix();ref.current.setMatrixAt(i,dummy.matrix);ref.current.setColorAt(i,col.set(["#d9b4ce","#e4c863","#9d87b1","#e6e4d2"][i%4]));}ref.current.instanceMatrix.needsUpdate=true;if(ref.current.instanceColor)ref.current.instanceColor.needsUpdate=true;},[]);
+ useEffect(()=>{if(!ref.current)return;const dummy=new THREE.Object3D(),col=new THREE.Color();for(let i=0;i<720;i++){const bed=FLOWER_BEDS[Math.floor(i/60)%FLOWER_BEDS.length],a=i*2.3999,r=.3+(i%13)*.12;dummy.position.set(bed[0]+Math.cos(a)*r,.25,bed[1]+Math.sin(a)*r);dummy.scale.setScalar(.18+(i%4)*.03);dummy.updateMatrix();ref.current.setMatrixAt(i,dummy.matrix);ref.current.setColorAt(i,col.set(["#d9b4ce","#e4c863","#9d87b1","#e6e4d2"][i%4]));}ref.current.instanceMatrix.needsUpdate=true;if(ref.current.instanceColor)ref.current.instanceColor.needsUpdate=true;},[]);
  return <instancedMesh ref={ref} args={[undefined,undefined,720]}><icosahedronGeometry args={[1,0]}/><meshStandardMaterial roughness={1}/></instancedMesh>;
 }
 function Student({index}:{index:number}){
@@ -177,8 +178,8 @@ function Student({index}:{index:number}){
 }
 function Coop({id,index}:{id:string;index:number}){
  const ref=useRef<THREE.Group>(null),mode=useV6(s=>s.coops[id]);
- useFrame((_,dt)=>{if(!ref.current)return;const b=runtime.body;let x=590+index*2,z=762,y=0;if(mode==="following"){x=b.x-Math.cos(b.heading)*(3+index*1.4)+Math.sin(b.heading)*(index-1);z=b.z-Math.sin(b.heading)*(3+index*1.4)-Math.cos(b.heading)*(index-1);y=groundAt(x,z);}else if(mode==="office"){x=145+index*2;z=-25;}const g=ref.current;g.visible=Math.hypot(b.x-x,b.z-z)<170;g.position.lerp(new THREE.Vector3(x,y,z),Math.min(1,dt*3));g.rotation.y=-b.heading;});
- return <group ref={ref} position={[590+index*2,0,762]}><Human outfit={TOWNSFOLK[(index+2)%TOWNSFOLK.length]} motion={{speed:()=>mode==="following"?runtime.body.speed:0,airborne:()=>false}}/></group>;
+ useFrame((_,dt)=>{if(!ref.current)return;const b=runtime.body;let x=COOP_SPOT[0]+index*2,z=COOP_SPOT[1],y=0;if(mode==="following"){x=b.x-Math.cos(b.heading)*(3+index*1.4)+Math.sin(b.heading)*(index-1);z=b.z-Math.sin(b.heading)*(3+index*1.4)-Math.cos(b.heading)*(index-1);y=groundAt(x,z);}else if(mode==="office"){x=145+index*2;z=-25;}const g=ref.current;g.visible=Math.hypot(b.x-x,b.z-z)<170;g.position.lerp(new THREE.Vector3(x,y,z),Math.min(1,dt*3));g.rotation.y=-b.heading;});
+ return <group ref={ref} position={[COOP_SPOT[0]+index*2,0,COOP_SPOT[1]]}><Human outfit={TOWNSFOLK[(index+2)%TOWNSFOLK.length]} motion={{speed:()=>mode==="following"?runtime.body.speed:0,airborne:()=>false}}/></group>;
 }
 function Rail(){
  const structure=useMemo(()=>{const deck:THREE.BufferGeometry[]=[],rails:THREE.BufferGeometry[]=[],posts:THREE.BufferGeometry[]=[];

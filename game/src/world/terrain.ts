@@ -6,6 +6,7 @@
  */
 
 import { MEADOW_WAY_Z } from "./meadows";
+import { BAY_SHORE, BAY_SLOPE, bayDistance } from "./bay";
 import { riverWidth, riverDistance, islandRadius, inRiver, inNorthCity, nearV6Development, CAMPUS, AIRPORT, SUBURBS, SUBURB_ROADS, distanceToSegment, V6_BUILDINGS, BRIDGES, BRIDGEHEAD_STUB, NORTH_SHORE_Z, WATER_LEVEL, STATION_ACCESS, onStationAccess, onIslandWalk } from "./v6";
 
 export type P2 = [number, number];
@@ -300,7 +301,7 @@ export function lakeRadius(x: number, z: number) {
 }
 
 export function inLake(x: number, z: number) {
-  return islandRadius(x,z)>1.18 && (inRiver(x,z) || lakeRadius(x,z)<1);
+  return islandRadius(x,z)>1.18 && (inRiver(x,z) || lakeRadius(x,z)<1 || bayDistance(x,z)>0);
 }
 
 /** Ground height anywhere: hills, with the lake, the city, the cottage yard and the roads worked in. */
@@ -329,6 +330,10 @@ function shapedHeight(x:number,z:number) {
  const e=lakeRadius(x,z);
  if(e<1)h=Math.min(h,LAKE_Y-4*smoothstep(1,.78,e));
  else if(e<1.2)h=Math.min(h,LAKE_Y+(Math.max(0,h)-LAKE_Y)*smoothstep(1,1.2,e));
+ // Heron Bay, south-west of the lake.
+ const bd=bayDistance(x,z);
+ if(bd>0)h=Math.min(h,LAKE_Y-4*smoothstep(0,BAY_SLOPE,bd));
+ else if(bd>-BAY_SHORE)h=Math.min(h,LAKE_Y+(Math.max(0,h)-LAKE_Y)*smoothstep(0,BAY_SHORE,-bd));
  const r=riverDistance(x,z)/(riverWidth(x)/2);
  if(r<1)h=Math.min(h,LAKE_Y-4*smoothstep(1,.62,r));
  else if(r<1.5)h=Math.min(h,LAKE_Y+(Math.max(0,h)-LAKE_Y)*smoothstep(1,1.5,r));
@@ -364,7 +369,7 @@ export const HILL_TREES: {position:P2;y:number;scale:number;variant:0|1|2}[]=(()
  const rand=(i:number)=>hash(i*1.37+.5,i*2.71+.25);
  const add=(x:number,z:number,i:number)=>{
   if(nearestCountryRoad(x,z).d<15 || SUBURB_ROADS.some(r=>distanceToSegment(x,z,r.from,r.to)<14))return;
-  if(lakeRadius(x,z)<1.25 || inRiver(x,z) || inNorthCity(x,z,20) || nearV6Development(x,z,12) || onStationAccess(x,z,3))return;
+  if(lakeRadius(x,z)<1.25 || inRiver(x,z) || bayDistance(x,z)>-BAY_SHORE-4 || inNorthCity(x,z,20) || nearV6Development(x,z,12) || onStationAccess(x,z,3))return;
   if(Math.hypot(x-COTTAGE.position[0],z-COTTAGE.position[1])<38 || Math.hypot(x-ELEPHANT_SPOT[0],z-ELEPHANT_SPOT[1])<CLEARING)return;
   if(V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+7&&Math.abs(z-b.at[1])<b.size[1]/2+7))return;
   out.push({position:[x,z],y:terrainHeight(x,z),scale:.85+rand(i+70000)*.9,variant:rand(i+80000)<.62?1:rand(i+90000)<.6?0:2});
