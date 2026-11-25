@@ -1,4 +1,4 @@
-import { PAVE_SETBACK } from "../world/paving";
+import { FRONT_POINTS, FRONT_RESERVE, ISLE } from "../world/paving";
 import * as THREE from "three";
 import { asphaltMaps, barkMaps, concreteMaps, dirtMaps, grassMaps, lumberMaps, macroVariationTexture, osbMaps, shingleMaps, sidingMaps, type PbrMaps } from "./textures";
 
@@ -153,10 +153,9 @@ export const groundDirt = () => surface("dirt", dirtMaps(), 3, { normalScale: 1,
 
 /**
  * The hills and fields, with everything north of the Owawa River paved: grass
- * south of the river and on Heron Gardens Island, concrete paving across the
- * north shore down to the water (the river and lake beds stay natural). The
- * split follows the river's north edge (the same river formula as v6.ts) and
- * fades out beyond the edge of the playable area.
+ * south of the river, on the north bank below the riverfront street and on
+ * Heron Gardens Island; concrete paving across the rest of the north shore
+ * (world/paving.ts). It fades out beyond the edge of the playable area.
  */
 export function groundHills() {
   let m = physical.get("hills") as unknown as THREE.MeshStandardMaterial | undefined;
@@ -168,6 +167,7 @@ export function groundHills() {
     mm.onBeforeCompile = (shader, renderer) => {
       base.call(mm, shader, renderer);
       shader.uniforms.uPave = { value: c.map };
+      shader.uniforms.uFront = { value: FRONT_POINTS.map(([x, z]) => new THREE.Vector2(x, z)) };
       shader.vertexShader = shader.vertexShader
         .replace("#include <common>", "#include <common>\nvarying float vWorldY;")
         .replace("#include <project_vertex>", "#include <project_vertex>\nvWorldY = (modelMatrix * vec4(transformed, 1.0)).y;");
@@ -176,15 +176,24 @@ export function groundHills() {
           "#include <common>",
           `#include <common>
           uniform sampler2D uPave;
+          uniform vec2 uFront[${FRONT_POINTS.length}];
           varying float vWorldY;
+          // The riverfront street's centre line at x (straight between its points, held past the ends).
+          float frontZ(float x) {
+            if (x <= uFront[0].x) return uFront[0].y;
+            for (int i = 0; i < ${FRONT_POINTS.length - 1}; i++) {
+              vec2 a = uFront[i], b = uFront[i + 1];
+              if (x <= b.x) return mix(a.y, b.y, (x - a.x) / (b.x - a.x));
+            }
+            return uFront[${FRONT_POINTS.length - 1}].y;
+          }
           float paveAmount(vec2 p, float y) {
-            float rz = -555.0 + p.x * 0.07 + 24.0 * sin(p.x / 240.0);
-            float rw = 100.0 + 14.0 * cos(p.x / 190.0);
-            float edge = rz - rw * 0.5 + ${PAVE_SETBACK.toFixed(1)};
-            float north = smoothstep(edge + 1.0, edge - 1.0, p.y);
+            // Paved out to the riverfront street's south sidewalk; the bank below it stays green.
+            float edge = frontZ(p.x) + ${FRONT_RESERVE.toFixed(1)};
+            float north = smoothstep(edge + 0.6, edge - 0.6, p.y);
             // Dry ground only (the river and lake beds stay natural), and not the island.
             float dry = smoothstep(${(-1.4 - 0.07).toFixed(2)}, ${(-1.4 - 0.01).toFixed(2)}, y);
-            float isle = length(vec2((p.x + 650.0) / 100.0, (p.y + 655.0) / 55.0));
+            float isle = length(vec2((p.x - (${ISLE.x.toFixed(1)})) / ${ISLE.rx.toFixed(1)}, (p.y - (${ISLE.z.toFixed(1)})) / ${ISLE.rz.toFixed(1)}));
             return north * dry * smoothstep(1.22, 1.32, isle) * smoothstep(-1090.0, -1010.0, p.y) * smoothstep(1090.0, 1010.0, abs(p.x));
           }`,
         )

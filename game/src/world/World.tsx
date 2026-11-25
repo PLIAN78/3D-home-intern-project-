@@ -23,6 +23,7 @@ import { Places } from "./Places";
 import { LakeScene } from "./LakeScene";
 import { OwawaScene } from "./OwawaScene";
 import { V6Scene } from "./V6Scene";
+import { WildsScene } from "./WildsScene";
 import { EastPhase } from "./EastPhase";
 
 /** Lawns, roads, curbs, sidewalks and driveways from Home Studio's community site builder, with PBR surfaces. */
@@ -138,6 +139,7 @@ export function World() {
       <OwawaScene />
       <EastPhase />
       <V6Scene />
+      <WildsScene />
     </group>
   );
 }

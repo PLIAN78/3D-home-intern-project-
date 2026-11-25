@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { mountainHeight } from "../game/src/world/wilds";
 import { BLUEPRINTS, GOAT_STARTS, inPen } from "@/game/src/story/collectibles";
 import { DIALOGS } from "@/game/src/story/dialogs";
 import { BLUEPRINT_VALUE, buy, canBuy, cheatMatcher, DEALER_ORDER, DELIVERY_BONUS, DELIVERY_PAY, ELEPHANT_REWARD, GEAR, GOAT_VALUE, HOTBAR_ORDER, nextCar, SHOP_ORDER, slotForKey, slotOwned, STARTING_OWNED } from "@/game/src/story/economy";
@@ -340,7 +341,8 @@ describe("the hills, the cottage and Peanut", () => {
     expect(terrainHeight(0, 0)).toBe(0);
     expect(terrainHeight(400, -400)).toBe(0);
     let high = 0;
-    for (let x = -PLAY_HALF; x <= PLAY_HALF; x += 50) high = Math.max(high, terrainHeight(x, PLAY_HALF - 20));
+    // (Mount Tamarack, v6.5, stands apart in the south-west corner.)
+    for (let x = -PLAY_HALF; x <= PLAY_HALF; x += 50) high = Math.max(high, terrainHeight(x, PLAY_HALF - 20) - mountainHeight(x, PLAY_HALF - 20));
     expect(high).toBeGreaterThan(1);
     expect(high).toBeLessThan(7);
   });

@@ -268,6 +268,8 @@ describe("v6.3 Ridge Centre Mall and side jobs", () => {
       v6.getState().startGig(g.id);
       for (const st of g.steps) {
         if (st.visits) for (const m of MALL_STORES.filter((m) => m.id !== "mall-desk").slice(0, st.visits)) v6.getState().visited(m.id);
+        // (The Pine Hollow firewood job counts chopped trees: see v65.test.ts for the chopping itself.)
+        if (st.chops) v6.setState({ chopped: st.chops });
         walk(st.at);
       }
       expect(v6.getState().gig, g.id).toBeNull();

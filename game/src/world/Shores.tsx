@@ -7,7 +7,7 @@ import { mat } from "../render/materials";
 import { groundAt, LAKE_Y, PLAY_HALF } from "./terrain";
 import { BEACH, bankProfile, SHORES, type Shore } from "./shoreline";
 import { MEADOW_WAY_Z } from "./meadows";
-import { riverWidth, riverZ } from "./v6";
+import { NORTH_BEACH, riverWidth, riverZ } from "./v6";
 
 /**
  * One water surface for the river and the lake (they used to be two meshes at
@@ -43,8 +43,6 @@ export function WorldWater() {
  * over the ends of the beach.
  */
 const BANK: [number, string][] = [[-3, "#86836a"], [-1.2, "#9a9172"], [0, "#a39673"], [1.2, "#a8a07c"], [2.2, "#9aa071"], [3.2, "#8f9a6a"], [4.2, "#84965f"], [5, "#7c9358"]];
-/** North of the river the bank is a stone edge into the paving. */
-const QUAY: [number, string][] = [[-3, "#7f7d6e"], [-1.2, "#8a887c"], [0, "#97948a"], [1.2, "#a4a29a"], [2.2, "#acaaa3"], [3.2, "#b0aea8"], [4.2, "#b2b0aa"], [5, "#b4b2ac"]];
 const SAND: [number, string][] = [[-4, "#9d9372"], [-1.5, "#c2b48a"], [0, "#d3c49a"], [2, "#e0d2a8"], [8, "#e6d9b2"], [16, "#e2d4a9"], [BEACH.depth, "#c9c497"], [BEACH.depth + 3, "#8d9b62"]];
 const smooth = (e0: number, e1: number, x: number) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
 
@@ -54,10 +52,10 @@ function bankGeometry(s: Shore) {
   const rows = BANK.length;
   s.points.forEach(([x, z], i) => {
     const [nx, nz] = s.normals[i];
-    const w = s.id.startsWith("river-south") ? smooth(BEACH.x0 - 12, BEACH.x0 + 4, x) * (1 - smooth(BEACH.x1 - 4, BEACH.x1 + 12, x)) : 0;
-    // Paved north shore (the same line as the ground's paving, terrain groundHills).
-    const north = s.id.startsWith("river-north") || (s.id.startsWith("lake") && z < riverZ(x) - riverWidth(x) / 2);
-    (north ? QUAY : BANK).forEach(([bd, bhex], k) => {
+    // Sand where a beach is: Meadows Beach on the south bank, Riverside Beach on the north.
+    const b = s.id.startsWith("river-south") ? BEACH : s.id.startsWith("river-north") ? NORTH_BEACH : null;
+    const w = b ? smooth(b.x0 - 12, b.x0 + 4, x) * (1 - smooth(b.x1 - 4, b.x1 + 12, x)) : 0;
+    BANK.forEach(([bd, bhex], k) => {
       const [sd, shex] = SAND[k];
       const dd = bd + (sd - bd) * w;
       c.set(bhex).lerp(c2.set(shex), w);
@@ -97,36 +95,46 @@ const bankMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughn
 export function Shores() {
   const geos = useMemo(() => SHORES.map(bankGeometry), []);
   useEffect(() => () => geos.forEach((g) => g.dispose()), [geos]);
-  const beachZ = (x: number) => riverZ(x) + riverWidth(x) / 2 + 9;
-  const umbrellas = [175, 196, 222, 251, 279, 304];
   return (
     <group name="Shores">
       {geos.map((g, i) => <mesh key={i} geometry={g} material={bankMaterial} receiveShadow />)}
-      <group name="Meadows Beach">
-        {umbrellas.map((x, i) => {
-          const z = beachZ(x) + (i % 2 ? 3 : -1), y = groundAt(x, z) + 0.05, color = ["#d9512f", "#2f8f9d", "#e0a43a"][i % 3];
-          return (
-            <group key={x} position={[x, y, z]}>
-              <B size={[0.08, 2.4, 0.08]} position={[0, 1.2, 0]} color="#e8e4d8" />
-              <mesh position={[0, 2.35, 0]} material={mat(color)} castShadow>
-                <coneGeometry args={[1.6, 0.6, 10, 1, true]} />
-              </mesh>
-              <B size={[1.8, 0.04, 0.9]} position={[1.4, 0.03, 0.6]} color={i % 2 ? "#f1e6c8" : "#c9e1e4"} cast={false} />
-            </group>
-          );
-        })}
-        <group position={[240, groundAt(240, beachZ(240) + 6), beachZ(240) + 6]} name="Lifeguard chair">
-          {[-0.6, 0.6].flatMap((a) => [-0.5, 0.5].map((b) => <B key={a + "-" + b} size={[0.12, 2.4, 0.12]} position={[a, 1.2, b]} color="#f2f0ea" />))}
-          <B size={[1.4, 0.12, 1.2]} position={[0, 2.4, 0]} color="#d9512f" />
-          <B size={[1.4, 0.9, 0.1]} position={[0, 2.9, -0.55]} color="#d9512f" />
-        </group>
-        <group position={[300, groundAt(300, beachZ(300) + 10), beachZ(300) + 10]} name="Volleyball net">
-          {[-4.5, 4.5].map((a) => <B key={a} size={[0.1, 2.5, 0.1]} position={[a, 1.25, 0]} color="#f2f0ea" />)}
-          <B size={[9, 0.9, 0.03]} position={[0, 2.0, 0]} color="#e9e5d9" />
-        </group>
-        <group position={[0, groundAt(BEACH.x0 + 8, MEADOW_WAY_Z - 12), 0]}>
-          <Sign text={BEACH.name} sub="Swimming · volleyball · lifeguard on duty" at={[BEACH.x0 + 8, MEADOW_WAY_Z - 12]} heading={0} width={8} />
-        </group>
+      <BeachProps beach={BEACH} side={1} sign={[BEACH.x0 + 8, MEADOW_WAY_Z - 12]} />
+      <BeachProps beach={NORTH_BEACH} side={-1} sign={[NORTH_BEACH.x0 + 8, riverZ(NORTH_BEACH.x0 + 8) - riverWidth(NORTH_BEACH.x0 + 8) / 2 - NORTH_BEACH.depth - 2]} />
+    </group>
+  );
+}
+
+/** A beach's umbrellas and towels, lifeguard chair, volleyball net and sign. `side`: +1 on the south bank, −1 on the north. */
+function BeachProps({ beach, side, sign }: { beach: { x0: number; x1: number; name: string }; side: 1 | -1; sign: [number, number] }) {
+  const beachZ = (x: number, inland: number) => riverZ(x) + side * (riverWidth(x) / 2 + inland);
+  const span = beach.x1 - beach.x0;
+  const umbrellas = [0.09, 0.21, 0.36, 0.53, 0.69, 0.84].map((t) => beach.x0 + span * t);
+  const chair = beach.x0 + span * 0.47, net = beach.x0 + span * 0.82;
+  return (
+    <group name={beach.name}>
+      {umbrellas.map((x, i) => {
+        const z = beachZ(x, 9 + (i % 2 ? 3 : -1)), y = groundAt(x, z) + 0.05, color = ["#d9512f", "#2f8f9d", "#e0a43a"][(i + (side < 0 ? 1 : 0)) % 3];
+        return (
+          <group key={x} position={[x, y, z]}>
+            <B size={[0.08, 2.4, 0.08]} position={[0, 1.2, 0]} color="#e8e4d8" />
+            <mesh position={[0, 2.35, 0]} material={mat(color)} castShadow>
+              <coneGeometry args={[1.6, 0.6, 10, 1, true]} />
+            </mesh>
+            <B size={[1.8, 0.04, 0.9]} position={[1.4, 0.03, 0.6 * side]} color={i % 2 ? "#f1e6c8" : "#c9e1e4"} cast={false} />
+          </group>
+        );
+      })}
+      <group position={[chair, groundAt(chair, beachZ(chair, 15)), beachZ(chair, 15)]} rotation={[0, side < 0 ? Math.PI : 0, 0]} name="Lifeguard chair">
+        {[-0.6, 0.6].flatMap((a) => [-0.5, 0.5].map((b) => <B key={a + "-" + b} size={[0.12, 2.4, 0.12]} position={[a, 1.2, b]} color="#f2f0ea" />))}
+        <B size={[1.4, 0.12, 1.2]} position={[0, 2.4, 0]} color="#d9512f" />
+        <B size={[1.4, 0.9, 0.1]} position={[0, 2.9, -0.55]} color="#d9512f" />
+      </group>
+      <group position={[net, groundAt(net, beachZ(net, 19)), beachZ(net, 19)]} name="Volleyball net">
+        {[-4.5, 4.5].map((a) => <B key={a} size={[0.1, 2.5, 0.1]} position={[a, 1.25, 0]} color="#f2f0ea" />)}
+        <B size={[9, 0.9, 0.03]} position={[0, 2.0, 0]} color="#e9e5d9" />
+      </group>
+      <group position={[0, groundAt(sign[0], sign[1]), 0]}>
+        <Sign text={beach.name} sub="Swimming · volleyball · lifeguard on duty" at={sign} heading={side > 0 ? 0 : Math.PI} width={8} />
       </group>
     </group>
   );

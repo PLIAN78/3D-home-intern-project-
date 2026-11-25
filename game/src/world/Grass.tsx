@@ -5,7 +5,7 @@ import { placeholderFor } from "@/lib/geometry/placeholderHouse";
 import { houseOffsetOnLot, lotToWorld } from "@/lib/viewer/placement";
 import { runtime } from "../core/runtime";
 import { noBackfaceFlip } from "../render/materials";
-import { PAVE_SETBACK } from "./paving";
+import { ISLE, paveEdgeZ } from "./paving";
 import { useQuality } from "../render/quality";
 import { useGame } from "../story/store";
 import { CAIVAN_RIDGE, collisionBoxes, LANDMARKS, PAVED } from "./map";
@@ -157,10 +157,10 @@ function paintMask(stages: Record<string, string>) {
   for(let x=-1050;x<1050;x+=6)ctx.fillRect(X(x),Z(riverZ(x)-riverWidth(x)/2-25),7*k,(riverWidth(x)+50)*k);
   // Everything north of the river is paved (Countryside's groundHills), the island apart.
   for(let x=-1050;x<1050;x+=6){
-    const edge=riverZ(x)-riverWidth(x)/2+PAVE_SETBACK,top=-PLAY_HALF-10,u=(x+650)/130;
+    const edge=Math.min(paveEdgeZ(x),riverZ(x)-riverWidth(x)/2),top=-PLAY_HALF-10,u=(x-ISLE.x)/(ISLE.rx*1.3);
     if(Math.abs(u)>=1){ctx.fillRect(X(x),Z(top),7*k,(edge-top)*k);continue;}
     // Around Heron Gardens Island (its lawns stay).
-    const h=55*1.3*Math.sqrt(1-u*u),z0=-655-h,z1=-655+h;
+    const h=ISLE.rz*1.3*Math.sqrt(1-u*u),z0=ISLE.z-h,z1=ISLE.z+h;
     ctx.fillRect(X(x),Z(top),7*k,(z0-top)*k);
     if(z1<edge)ctx.fillRect(X(x),Z(z1),7*k,(edge-z1)*k);
   }

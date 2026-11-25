@@ -1,4 +1,5 @@
 import {useEffect,useMemo,useRef} from "react";
+import {Wildlife} from "./Wildlife";
 import {useFrame,useThree} from "@react-three/fiber";
 import * as THREE from "three";
 import {mergeGeometries} from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -25,7 +26,7 @@ import {MEADOW_PAVING} from "./meadows";
 import {railPosts,RAIL_POST_SIZE} from "./railPosts";
 import {B,Sign} from "./props";
 import {Building,facade} from "./OwawaScene";
-import {ABUTMENT,CITY_Y,LAKE_Y,groundAt,HILL_TREES} from "./terrain";
+import {ABUTMENT,CITY_Y,LAKE_Y,groundAt} from "./terrain";
 import {buildingY,BRIDGES} from "./v6Geometry";
 import {V6_BUILDINGS,NORTH_ROADS,PORTS,RAIL_PATH,RAIL_Y,STATION_ACCESS,TRAIN_COUNT,trainAt,pathPoint,ISLAND_WALKS,NPC_JETSKIS,npcJetSki,STUDENT_LOOPS,COOPS,type V6Building} from "./v6";
 
@@ -197,18 +198,6 @@ function Train({index}:{index:number}){
  useFrame(()=>{const t=trainAt(useV6.getState().time,index);refs.current.forEach((r,k)=>{if(!r)return;const p=pathPoint(RAIL_PATH,t.distance-k*16,true);r.position.set(p.x,RAIL_Y+.3,p.z);r.rotation.y=-p.heading;});});
  return <group name={"Express "+(index+1)}>{[0,1,2].map(k=><group key={k} ref={r=>{refs.current[k]=r;}}><B size={[15,3.1,3.2]} position={[0,1.5,0]} color="#d9e1dc"/><B size={[14.2,1.2,3.25]} position={[0,2,0]} color="#274652"/><B size={[15,.5,3.28]} position={[0,.6,0]} color="#398c99"/><B size={[14,.3,3]} position={[0,3.2,0]} color="#bcc9c5"/>{[-5,-1,3].map(x=><B key={x} size={[.16,1.3,3.3]} position={[x,2,0]} color="#c5d2ce"/>)}{[-5,5].map(x=><B key={x} size={[2,.65,2.8]} position={[x,-.1,0]} color="#333c40"/>)}</group>)}</group>;
 }
-function Wildlife({index}:{index:number}){
- const ref=useRef<THREE.Group>(null),camera=useThree(s=>s.camera);
- const tree=HILL_TREES[(index*37+150)%HILL_TREES.length],small=index%3===0;
- useFrame(()=>{if(!ref.current||!tree)return;const t=useV6.getState().time*.12+index,x=tree.position[0]+Math.sin(t)*3,z=tree.position[1]+Math.cos(t*.8)*3;ref.current.visible=Math.hypot(camera.position.x-x,camera.position.z-z)<150;ref.current.position.set(x,groundAt(x,z),z);ref.current.rotation.y=-Math.atan2(-Math.sin(t*.8)*.8,Math.cos(t));});
- const c=index%3===0?"#b5aca0":index%3===1?"#a78761":"#af7349";
- return <group ref={ref} name={small?"Wild rabbit":index%3===1?"Wild deer":"Wild fox"} scale={small?.4:1}>
- <mesh position={[0,1,0]} scale={[1,.5,.32]} material={mat(c)} castShadow><sphereGeometry args={[.7,10,8]}/></mesh>
- <mesh position={[.75,1.4,0]} scale={[.7,1,.65]} material={mat(c)}><sphereGeometry args={[.28,8,8]}/></mesh>
- {[-1,1].flatMap(x=>[-1,1].map(z=><B key={x+"-"+z} size={[.1,.7,.1]} position={[x*.4,.4,z*.2]} color={c}/>))}
- {[-1,1].map(z=><B key={z} size={[.1,small?.6:.25,.08]} position={[.72,small?1.9:1.7,z*.14]} color={c}/>)}
- </group>;
-}
 export function V6Dynamics(){
  useFrame((_,rawDt)=>{const v=useV6.getState();v.tick(Math.min(rawDt,.1));if(v.ride!==null&&host.sim){const t=trainAt(useV6.getState().time,v.ride);host.sim.teleport(t.x,t.z,RAIL_Y+1-groundAt(t.x,t.z),t.heading);runtime.body=host.sim.focus();runtime.body.speed=t.speed;}},-25);
  return null;
@@ -223,5 +212,5 @@ function MeadowParking(){
   </group>;})}</group>;
 }
 export function V6Scene(){
- return <group name="V6 River City"><River/><CivicRoads/><OwawaBlocks/><TrafficLights/><MeadowParking/>{V6_BUILDINGS.map(b=><CivicBuilding key={b.id} b={b}/>)}<Campus/><AirportScene/><Rail/>{Array.from({length:42},(_,i)=><Wildlife key={i} index={i}/>)}<V6Dynamics/></group>;
+ return <group name="V6 River City"><River/><CivicRoads/><OwawaBlocks/><TrafficLights/><MeadowParking/>{V6_BUILDINGS.map(b=><CivicBuilding key={b.id} b={b}/>)}<Campus/><AirportScene/><Rail/><Wildlife/><V6Dynamics/></group>;
 }

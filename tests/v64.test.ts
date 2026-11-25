@@ -166,10 +166,10 @@ describe("v6.4 Heron Fields", () => {
 
 describe("v6.4 Heron Bay and swimming", () => {
   it("floods the land south-west of the lake, west of the dock and the station", () => {
-    expect(inBay(-800, -470)).toBe(true);
-    expect(terrainHeight(-800, -470)).toBeLessThan(LAKE_Y - 3);
+    expect(inBay(-700, -430)).toBe(true);
+    expect(terrainHeight(-700, -430)).toBeLessThan(LAKE_Y - 3);
     expect(terrainHeight(-650, -420)).toBeLessThan(LAKE_Y);
-    expect(inLake(-800, -470)).toBe(true);
+    expect(inLake(-700, -430)).toBe(true);
     // The dock, Lake Road's end, Heron Lake Station and the airport stay dry.
     expect(terrainHeight(DOCK_LAND[0], DOCK_LAND[1])).toBeGreaterThan(LAKE_Y);
     const lake = STATION_ACCESS.find((a) => a.id === "lake")!;
@@ -184,8 +184,8 @@ describe("v6.4 Heron Bay and swimming", () => {
   });
 
   it("lets the player swim: slower than walking, no jumping, back to walking on the shore", async () => {
-    const s = await Simulation.create({ stages: STARTING_STAGES, trees: [], spawn: { position: [-800, -470], heading: 0 } });
-    s.teleport(-800, -470, 0);
+    const s = await Simulation.create({ stages: STARTING_STAGES, trees: [], spawn: { position: [-700, -440], heading: 0 } });
+    s.teleport(-700, -440, 0);
     runSim(s, 1.5);
     expect(s.player.swimming).toBe(true);
     expect(s.player.y).toBeLessThan(LAKE_Y - 0.9);
@@ -199,7 +199,7 @@ describe("v6.4 Heron Bay and swimming", () => {
     expect(top).toBeLessThan(4.6);
     // Swim south to the shore by the airport and climb out.
     for (let i = 0; i < 40 && s.player.swimming; i++) runSim(s, 1, { forward: 1, sprint: true, cameraYaw: Math.PI / 2 });
-    runSim(s, 2, { forward: 1, cameraYaw: Math.PI / 2 });
+    runSim(s, 6, { forward: 1, cameraYaw: Math.PI / 2 });
     expect(s.player.swimming).toBe(false);
     expect(s.player.y).toBeGreaterThan(LAKE_Y);
   }, 60000);
@@ -210,12 +210,12 @@ describe("v6.4 paved north shore", () => {
     expect(isPaved(-300, -800, 0)).toBe(true);
     expect(isPaved(700, -700, 0)).toBe(true);
     expect(isPaved(0, -400, 0)).toBe(false);
-    expect(isPaved(-650, -655, 1)).toBe(false);
+    expect(isPaved(-770, -530, 1)).toBe(false);
     expect(isPaved(0, riverZ(0), LAKE_Y - 3)).toBe(false);
     for (let x = -1000; x <= 1000; x += 50) {
-      // The line runs in the river, short of the south bank.
-      expect(paveEdgeZ(x)).toBeGreaterThan(riverZ(x) - riverWidth(x) / 2);
-      expect(paveEdgeZ(x)).toBeLessThan(riverZ(x) + riverWidth(x) / 2 - 30);
+      // v6.5: the line follows the riverfront street's south sidewalk, leaving a green bank down to the water.
+      expect(paveEdgeZ(x)).toBeGreaterThan(riverfrontZ(x));
+      expect(paveEdgeZ(x)).toBeLessThan(riverZ(x) - riverWidth(x) / 2 - 30);
     }
   });
 });

@@ -130,10 +130,11 @@ function SideJobs() {
   );
 }
 
-/** The side job from an Owawa business or the mall's info desk, with the distance to its next spot. */
+/** The side job from an Owawa business, the mall's info desk or the camp host, with the distance to its next spot. */
 function SideGig() {
   const gig = useV6((s) => s.gig);
   const visits = useV6((s) => s.mallVisits.length);
+  const chopped = useV6((s) => s.chopped);
   const g = gig ? gigById(gig.id) : null;
   const st = g?.steps[gig!.step];
   if (!g || !st) return null;
@@ -142,7 +143,7 @@ function SideGig() {
       <div className="eyebrow">Side job · {g.title} · ${g.reward}</div>
       <div className="task">
         {st.hint}
-        {st.visits ? ` (${visits}/${st.visits})` : <Distance target={st.at} />}
+        {st.visits ? ` (${visits}/${st.visits})` : st.chops ? <> ({chopped}/{st.chops})<Distance target={st.at} /></> : <Distance target={st.at} />}
       </div>
     </div>
   );

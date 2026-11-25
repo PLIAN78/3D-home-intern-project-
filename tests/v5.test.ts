@@ -1,5 +1,6 @@
+import { ISLANDS, islandRadius } from "../game/src/world/v6";
 import { bayDistance, BAY_SHORE } from "../game/src/world/bay";
-import { inRiver,riverZ,riverWidth } from "../game/src/world/v6";
+import { riverZ,riverWidth } from "../game/src/world/v6";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadRapier } from "@/game/src/sim/rapier";
 import { IDLE_INPUT, Simulation, type SimInput } from "@/game/src/sim/simulation";
@@ -26,10 +27,11 @@ describe("Heron Lake", () => {
   it("is a real basin: shore above the water, deep in the middle, an island above it", () => {
     const [cx, cz] = LAKE.centre;
     expect(terrainHeight(cx - LAKE.rx * 0.6, cz)).toBeLessThan(LAKE_Y - 3);
-    expect(terrainHeight(cx, cz + LAKE.rz * 0.7)).toBeLessThan(LAKE_Y - 2);
+    expect(terrainHeight(cx, cz - LAKE.rz * 0.5)).toBeLessThan(LAKE_Y - 2);
     // (Heron Bay opens the south-west shore, v6.4.)
     for (let a = 0; a < Math.PI * 2; a += 0.4) if (Math.abs(cz + Math.sin(a) * LAKE.rz * 1.06-riverZ(cx + Math.cos(a)*LAKE.rx*1.06)) > riverWidth(cx + Math.cos(a)*LAKE.rx*1.06)/2+24 && bayDistance(cx + Math.cos(a) * LAKE.rx * 1.06, cz + Math.sin(a) * LAKE.rz * 1.06) < -BAY_SHORE) expect(terrainHeight(cx + Math.cos(a) * LAKE.rx * 1.06, cz + Math.sin(a) * LAKE.rz * 1.06)).toBeGreaterThan(LAKE_Y);
-    expect(terrainHeight(cx, cz)).toBeGreaterThan(LAKE_Y + 2);
+    // Heron Gardens Island (v6.5: out in the water where the lake meets Heron Bay).
+    expect(terrainHeight(...ISLANDS[0].at)).toBeGreaterThan(LAKE_Y + 2);
   });
 
   it("runs Lake Road down to the dock at a drivable grade", () => {
@@ -58,7 +60,7 @@ describe("Heron Lake", () => {
 
   it("keeps every tree out of the water (the island's trees stand on dry ground)", () => {
     for (const t of HILL_TREES) if (lakeRadius(...t.position) < 1.05) expect(terrainHeight(...t.position)).toBeGreaterThan(LAKE_Y + 0.3);
-    expect(HILL_TREES.filter((t) => lakeRadius(...t.position) < 0.5).length).toBeGreaterThan(4);
+    expect(HILL_TREES.filter((t) => islandRadius(...t.position) < 1).length).toBeGreaterThan(4);
   });
 });
 
@@ -248,9 +250,10 @@ describe("the boat, the bus and the water (physics)", () => {
   it("stops the boat at the island's shore", async () => {
     const s = await sim([-560, -560]);
     s.board({ kind: "boat" });
-    s.teleport(LAKE.centre[0] + 70, LAKE.centre[1], 0, Math.PI);
+    const [ix, iz] = ISLANDS[0].at;
+    s.teleport(ix + ISLANDS[0].rx + 50, iz, 0, Math.PI);
     run(s, 12, { forward: 1 });
-    expect(Math.hypot(s.boat.x - LAKE.centre[0], s.boat.z - LAKE.centre[1])).toBeGreaterThan(LAKE.island * 0.6);
+    expect(Math.hypot((s.boat.x - ix) / ISLANDS[0].rx, (s.boat.z - iz) / ISLANDS[0].rz)).toBeGreaterThan(0.85);
   });
 
   it("lets you wade into the shallows on foot instead of sinking", async () => {

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { audible, audio } from "../core/audio";
 import { engineState } from "../core/engineModel";
-import { EngineVoice, SkidVoice } from "../core/engineSound";
+import { EngineVoice, SirenVoice, SkidVoice } from "../core/engineSound";
 import { host } from "../core/simHost";
 import { useGame } from "../story/store";
 
@@ -21,8 +21,24 @@ export function EngineAudio() {
     },
     [],
   );
+  const siren = useRef<SirenVoice | null>(null);
+  useEffect(() => () => siren.current?.stop(), []);
   useFrame(() => {
     const sim = host.sim;
+    // Police sirens: the nearest cruiser that's chasing you.
+    let near = Infinity;
+    if (sim && useGame.getState().phase === "playing" && audible()) {
+      const f = sim.focus();
+      for (const t of [sim.town, sim.cityTown]) for (const c of t?.cars ?? []) if (c.chase) near = Math.min(near, Math.hypot(c.x - f.x, c.z - f.z));
+    }
+    const sa = near < 260 ? audio() : null;
+    if (sa) {
+      siren.current ??= new SirenVoice(sa.ctx, sa.out);
+      siren.current.update(near);
+    } else if (siren.current) {
+      siren.current.stop();
+      siren.current = null;
+    }
     const state = sim && useGame.getState().phase === "playing" && audible() ? engineState(sim) : null;
     const a = state ? audio() : null;
     if (!state || !a) {

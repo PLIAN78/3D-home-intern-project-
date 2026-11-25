@@ -12,6 +12,7 @@ import { MEADOW_LOTS, MEADOW_PAVING, meadowStage } from "./meadows";
 import { mallBoxes } from "./mall";
 import { SUBURB_ROADS, V6_BUILDINGS, onStationAccess } from "./v6";
 import { v6Boxes } from "./v6Geometry";
+import { wildsBoxes } from "./wildsBoxes";
 import type { VehicleId } from "../sim/vehicle";
 
 /**
@@ -423,7 +424,7 @@ export function collisionBoxes(stages: Record<string, StageId>): Box[] {
   boxes.push({ x0: cx - 6, z0: cz - 4.5 - 2.4, x1: cx + 6, z1: cz - 4.5, h: 0.45, kind: "landmark", id: "porch", y: COTTAGE_Y });
   for (const c of [...PARKED_CARS, ...DISPLAY_CARS]) boxes.push({ x0: c.x - 0.95, z0: c.z - 2.3, x1: c.x + 0.95, z1: c.z + 2.3, h: 1.4, kind: "landmark", id: "parked" });
   for (const c of CRANES) boxes.push({ x0: c.x - 1.1, z0: c.z - 1.1, x1: c.x + 1.1, z1: c.z + 1.1, h: c.height, kind: "landmark", id: "crane" });
-  boxes.push(...lakeBoxes(), ...owawaBoxes(), ...v6Boxes());
+  boxes.push(...lakeBoxes(), ...owawaBoxes(), ...v6Boxes(), ...wildsBoxes());
   for (const g of SIGNS) {
     const along = Math.abs(Math.cos(g.heading)) < 0.5;
     const hw = g.width / 2 + 0.25;

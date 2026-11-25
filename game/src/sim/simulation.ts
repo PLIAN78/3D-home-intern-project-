@@ -36,7 +36,9 @@ export type SimEvent =
   | BreakEvent
   | { kind: "landed-hard"; x: number; z: number; speed: number }
   | { kind: "crash"; id: VehicleId; speed: number }
-  | { kind: "sunk"; id: VehicleId };
+  | { kind: "sunk"; id: VehicleId }
+  /** A police cruiser you hit is after you (siren on), or has given up. */
+  | { kind: "police"; phase: "chase" | "gave-up" };
 
 /** What the camera, HUD and story follow: the player, or what they're driving, riding or flying. */
 export interface Focus {
@@ -476,6 +478,7 @@ export class Simulation {
       const obstacles = this.obstacles();
       this.town?.step(dt, obstacles);
       this.cityTown?.step(dt, obstacles);
+      for (const t of [this.town, this.cityTown]) for (const a of t?.alarms.splice(0) ?? []) this.events.push({ kind: "police", phase: a.phase });
     }
     // A car driven into the lake sinks; the game tows it out.
     for (const [id, v] of Object.entries(this.vehicles) as [VehicleId, VehicleController][]) {
@@ -498,6 +501,9 @@ export class Simulation {
       const v = this.vehicles[vid]!;
       const pv = v.preVel;
       const speed = Math.hypot(pv.x, pv.z);
+      // Your car hit a police cruiser in the traffic: it gives chase.
+      const cruiser = this.control.kind === "vehicle" && this.control.id === vid && speed > 1.5 ? (this.town?.carByCollider(other.handle) ?? this.cityTown?.carByCollider(other.handle)) : undefined;
+      if (cruiser?.model === "police") (this.town?.cars.includes(cruiser) ? this.town : this.cityTown)!.alarm(cruiser);
       const owner = this.breakables.ownerOf(other);
       const dir = speed > 0.01 ? { x: pv.x / speed, y: 0, z: pv.z / speed } : { x: 1, y: 0, z: 0 };
       if (owner?.kind === "tree") {

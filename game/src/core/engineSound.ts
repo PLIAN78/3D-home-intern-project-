@@ -186,3 +186,48 @@ export class SkidVoice {
     this.src.onended = () => this.gain.disconnect();
   }
 }
+
+/**
+ * A police siren: a wailing horn (two detuned square waves through a band
+ * filter, sweeping up and down every few seconds), louder the closer it is.
+ */
+export class SirenVoice {
+  private readonly ctx: AudioContext;
+  private readonly oscs: OscillatorNode[];
+  private readonly band: BiquadFilterNode;
+  private readonly gain: GainNode;
+  private readonly start: number;
+  constructor(ctx: AudioContext, destination: AudioNode) {
+    this.ctx = ctx;
+    this.start = ctx.currentTime;
+    this.band = ctx.createBiquadFilter();
+    this.band.type = "bandpass";
+    this.band.frequency.value = 1100;
+    this.band.Q.value = 1.2;
+    this.gain = ctx.createGain();
+    this.gain.gain.value = 0;
+    this.oscs = [0, 7].map((detune) => {
+      const o = ctx.createOscillator();
+      o.type = "square";
+      o.detune.value = detune;
+      o.connect(this.band);
+      o.start();
+      return o;
+    });
+    this.band.connect(this.gain).connect(destination);
+  }
+  /** `distance` in metres from the listener. */
+  update(distance: number) {
+    const t = this.ctx.currentTime;
+    // Wail: up and down between about 650 and 1500 Hz every 3.2 s.
+    const f = 1075 + 425 * Math.sin(((t - this.start) / 3.2) * Math.PI * 2);
+    for (const o of this.oscs) o.frequency.setTargetAtTime(f, t, 0.03);
+    this.gain.gain.setTargetAtTime(0.16 * Math.max(0, 1 - distance / 260) ** 1.5, t, 0.1);
+  }
+  stop() {
+    const t = this.ctx.currentTime;
+    this.gain.gain.setTargetAtTime(0, t, 0.1);
+    for (const o of this.oscs) o.stop(t + 0.6);
+    this.oscs[0].onended = () => this.gain.disconnect();
+  }
+}

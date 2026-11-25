@@ -1,10 +1,11 @@
-import { riverZ,riverWidth,ISLANDS,ISLAND_WALKS,NORTH_ROADS,RAIL_PATH,STATION_ACCESS,STATION_PATH_WIDTH,STATION_PLATFORM,PORTS,BRIDGES } from "../world/v6";
+import { NORTH_BEACH,riverZ,riverWidth,ISLANDS,ISLAND_WALKS,NORTH_ROADS,RAIL_PATH,STATION_ACCESS,STATION_PATH_WIDTH,STATION_PLATFORM,PORTS,BRIDGES } from "../world/v6";
 import { MEADOW_PAVING, MEADOW_STREET_NAMES, HERON_FIELDS_X, MEADOW_X, MEADOW_Z } from "../world/meadows";
 import { CAMPUS_BUILDINGS, CAMPUS_WALKWAYS, COLUMBIA_Z, CREEK_WIDTH, LAUREL_CREEK, PLAZA_POLYGON, PONDS, RING_POINTS } from "../world/campus";
 import { CITY_STREET_NAMES } from "../world/owawaCity";
 import { BEACH, SHORES } from "../world/shoreline";
 import { bayDistance } from "../world/bay";
 import { isPaved } from "../world/paving";
+import { CAMP_TRAIL, CAMPGROUND, CREEKS, CREEK_WIDTH as WILD_CREEK_WIDTH, MOUNTAIN } from "../world/wilds";
 
 /** Only four campus buildings are named on the map (all of them was too crowded): the ones you visit. */
 const CAMPUS_NAMED: Record<string, string> = { principal: "Needles Hall", cafeteria: "Student Centre", porter: "Library", engineering: "Engineering" };
@@ -181,16 +182,25 @@ function paintBase(stages: Record<string, string>) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   // Meadows Beach: sand along the river's south bank.
-  for (const s of SHORES.filter((s) => s.id.startsWith("river-south"))) {
-    const pts = s.points.map((p, i) => [p, s.normals[i]] as const).filter(([p]) => p[0] > BEACH.x0 && p[0] < BEACH.x1);
-    if (pts.length < 2) continue;
-    ctx.fillStyle = "#e4d6ad";
-    ctx.beginPath();
-    pts.forEach(([p], i) => (i ? ctx.lineTo(wx(p[0]), wx(p[1])) : ctx.moveTo(wx(p[0]), wx(p[1]))));
-    [...pts].reverse().forEach(([p, n]) => ctx.lineTo(wx(p[0] + n[0] * BEACH.depth), wx(p[1] + n[1] * BEACH.depth)));
-    ctx.closePath();
-    ctx.fill();
-  }
+  // (and Riverside Beach on the north bank)
+  for (const [prefix, beach] of [["river-south", BEACH], ["river-north", NORTH_BEACH]] as const)
+    for (const s of SHORES.filter((s) => s.id.startsWith(prefix))) {
+      const pts = s.points.map((p, i) => [p, s.normals[i]] as const).filter(([p]) => p[0] > beach.x0 && p[0] < beach.x1);
+      if (pts.length < 2) continue;
+      ctx.fillStyle = "#e4d6ad";
+      ctx.beginPath();
+      pts.forEach(([p], i) => (i ? ctx.lineTo(wx(p[0]), wx(p[1])) : ctx.moveTo(wx(p[0]), wx(p[1]))));
+      [...pts].reverse().forEach(([p, n]) => ctx.lineTo(wx(p[0] + n[0] * beach.depth), wx(p[1] + n[1] * beach.depth)));
+      ctx.closePath();
+      ctx.fill();
+    }
+  // The south-west woods: creeks off Mount Tamarack, the camp trail and Pine Hollow's clearing.
+  for (const c of CREEKS) strokePath(ctx, c, WILD_CREEK_WIDTH + 1, PALETTE.water);
+  strokePath(ctx, CAMP_TRAIL, 3, "#cdb994");
+  ctx.fillStyle = "#cdb994";
+  ctx.beginPath();
+  ctx.arc(wx(CAMPGROUND.at[0]), wx(CAMPGROUND.at[1]), 10 * PPM, 0, Math.PI * 2);
+  ctx.fill();
   // Campus lawns and Laurel Creek.
   // The campus plaza and the ponds on Laurel Creek.
   for (const [poly, colour] of [[PLAZA_POLYGON, "#ddd6c4"], ...PONDS.map((p) => [p, PALETTE.water])] as [V2[], string][]) {
@@ -215,7 +225,7 @@ function paintBase(stages: Record<string, string>) {
 
   // Buildings: homes, frames under construction, landmarks.
   for (const b of collisionBoxes(stages as never)) {
-    if (b.id === "parked" || b.id === "sign" || b.id === "porch" || b.id === "office" || b.id === "river-bridge" || b.id === "bridge-rail" || b.id?.startsWith("station-") || b.id === "rail-post" || b.id === "mall-counter" || b.id === "mall-shelf") continue;
+    if (b.id === "parked" || b.id === "sign" || b.id === "rock" || b.id === "porch" || b.id === "office" || b.id === "river-bridge" || b.id === "bridge-rail" || b.id?.startsWith("station-") || b.id === "rail-post" || b.id === "mall-counter" || b.id === "mall-shelf") continue;
     ctx.fillStyle = b.kind === "frame" ? PALETTE.construction : b.kind === "landmark" || b.kind === "post" ? PALETTE.landmark : PALETTE.building;
     ctx.strokeStyle = PALETTE.buildingEdge;
     ctx.lineWidth = 0.8 * PPM;
@@ -395,7 +405,7 @@ const LABELS: { text: string; at: V2; minScale?: number }[] = [
   { text: "Outfitters", at: [LANDMARKS.clothing.position[0], LANDMARKS.clothing.position[1] - 11] },
   { text: "Subs", at: [LANDMARKS.subs.position[0], LANDMARKS.subs.position[1] + 10] },
   { text: "Burgers", at: [LANDMARKS.burger.position[0], LANDMARKS.burger.position[1] + 11] },
-  {text:"Heron Gardens Island",at:[-650,-700]},
+  {text:"Heron Gardens Island",at:[ISLANDS[0].at[0],ISLANDS[0].at[1]-45]},
   {text:"North Meadows",at:[165,-270]},
   {text:"Heron Fields",at:[-76,-270]},
   { text: "Boat Dock", at: [-575, -520] },
@@ -410,6 +420,9 @@ const LABELS: { text: string; at: V2; minScale?: number }[] = [
   { text: "DOWNTOWN", at: [OWAWA.centre[0], OWAWA.centre[1] - OWAWA.half + 4] },
   { text: "OWAWA", at: [-170, -885] },
   { text: "Meadows Beach", at: [245, -440] },
+  { text: "Pine Hollow Campground", at: [CAMPGROUND.at[0], CAMPGROUND.at[1] + 20] },
+  { text: "Mount Tamarack", at: [MOUNTAIN.at[0], MOUNTAIN.at[1] - 30] },
+  { text: "Riverside Beach", at: [(NORTH_BEACH.x0 + NORTH_BEACH.x1) / 2, riverZ((NORTH_BEACH.x0 + NORTH_BEACH.x1) / 2) - riverWidth((NORTH_BEACH.x0 + NORTH_BEACH.x1) / 2) / 2 - 12] },
 ];
 
 const STREET_LABELS: { text: string; at: V2; vertical?: boolean }[] = [

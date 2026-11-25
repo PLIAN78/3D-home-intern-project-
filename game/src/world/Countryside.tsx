@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { groundHills, mat } from "../render/materials";
+import { mountainHeight } from "./wilds";
 import { HAZE } from "./Environment";
 import { CAIVAN_RIDGE } from "./map";
 import { fbm, FLAT_HALF, naturalHeight, PLAY_HALF, TERRAIN_STEP, terrainHeight } from "./terrain";
@@ -84,7 +85,8 @@ function horizonGeometry() {
       const sq = r / PLAY_HALF;
       const x = ex * sq * (1 - blend) + (ex / len) * r * 1.02 * blend;
       const z = ez * sq * (1 - blend) + (ez / len) * r * 1.02 * blend;
-      pos.push(x, naturalHeight(x, z), z);
+      // (Mount Tamarack carries on past the corner of the playable area.)
+      pos.push(x, naturalHeight(x, z) + mountainHeight(x, z), z);
     }
   }
   const idx: number[] = [];
@@ -122,7 +124,7 @@ function forestGeometry() {
     const s = 5 + rand(i + 2000) * 6;
     const g = blob.clone();
     g.scale(s, s * (1.1 + rand(i + 3000) * 0.5), s);
-    g.translate(x, naturalHeight(x, z) + s * 0.8, z);
+    g.translate(x, naturalHeight(x, z) + mountainHeight(x, z) + s * 0.8, z);
     parts.push(g);
   }
   return mergeGeometries(parts, false) ?? new THREE.BufferGeometry();

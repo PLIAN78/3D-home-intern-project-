@@ -8,6 +8,8 @@ import {host} from "../core/simHost";
 import {runtime} from "../core/runtime";
 import {buildingY} from "../world/v6Geometry";
 import {groundAt} from "../world/terrain";
+import {FIRST_CAMP_TREE} from "../core/simHost";
+import {CAMP_HOST,CAMP_TREES} from "../world/wilds";
 export type V6Panel = {kind:"station";id:string}|{kind:"building";id:string}|{kind:"lesson";id:string}|{kind:"principal"}|{kind:"shop";id:string}|{kind:"business";id:string};
 interface V6State {
  panel:V6Panel|null; ride:number|null;time:number; interior:string|null;
@@ -19,6 +21,10 @@ interface V6State {
  visit:(id:string)=>void;exit:()=>void;buyCondo:()=>void;loanAction:()=>void;
  /** The side job you're on (see gigs.ts), and the step you're at; jobs finished; mall shops visited for the survey. */
  gig:{id:string;step:number}|null;gigsDone:string[];mallVisits:string[];
+ /** Marked campground trees chopped for the current firewood job. */
+ chopped:number;
+ /** Chopped the k-th marked campground tree (see wilds.CAMP_TREES). */
+ chop:(k:number)=>void;
  /** Rent from units bought through Owawa Realty and Northstar Insurance dividends, paid every 2 minutes. */
  investments:number;
  startGig:(id:string)=>void;dropGig:()=>void;
@@ -35,12 +41,21 @@ export function migrateV6(persisted: unknown, version: number) {
 }
 export const useV6=create<V6State>()(persist((set,get)=>({
  panel:null,ride:null,time:0,interior:null,lessons:[],coops:{},workSeconds:0,loanVisit:"none",condo:false,rentSeconds:0,
- gig:null,gigsDone:[],mallVisits:[],investments:0,
- startGig:id=>{const g=gigById(id);if(!g)return;set({gig:{id,step:0},mallVisits:[]});useGame.getState().toast(g.title+": "+g.steps[0].hint+".");},
+ gig:null,gigsDone:[],mallVisits:[],chopped:0,investments:0,
+ startGig:id=>{const g=gigById(id);if(!g)return;set({gig:{id,step:0},mallVisits:[],chopped:0});useGame.getState().toast(g.title+": "+g.steps[0].hint+".");},
  dropGig:()=>{if(get().gig)useGame.getState().toast("Side job dropped.");set({gig:null});},
  travel:(stationId,price)=>{const a=STATION_ACCESS.find(a=>a.id===stationId);if(!a||!useGame.getState().spend(price))return;set({panel:null});host.sim?.teleport(a.exit[0],a.exit[1],0,Math.atan2(a.face[1],a.face[0]));runtime.cameraDistance=1;useGame.getState().toast("Express to "+a.name+". Welcome!");},
  invest:(price,income,label)=>{if(!useGame.getState().spend(price))return;set(s=>({investments:s.investments+income}));useGame.getState().toast(label+": +$"+income+" every 2 minutes of play.");},
  visited:id=>{const s=get();if(s.gig?.id==="mall-walker"&&s.gig.step===0&&MALL_STORES.some(m=>m.id===id&&m.id!=="mall-desk")&&!s.mallVisits.includes(id))set({mallVisits:[...s.mallVisits,id]});},
+ chop:k=>{
+  const s=get(),sim=host.sim,b=runtime.body,t=CAMP_TREES[k];if(!sim||!t)return;
+  const dx=t[0]-b.x,dz=t[1]-b.z,l=Math.hypot(dx,dz)||1;
+  if(!sim.breakables.breakTree(FIRST_CAMP_TREE+k,{x:dx/l,y:0,z:dz/l},9))return;
+  const st=s.gig?gigById(s.gig.id)?.steps[s.gig.step]:undefined;
+  if(!st?.chops)return;
+  const n=s.chopped+1;set({chopped:n});
+  if(n<st.chops)useGame.getState().toast("Timber! "+(st.chops-n)+" more to go.");
+ },
  setPanel:panel=>set({panel}),
  answer:(id,index)=>{
   const q=SUBJECTS.find(s=>s.id===id);if(!q)return false;
@@ -57,7 +72,7 @@ export const useV6=create<V6State>()(persist((set,get)=>({
   if(rent>=120){rent%=120;if(s.condo)useGame.getState().pay(325,"Northshore condo rent");if(s.investments)useGame.getState().pay(s.investments,"Owawa rentals and dividends");}
   // Side job steps: arrive at the spot (or finish the shop survey) to move on; the last step pays.
   if(s.gig){const g=gigById(s.gig.id),st=g?.steps[s.gig.step],b=runtime.body;
-   const reached=st&&(st.visits?s.mallVisits.length>=st.visits:Math.hypot(b.x-st.at[0],b.z-st.at[1])<st.radius&&b.control.kind==="foot");
+   const reached=st&&(st.chops?s.chopped>=st.chops:st.visits?s.mallVisits.length>=st.visits:Math.hypot(b.x-st.at[0],b.z-st.at[1])<st.radius&&b.control.kind==="foot");
    if(g&&st&&reached){useGame.getState().toast(st.done);if(s.gig.step+1>=g.steps.length){set(x=>({gig:null,gigsDone:[...x.gigsDone,g.id]}));useGame.getState().pay(g.reward,g.title);}else{set({gig:{id:g.id,step:s.gig.step+1}});useGame.getState().toast(g.steps[s.gig.step+1].hint+".");}}}
   set({time:s.time+dt,workSeconds:work,rentSeconds:rent});
  },
@@ -71,13 +86,26 @@ export const useV6=create<V6State>()(persist((set,get)=>({
  },
 }),{name:"caivan-v6-progress",version:7,
  migrate:migrateV6,
- partialize:s=>({lessons:s.lessons,coops:s.coops,loanVisit:s.loanVisit,condo:s.condo,workSeconds:s.workSeconds,rentSeconds:s.rentSeconds,gig:s.gig,gigsDone:s.gigsDone,mallVisits:s.mallVisits,investments:s.investments})}));
+ partialize:s=>({lessons:s.lessons,coops:s.coops,loanVisit:s.loanVisit,condo:s.condo,workSeconds:s.workSeconds,rentSeconds:s.rentSeconds,gig:s.gig,gigsDone:s.gigsDone,mallVisits:s.mallVisits,chopped:s.chopped,investments:s.investments})}));
 export function approveLoan(){const s=useV6.getState();if(s.loanVisit!=="documents")return;useV6.setState({loanVisit:"approved"});useGame.getState().pay(900,"Riverbank appraisal visit");}
 export function v6Offer():{text:string;run:()=>void}|null{
  const v=useV6.getState(),b=runtime.body;
  if(v.ride!==null){const t=trainAt(v.time,v.ride);return {text:t.station>=0?"Leave train · "+STATIONS[t.station].name:"Riding express · next "+STATIONS[t.next].name,run:v.leaveTrain};}
  if(v.interior){return {text:"Visit "+V6_BUILDINGS.find(x=>x.id===v.interior)?.name+" · services / elevator",run:()=>v.setPanel({kind:"building",id:v.interior!})};}
  if(b.control.kind!=="foot")return null;
+ // Pine Hollow: the camp host hands out the firewood job; the marked trees come down with E.
+ const job=v.gig?.id==="camp-firewood"?gigById("camp-firewood")!.steps[v.gig.step]:null;
+ if(Math.hypot(b.x-CAMP_HOST[0],b.z-CAMP_HOST[1])<3.5){
+  if(!v.gig)return {text:"Talk to the camp host · firewood job ($180)",run:()=>v.startGig("camp-firewood")};
+  if(job?.chops)return {text:"Camp host: "+(job.chops-v.chopped)+" more marked trees to chop",run:()=>useGame.getState().toast("The ribboned trees are just east of the campfire.")};
+  if(!job)return {text:"Camp host · finish your current side job first",run:()=>{}};
+ }
+ const trees=host.sim?.breakables.trees;
+ for(let k=0;k<CAMP_TREES.length;k++){
+  const [tx,tz]=CAMP_TREES[k];if(Math.hypot(b.x-tx,b.z-tz)>2.8||trees?.[FIRST_CAMP_TREE+k]?.status!=="standing")continue;
+  if(job?.chops)return {text:"Chop the marked tree ("+(job.chops-v.chopped)+" left)",run:()=>v.chop(k)};
+  return {text:"Marked for firewood · ask the camp host",run:()=>{}};
+ }
  // The mall's shops and info desk, and Owawa's businesses.
  if(inMall(b.x,b.z))for(const m of MALL_STORES)if(Math.hypot(b.x-m.spot[0],b.z-m.spot[1])<2.6)return {text:"Visit "+m.name.charAt(0)+m.name.slice(1).toLowerCase(),run:()=>{v.visited(m.id);v.setPanel({kind:"business",id:m.id});}};
  for(const s of BUSINESSES)if(Math.hypot(b.x-s.door[0],b.z-s.door[1])<4)return {text:"Enter "+s.name,run:()=>{v.visited(s.id);v.setPanel({kind:"business",id:s.id});}};

@@ -115,6 +115,7 @@ export function Player() {
         runtime.shake = Math.min(1, e.speed / 25);
         sfx("thud");
       } else if (e.kind === "crash") runtime.shake = Math.min(0.7, e.speed / 30);
+      else if (e.kind === "police") g.toast(e.phase === "chase" ? "You hit a police cruiser! It's on your tail." : "The police gave up the chase.");
       else if (e.kind === "sunk") {
         // Towed out of the lake, back to where it parks.
         if (s.control.kind === "vehicle" && s.control.id === e.id) {

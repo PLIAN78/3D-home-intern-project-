@@ -8,8 +8,17 @@ export const V6_VERSION = "6.4.0";
 export const WATER_LEVEL = -1.4;
 export const riverZ = (x: number) => -555 + x * 0.07 + 24 * Math.sin(x / 240);
 export const riverWidth = (x: number) => 100 + 14 * Math.cos(x / 190);
+/**
+ * Heron Gardens Island stands in the open water where Heron Lake meets Heron
+ * Bay, halfway between the north and south shores (about 135 m of water each
+ * way; v6.5: it used to be at [-650, -655], close under the north shore). Everything on it is laid out relative to where it
+ * was, and moved by ISLAND_SHIFT.
+ */
+export const ISLAND_AT: Point = [-770, -580];
+export const ISLAND_SHIFT: Point = [ISLAND_AT[0] + 650, ISLAND_AT[1] + 655];
+const shift = (p: Point): Point => [p[0] + ISLAND_SHIFT[0], p[1] + ISLAND_SHIFT[1]];
 export const ISLANDS = [
- {name:"Heron Gardens Island",at:[-650,-655] as Point,rx:100,rz:55,developed:true},
+ {name:"Heron Gardens Island",at:ISLAND_AT,rx:100,rz:55,developed:true},
 ];
 export function islandRadius(x: number, z: number) {
   return Math.min(...ISLANDS.map(i => Math.hypot((x-i.at[0])/i.rx, (z-i.at[1])/i.rz)));
@@ -71,6 +80,9 @@ export const SUBURB_ROADS: V6Road[] = [
 export const BRIDGEHEAD_STUB = 10;
 export const RIVER_WALK:Point[] = Array.from({length:25},(_,i)=>{const x=-930+i*77;return [x,NORTH_SHORE_Z(x)] as Point;});
 export const NORTH_ROADS:V6Road[] = RIVER_WALK.slice(1).map((p,i)=>rd("riverfront-"+i,RIVER_WALK[i],p));
+/** Riverside Beach: sand on the river's north bank below the riverfront street, opposite Meadows Beach's side of town. */
+export const NORTH_BEACH = { id: "riverside-beach", x0: -330, x1: -160, depth: 22, name: "RIVERSIDE BEACH" };
+export const onNorthBeach = (x: number, z: number) => x > NORTH_BEACH.x0 - 4 && x < NORTH_BEACH.x1 + 4 && z > riverZ(x) - riverWidth(x) / 2 - NORTH_BEACH.depth - 4 && z < riverZ(x);
 // The two north-shore bridgeheads: a short stub on the river side so the riverfront's
 // curb and sidewalk open for the bridge road (the bridge streets are part of Owawa's grid).
 for(const x of [BRIDGES[0].x,BRIDGES[1].x])NORTH_ROADS.push(rd("bridgehead-"+x,[x,NORTH_SHORE_Z(x)+BRIDGEHEAD_STUB],[x,riverfrontZ(x)]));
@@ -95,8 +107,8 @@ V6_BUILDINGS.push(
 V6_BUILDINGS.push(...MEADOW_BUILDINGS, ...CAMPUS_BUILDINGS);
 for (let i=0;i<5;i++) V6_BUILDINGS.push({id:"island-home-"+i,name:"Heron Gardens "+(i+1),at:[-342+i*30,riverZ(-255)-20],size:[20,12,9],kind:"condo",tone:i%4,level:"island"});
 for(const b of V6_BUILDINGS.filter(b=>b.level==="island")){
- if(b.id.startsWith("island-home")){const n=Number(b.id.split("-").at(-1));b.at=[-708+n*29,-675];}
- else b.at=b.id==="showroom"?[-646,-639]:b.id==="sushi"?[-624,-638]:[-604,-638];
+ if(b.id.startsWith("island-home")){const n=Number(b.id.split("-").at(-1));b.at=shift([-708+n*29,-675]);}
+ else b.at=shift(b.id==="showroom"?[-646,-639]:b.id==="sushi"?[-624,-638]:[-604,-638]);
  b.size[0]*=.65;
 }
 /**
@@ -108,7 +120,7 @@ for(const b of V6_BUILDINGS.filter(b=>b.level==="island")){
  * clear of buildings; trees and grass are kept off them.
  */
 export interface Walk { id: string; points: Point[]; width: number }
-const ISLAND_LOOP = { x0: -728, x1: -572, z0: -692, z1: -625, r: 18 };
+const ISLAND_LOOP = { x0: -728 + ISLAND_SHIFT[0], x1: -572 + ISLAND_SHIFT[0], z0: -692 + ISLAND_SHIFT[1], z1: -625 + ISLAND_SHIFT[1], r: 18 };
 function roundedLoop(r: typeof ISLAND_LOOP): Point[] {
  const out: Point[] = [], k = 6;
  const corners: [number, number, number][] = [[r.x1 - r.r, r.z1 - r.r, 0], [r.x0 + r.r, r.z1 - r.r, Math.PI / 2], [r.x0 + r.r, r.z0 + r.r, Math.PI], [r.x1 - r.r, r.z0 + r.r, 1.5 * Math.PI]];
@@ -116,17 +128,17 @@ function roundedLoop(r: typeof ISLAND_LOOP): Point[] {
  out.push(out[0]);
  return out;
 }
-export const ISLAND_PROMENADE_Z = -663.5;
+export const ISLAND_PROMENADE_Z = -663.5 + ISLAND_SHIFT[1];
 export const ISLAND_WALKS: Walk[] = (() => {
  const L = ISLAND_LOOP, walks: Walk[] = [
   { id: "island-loop", points: roundedLoop(L), width: 3 },
   { id: "island-promenade", points: [[L.x0, ISLAND_PROMENADE_Z], [L.x1, ISLAND_PROMENADE_Z]], width: 4 },
   // Between homes 2 and 3 and between the showroom and the sushi bar.
-  { id: "island-cross", points: [[-634, L.z0], [-634, L.z1]], width: 2.6 },
+  { id: "island-cross", points: [[-634 + ISLAND_SHIFT[0], L.z0], [-634 + ISLAND_SHIFT[0], L.z1]], width: 2.6 },
   // Down the beach onto the harbour's pier head.
-  { id: "island-harbour", points: [[-614, L.z1], [-614, -603.2]], width: 2.6 },
+  { id: "island-harbour", points: [[-614 + ISLAND_SHIFT[0], L.z1], shift([-614, -603.2])], width: 2.6 },
   // West to Elias's fishing jetty.
-  { id: "island-jetty", points: [[L.x0, -656], [-758.5, -655.5]], width: 2.4 },
+  { id: "island-jetty", points: [[L.x0, -656 + ISLAND_SHIFT[1]], shift([-758.5, -655.5])], width: 2.4 },
  ];
  for (const b of V6_BUILDINGS.filter(b => b.level === "island")) {
   // Doors are in the south wall; homes open onto the promenade, shops onto the loop.
@@ -158,6 +170,26 @@ export const CAMPUS_PATHS:Point[][]=CAMPUS_WALKWAYS.map(w=>w.points);
 export {CAMPUS_WALKWAYS};
 /** Trees on the campus lawns and along Laurel Creek. */
 export const CAMPUS_TREES:( {position:Point;y:number;scale:number;variant:0|1|2})[]=CAMPUS_TREE_SPOTS.map(([x,z,s],i)=>({position:[x,z],y:0,scale:s,variant:(i%5===0?2:0)}));
+/**
+ * Trees along the green north bank, between the riverfront street's sidewalk
+ * and the water: two loose rows, clear of the bridges, Riverside Beach, the
+ * river quay's piers and the water's edge. (Heights are filled in by terrain.ts.)
+ */
+export const RIVERSIDE_TREE_SPOTS:Point[]=(()=>{
+ const out:Point[]=[];
+ const h=(n:number)=>{const s=Math.sin(n*12.9898)*43758.5453;return s-Math.floor(s);};
+ for(let x=-985,i=0;x<985;x+=12.5,i++)for(const row of [0,1]){
+  const px=x+(h(i*3+row)-.5)*6+row*6,front=riverfrontZ(px),water=riverZ(px)-riverWidth(px)/2;
+  // Rows at about a third and two thirds of the way from the sidewalk to the water.
+  const z=front+8.6+(water-front-8.6)*(row?.62:.3)+(h(i*7+row)-.5)*4;
+  if(water-front<26)continue;
+  if(BRIDGES.some(b=>Math.abs(px-b.x)<b.width/2+12))continue;
+  if(onNorthBeach(px,z)||Math.abs(px-420)<20)continue;
+  if(islandRadius(px,z)<1.4)continue;
+  out.push([px,z]);
+ }
+ return out;
+})();
 export const STUDENT_LOOPS:Point[][]=CAMPUS_LOOPS;
 export const SUBJECTS=[
  {id:"engineering",question:"A panel line makes 12 panels in 3 minutes. How many in 15 minutes?",choices:["48 panels","60 panels","72 panels"],correct:1,explanation:"12 ÷ 3 = 4 panels/minute; 4 × 15 = 60."},
@@ -301,14 +333,20 @@ export const stationAccess = (id: string) => STATION_ACCESS.find(a => a.id === i
 export function onStationAccess(x: number, z: number, pad = 0) {
  return STATION_ACCESS.some(a => inRect(x, z, a.forecourt, pad) || [a.path, ...a.extra].some(l => l.slice(1).some((p, i) => distanceToSegment(x, z, l[i], p) < STATION_PATH_WIDTH / 2 + pad)));
 }
-export const SHIP_ROUTE:Point[]=Array.from({length:81},(_,i)=>{const x=-1150+i*2300/80;return [x,riverZ(x)+riverWidth(x)*0.38] as Point;});
+/** The river boat's route: down the south side of the river, passing north of Heron Gardens Island. */
+export const SHIP_ROUTE:Point[]=Array.from({length:81},(_,i)=>{
+ const x=-1150+i*2300/80,i0=ISLANDS[0],u=(x-i0.at[0])/(i0.rx*1.35);
+ const z=riverZ(x)+riverWidth(x)*0.38;
+ return [x,Math.abs(u)<1?Math.min(z,i0.at[1]-i0.rz*1.35*Math.sqrt(1-u*u)-14):z] as Point;
+});
 export const SHIP_LENGTH=SHIP_ROUTE.slice(1).reduce((s,p,i)=>s+Math.hypot(p[0]-SHIP_ROUTE[i][0],p[1]-SHIP_ROUTE[i][1]),0);
 /**
  * Jet-ski riders on the river (ambient, no physics). Each loops an open reach
  * of river, well clear of the bridges and their piers, the harbour piers, the
- * quay and the island; riders on the same reach go opposite ways.
+ * quay and the island (v6.5: none west of the island any more, where Elias's
+ * jetty now reaches out); riders on the same reach go opposite ways.
  */
-export const JETSKI_LOOPS = [{ cx: -900, a: 62 }, { cx: -250, a: 85 }, { cx: 270, a: 72 }, { cx: 560, a: 62 }, { cx: 880, a: 85 }];
+export const JETSKI_LOOPS = [{ cx: -250, a: 85 }, { cx: 270, a: 72 }, { cx: 560, a: 62 }, { cx: 880, a: 85 }];
 export const NPC_JETSKIS = JETSKI_LOOPS.length * 2;
 export function npcJetSki(i: number, time: number) {
  const loop = JETSKI_LOOPS[i % JETSKI_LOOPS.length], dir = i < JETSKI_LOOPS.length ? 1 : -1;
@@ -322,6 +360,6 @@ export const PORT={at:[-610,-601] as Point};
 export const PORTS=[
 // Each harbour moors a motorboat between its piers and a jet ski along the outer pier.
  {id:"lake",name:"Heron Lake Marina",at:[-556,-542] as Point,heading:-Math.PI/2,shore:[-556,-526] as Point,boat:[-555.8,-564] as Point,jetski:[-546.9,-567.5] as Point},
- {id:"island",name:"Heron Gardens Harbour",at:[-610,-601] as Point,heading:Math.PI/2,shore:[-610,-618] as Point,boat:[-615,-586] as Point,jetski:[-622.1,-584] as Point},
+ {id:"island",name:"Heron Gardens Harbour",at:shift([-610,-601]),heading:Math.PI/2,shore:shift([-610,-618]),boat:shift([-615,-586]),jetski:shift([-622.1,-584])},
  {id:"river",name:"Owawa River Quay",at:[420,riverZ(420)-riverWidth(420)/2+9] as Point,heading:Math.PI/2,shore:[420,riverZ(420)-riverWidth(420)/2-12] as Point,boat:[414,riverZ(420)-riverWidth(420)/2+22] as Point,jetski:[427.1,riverZ(420)-riverWidth(420)/2+24] as Point},
 ];

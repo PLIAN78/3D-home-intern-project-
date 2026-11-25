@@ -1,5 +1,5 @@
 import type { Box, V2 } from "./map";
-import {riverZ,riverWidth} from "./v6";
+import {riverZ,riverWidth,ISLAND_SHIFT} from "./v6";
 import { groundAt, LAKE, LAKE_Y } from "./terrain";
 
 /**
@@ -14,10 +14,13 @@ export const JETTIES:{x0:number;z0:number;x1:number;z1:number}[]=[
  {x0:-551,z0:-570,x1:-549,z1:-542},
  {x0:-562,z0:-544,x1:-548,z1:-542},
  {x0:-564,z0:-526,x1:-548,z1:-523},
- {x0:-789,z0:-657,x1:-757,z1:-654},
- {x0:-620,z0:-620,x1:-618,z1:-577},
- {x0:-610,z0:-604,x1:-608,z1:-577},
- {x0:-621,z0:-604,x1:-607,z1:-602},
+ // On Heron Gardens Island (laid out where it used to be, then moved with it): Elias's jetty and the harbour piers.
+ ...[
+  {x0:-789,z0:-657,x1:-757,z1:-654},
+  {x0:-620,z0:-620,x1:-618,z1:-577},
+  {x0:-610,z0:-604,x1:-608,z1:-577},
+  {x0:-621,z0:-604,x1:-607,z1:-602},
+ ].map(j=>({x0:j.x0+ISLAND_SHIFT[0],x1:j.x1+ISLAND_SHIFT[0],z0:j.z0+ISLAND_SHIFT[1],z1:j.z1+ISLAND_SHIFT[1]})),
  ...[418,424].map(x=>({x0:x-1,z0:riverZ(420)-riverWidth(420)/2-12,x1:x+1,z1:riverZ(420)-riverWidth(420)/2+32})),
  {x0:417,z0:riverZ(420)-riverWidth(420)/2+5,x1:425,z1:riverZ(420)-riverWidth(420)/2+7},
 ];
@@ -27,7 +30,7 @@ export const DECK_Y = LAKE_Y + 0.9;
 export const BOAT_SPOT = { at: [-555.8, -564] as V2, heading: -Math.PI / 2 };
 
 /** Elias sits at the end of his jetty, line in the water. */
-export const ELIAS = { at: [-776, -655.5] as V2, facing: Math.PI / 2, name: "Elias · Fisherman" };
+export const ELIAS = { at: [-776 + ISLAND_SHIFT[0], -655.5 + ISLAND_SHIFT[1]] as V2, facing: Math.PI / 2, name: "Elias · Fisherman" };
 
 /** The tackle box that floated away: somewhere in the lake's north-west. */
 export const TACKLE_BOX: V2 = [-810, -720];
@@ -36,7 +39,7 @@ export const TACKLE_SEARCH = { centre: [-790, -700] as V2, radius: 60 };
 /** Small buildings: the boat-rental hut by the dock, and Elias's shack on the island. */
 export const LAKE_HUTS: { id: string; at: V2; size: [number, number, number]; heading: number }[] = [
   { id: "boathouse", at: [-571, -532], size: [5, 4, 3], heading: 0 },
-  { id: "shack", at: [-697, -656], size: [5.5, 4.5, 3], heading: 0.3 },
+  { id: "shack", at: [-697 + ISLAND_SHIFT[0], -656 + ISLAND_SHIFT[1]], size: [5.5, 4.5, 3], heading: 0.3 },
 ];
 
 /** Ground under a hut: the lowest corner, so it never floats on a slope. */

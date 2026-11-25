@@ -2,13 +2,15 @@ import {CAMPUS_TREES} from "../world/v6";
 import { useEffect, useState } from "react";
 import { Simulation } from "../sim/simulation";
 import { CAIVAN_RIDGE, SPAWN, STARTING_STAGES, streetLights } from "../world/map";
-import { CITY_Y, ELEPHANT_SPOT, HILL_TREES } from "../world/terrain";
+import { CAMP_WOODLOT, CITY_Y, ELEPHANT_SPOT, HILL_TREES } from "../world/terrain";
 import { CITY_TREES, OWAWA_ROADS } from "../world/owawa";
 import { VEHICLE_SPOTS } from "../story/missions";
 import type { TreeInput } from "../sim/breakables";
 
 /** Every tree you can knock over: the community's, then the woods on the hills. */
-export const TREES: TreeInput[] = [...CAIVAN_RIDGE.trees, ...HILL_TREES, ...CITY_TREES, ...CAMPUS_TREES];
+export const TREES: TreeInput[] = [...CAIVAN_RIDGE.trees, ...HILL_TREES, ...CITY_TREES, ...CAMPUS_TREES, ...CAMP_WOODLOT];
+/** Index of the first of the campground's ribboned firewood trees in TREES (the last ones). */
+export const FIRST_CAMP_TREE = TREES.length - CAMP_WOODLOT.length;
 /** Street lights (Caivan Ridge, then downtown Owawa), in the same breakable list after the trees (variant 3 is a pole). */
 export const LIGHTS = [...streetLights(), ...streetLights(OWAWA_ROADS, CITY_Y)];
 export const BREAKABLE_TREES: TreeInput[] = [...TREES, ...LIGHTS.map((l) => ({ position: [l.x, l.z] as [number, number], y: l.y, scale: 1, variant: 3 as const }))];

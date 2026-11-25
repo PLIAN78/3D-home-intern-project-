@@ -7,7 +7,8 @@
 
 import { MEADOW_WAY_Z } from "./meadows";
 import { BAY_SHORE, BAY_SLOPE, bayDistance } from "./bay";
-import { riverWidth, riverDistance, islandRadius, inRiver, inNorthCity, nearV6Development, CAMPUS, AIRPORT, SUBURBS, SUBURB_ROADS, distanceToSegment, V6_BUILDINGS, BRIDGES, BRIDGEHEAD_STUB, NORTH_SHORE_Z, WATER_LEVEL, STATION_ACCESS, onStationAccess, onIslandWalk } from "./v6";
+import { CAMP_APRON, CAMP_TREES, CAMPGROUND, clearOfWildsFeatures, mountainHeight } from "./wilds";
+import { ISLANDS, ISLAND_SHIFT, RIVERSIDE_TREE_SPOTS, onNorthBeach, riverZ, riverWidth, riverDistance, islandRadius, inRiver, inNorthCity, nearV6Development, CAMPUS, AIRPORT, SUBURBS, SUBURB_ROADS, distanceToSegment, V6_BUILDINGS, BRIDGES, BRIDGEHEAD_STUB, NORTH_SHORE_Z, WATER_LEVEL, STATION_ACCESS, onStationAccess, onIslandWalk } from "./v6";
 
 export type P2 = [number, number];
 
@@ -318,8 +319,13 @@ export function terrainHeight(x:number,z:number) {
  }
  return h;
 }
+/** Pine Hollow Campground's level (the hills' height at its centre). */
+let campLevel: number | null = null;
 function shapedHeight(x:number,z:number) {
- let h=naturalHeight(x,z);
+ // Mount Tamarack rises out of the south-west woods; the campground is levelled into the slope.
+ let h=naturalHeight(x,z)+mountainHeight(x,z);
+ const dcamp=Math.hypot(x-CAMPGROUND.at[0],z-CAMPGROUND.at[1]);
+ if(dcamp<CAMPGROUND.radius+CAMP_APRON){campLevel??=naturalHeight(...CAMPGROUND.at)+mountainHeight(...CAMPGROUND.at);h+=(campLevel-h)*smoothstep(CAMPGROUND.radius+CAMP_APRON,CAMPGROUND.radius,dcamp);}
  const outside=(r:{x0:number;z0:number;x1:number;z1:number})=>Math.hypot(Math.max(r.x0-x,0,x-r.x1),Math.max(r.z0-z,0,z-r.z1));
  for(const r of [CAMPUS,AIRPORT,...SUBURBS])h*=smoothstep(0,65,outside(r));
  const road=nearestCountryRoad(x,z);
@@ -366,11 +372,17 @@ const CLEARING = 26;
  */
 export const HILL_TREES: {position:P2;y:number;scale:number;variant:0|1|2}[]=(()=>{
  const out:{position:P2;y:number;scale:number;variant:0|1|2}[]=[];
+ // The green north bank's two rows (v6.ts), on dry ground only.
+ RIVERSIDE_TREE_SPOTS.forEach(([x,z],i)=>{const y=terrainHeight(x,z);if(y>LAKE_Y+0.5)out.push({position:[x,z],y,scale:.9+((i*37)%10)/20,variant:i%4===3?1:0});});
  const rand=(i:number)=>hash(i*1.37+.5,i*2.71+.25);
  const add=(x:number,z:number,i:number)=>{
   if(nearestCountryRoad(x,z).d<15 || SUBURB_ROADS.some(r=>distanceToSegment(x,z,r.from,r.to)<14))return;
-  if(lakeRadius(x,z)<1.25 || inRiver(x,z) || bayDistance(x,z)>-BAY_SHORE-4 || inNorthCity(x,z,20) || nearV6Development(x,z,12) || onStationAccess(x,z,3))return;
+  if(lakeRadius(x,z)<1.25 || inRiver(x,z) || bayDistance(x,z)>-BAY_SHORE-4 || inNorthCity(x,z,20) || nearV6Development(x,z,12) || onStationAccess(x,z,3) || onNorthBeach(x,z))return;
+  // The riverside rows have the north bank's trees already.
+  if(z<riverZ(x) && out.some(t=>Math.hypot(t.position[0]-x,t.position[1]-z)<7))return;
   if(Math.hypot(x-COTTAGE.position[0],z-COTTAGE.position[1])<38 || Math.hypot(x-ELEPHANT_SPOT[0],z-ELEPHANT_SPOT[1])<CLEARING)return;
+  // The campground, its trail, the creeks, the marked woodlot and Mount Tamarack's bare summit.
+  if(x<-400&&z>400&&!clearOfWildsFeatures(x,z,0))return;
   if(V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+7&&Math.abs(z-b.at[1])<b.size[1]/2+7))return;
   out.push({position:[x,z],y:terrainHeight(x,z),scale:.85+rand(i+70000)*.9,variant:rand(i+80000)<.62?1:rand(i+90000)<.6?0:2});
  };
@@ -380,13 +392,17 @@ export const HILL_TREES: {position:P2;y:number;scale:number;variant:0|1|2}[]=(()
   if(Math.max(Math.abs(x),Math.abs(z))<FLAT_HALF+15 || (x<-425&&z>420) || fbm(x*.004+7,z*.004)<.43)continue;
   add(x,z,n+100000);
  }
- for(let n=0;n<14;n++){const angle=n*2.4,x=-650+Math.cos(angle)*85,z=-655+Math.sin(angle)*36;
+ const [ix,iz]=ISLANDS[0].at;
+ for(let n=0;n<14;n++){const angle=n*2.4,x=ix+Math.cos(angle)*85,z=iz+Math.sin(angle)*36;
   if(onIslandWalk(x,z,2))continue;
-  if(V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+5&&Math.abs(z-b.at[1])<b.size[1]/2+5)||Math.hypot(x+697,z+656)<8)continue;
+  if(V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+5&&Math.abs(z-b.at[1])<b.size[1]/2+5)||Math.hypot(x-(-697+ISLAND_SHIFT[0]),z-(-656+ISLAND_SHIFT[1]))<8)continue;
   out.push({position:[x,z],y:terrainHeight(x,z),scale:.85+(n%4)*.13,variant:n%3===0?0:1});
  }
  return out;
 })();
+
+/** The firewood trees in the woodlot by the campground (breakable like the rest; wilds.ts). */
+export const CAMP_WOODLOT: {position:P2;y:number;scale:number;variant:0|1|2}[]=CAMP_TREES.map(([x,z],i)=>({position:[x,z],y:terrainHeight(x,z),scale:1+(i%3)*.12,variant:i%3===1?1:0}));
 
 /**
  * Height of the drawn (and physical) ground at any point: the terrain grid's

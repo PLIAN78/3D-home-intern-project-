@@ -1,4 +1,5 @@
 import {beforeAll,describe,expect,it} from "vitest";
+import { mountainHeight } from "../game/src/world/wilds";
 import {CITY_Y,LAKE_Y,terrainHeight,groundAt,HILL_TREES,roadSurfaceAt} from "../game/src/world/terrain";
 import {ISLANDS,PORTS,STATIONS,STATION_ACCESS,V6_BUILDINGS,SUBURB_ROADS} from "../game/src/world/v6";
 import {v6Boxes,buildingY} from "../game/src/world/v6Geometry";
@@ -14,7 +15,8 @@ describe("V6.1 terrain and access",()=>{
  it("keeps the northern city at ground level and limits southern hills",()=>{
   expect(CITY_Y).toBe(0);
   for(let x=-950;x<=950;x+=50)for(let z=-950;z<390;z+=50)expect(terrainHeight(x,z)).toBeLessThanOrEqual(6);
-  for(let x=-950;x<=950;x+=50)for(let z=400;z<=950;z+=50)expect(terrainHeight(x,z)).toBeLessThan(7);
+  // (Mount Tamarack, v6.5, stands apart in the south-west corner.)
+  for(let x=-950;x<=950;x+=50)for(let z=400;z<=950;z+=50)expect(terrainHeight(x,z)-mountainHeight(x,z)).toBeLessThan(7);
  });
  it("merges the two islands while retaining a complete navigable water channel",()=>{
   expect(ISLANDS).toHaveLength(1);const island=ISLANDS[0];

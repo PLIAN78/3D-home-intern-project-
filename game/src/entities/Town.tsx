@@ -64,7 +64,7 @@ function TrafficCarView({ car, y = 0 }: { car: TrafficCar; y?: number }) {
   return (
     <group ref={root}>
       {look === "truck" ? <TruckBody color={car.color} livery={false} /> : look === "car" ? <CarBody color={car.color} /> : <ModelCar id={look} color={car.color} />}
-      {car.model === "police" && <PoliceKit />}
+      {car.model === "police" && <PoliceKit car={car} />}
       {r.hubs.map((h, i) => (
         <group key={i} position={h}>
           <Wheel
@@ -81,25 +81,55 @@ function TrafficCarView({ car, y = 0 }: { car: TrafficCar; y?: number }) {
   );
 }
 
-/** A police cruiser's light bar (flashing red and blue), a black band and the word POLICE. */
-function PoliceKit() {
-  const red = useRef<THREE.Mesh>(null), blue = useRef<THREE.Mesh>(null);
+/**
+ * A police cruiser, on the white sedan: black door panels lettered POLICE with
+ * a blue pinstripe, a push bar, a roof light bar (red and blue, flashing; fast
+ * when it's chasing you), grille lights, a door spotlight and an antenna.
+ * Sedan-local coordinates (roof at y 0.6 from x −0.9 to 0.3, sides at ±0.93).
+ */
+function PoliceKit({ car }: { car: TrafficCar }) {
+  const red = useRef<THREE.Group>(null), blue = useRef<THREE.Group>(null);
   useFrame(({ clock }) => {
-    const on = Math.floor(clock.elapsedTime * 3) % 2 === 0;
+    const rate = car.chase?.phase === "chase" ? 9 : 2.6;
+    const on = Math.floor(clock.elapsedTime * rate) % 2 === 0;
     if (red.current) red.current.visible = on;
     if (blue.current) blue.current.visible = !on;
   });
+  const black = mat("#121417", { rough: 0.45 });
+  const redLens = mat("#ff2a2a", { emissive: "#ff2a2a", emissiveIntensity: 3.2 });
+  const blueLens = mat("#2a6bff", { emissive: "#2a6bff", emissiveIntensity: 3.2 });
+  const offLens = mat("#3b2a2e", { rough: 0.3 });
   return (
     <group>
-      <mesh position={[-0.1, 1.62, 0]} material={mat("#22262b")}><boxGeometry args={[0.32, 0.1, 1.2]} /></mesh>
-      <mesh ref={red} position={[-0.1, 1.7, 0.32]} material={mat("#ff2a2a", { emissive: "#ff2a2a", emissiveIntensity: 3 })}><boxGeometry args={[0.28, 0.1, 0.5]} /></mesh>
-      <mesh ref={blue} position={[-0.1, 1.7, -0.32]} material={mat("#2a6bff", { emissive: "#2a6bff", emissiveIntensity: 3 })}><boxGeometry args={[0.28, 0.1, 0.5]} /></mesh>
       {[1, -1].map((s) => (
         <group key={s}>
-          <mesh position={[0, 0.78, s * 0.93]} material={mat("#15171a")}><boxGeometry args={[2.4, 0.42, 0.04]} /></mesh>
-          <Decal text="POLICE" color="#f2f2ef" position={[0, 0.78, s * 0.955]} rotation={[0, s > 0 ? 0 : Math.PI, 0]} height={0.24} />
+          {/* Black door panels and the blue pinstripe above them. */}
+          <mesh position={[-0.15, -0.28, s * 0.94]} material={black}><boxGeometry args={[2.5, 0.4, 0.02]} /></mesh>
+          <mesh position={[0, -0.04, s * 0.941]} material={mat("#1f4fbf", { rough: 0.35 })}><boxGeometry args={[4.5, 0.05, 0.02]} /></mesh>
+          <Decal text="POLICE" color="#f4f4f2" position={[-0.15, -0.28, s * 0.952]} rotation={[0, s > 0 ? 0 : Math.PI, 0]} height={0.24} />
+          {/* Unit number on the rear quarter. */}
+          <Decal text="12" color="#1f4fbf" position={[-1.85, -0.05, s * 0.945]} rotation={[0, s > 0 ? 0 : Math.PI, 0]} height={0.16} />
         </group>
       ))}
+      {/* Push bar on the front bumper. */}
+      {[-0.42, 0.42].map((z) => <mesh key={z} position={[2.47, -0.28, z]} material={black}><boxGeometry args={[0.08, 0.5, 0.08]} /></mesh>)}
+      <mesh position={[2.5, -0.1, 0]} material={black}><boxGeometry args={[0.08, 0.08, 1.05]} /></mesh>
+      <mesh position={[2.5, -0.42, 0]} material={black}><boxGeometry args={[0.08, 0.08, 1.05]} /></mesh>
+      {/* Light bar: a dark base with a red half and a blue half; the lit half alternates. */}
+      <group position={[-0.32, 0.64, 0]}>
+        <mesh material={black}><boxGeometry args={[0.36, 0.07, 1.42]} /></mesh>
+        <mesh position={[0, 0.07, 0.34]} material={offLens}><boxGeometry args={[0.3, 0.1, 0.62]} /></mesh>
+        <mesh position={[0, 0.07, -0.34]} material={offLens}><boxGeometry args={[0.3, 0.1, 0.62]} /></mesh>
+        <group ref={red}><mesh position={[0, 0.072, 0.34]} material={redLens}><boxGeometry args={[0.31, 0.105, 0.6]} /></mesh></group>
+        <group ref={blue}><mesh position={[0, 0.072, -0.34]} material={blueLens}><boxGeometry args={[0.31, 0.105, 0.6]} /></mesh></group>
+        <mesh position={[0.16, 0.07, 0]} material={mat("#f6f3e6", { emissive: "#f6f3e6", emissiveIntensity: 0.8 })}><boxGeometry args={[0.04, 0.06, 0.12]} /></mesh>
+      </group>
+      {/* Grille lights. */}
+      <mesh position={[2.41, -0.2, 0.2]} material={redLens}><boxGeometry args={[0.03, 0.05, 0.14]} /></mesh>
+      <mesh position={[2.41, -0.2, -0.2]} material={blueLens}><boxGeometry args={[0.03, 0.05, 0.14]} /></mesh>
+      {/* Door spotlight and antenna. */}
+      <mesh position={[0.6, 0.2, 0.98]} rotation={[0, 0, Math.PI / 2]} material={mat("#c9ccd1", { metal: 0.6, rough: 0.3 })}><cylinderGeometry args={[0.06, 0.07, 0.16, 10]} /></mesh>
+      <mesh position={[-1.95, 0.5, 0.3]} material={black}><cylinderGeometry args={[0.008, 0.008, 0.65, 4]} /></mesh>
     </group>
   );
 }

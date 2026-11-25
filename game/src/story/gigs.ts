@@ -1,9 +1,11 @@
 import { BUSINESSES, PORTS } from "../world/v6";
 import { LOST_BEAR, MALL_STORES } from "../world/mall";
 import type { V2 } from "../world/map";
+import { CAMP_HOST, CAMPFIRE } from "../world/wilds";
 
 /**
- * Side jobs handed out by Owawa's businesses and the mall's info desk: walk
+ * Side jobs handed out by Owawa's businesses, the mall's info desk and the
+ * Pine Hollow camp host: walk
  * (or drive) to each step's spot in turn; the last step is back with whoever
  * gave you the job, and pays.
  */
@@ -16,6 +18,8 @@ export interface GigStep {
   done: string;
   /** Instead of a place: this many different mall shops visited. */
   visits?: number;
+  /** Instead of a place: this many of the ribboned campground trees chopped down. */
+  chops?: number;
 }
 export interface Gig { id: string; title: string; giver: string; reward: number; steps: GigStep[] }
 
@@ -48,6 +52,12 @@ export const GIGS: Gig[] = [
     id: "mall-food", title: "Food court run", giver: "mall-desk", reward: 90, steps: [
       { at: spot("mall-noodles"), radius: 2.8, hint: "Collect a lunch order at the Noodle Bar", done: "Lunch order collected." },
       { at: spot("mall-security"), radius: 2.8, hint: "Take the lunch to Mall Security", done: "Lunch delivered to Mall Security." },
+    ],
+  },
+  {
+    id: "camp-firewood", title: "Firewood for Pine Hollow", giver: "camp", reward: 180, steps: [
+      { at: CAMPFIRE, radius: 0, chops: 4, hint: "Chop down four of the trees marked with orange ribbons", done: "That's a good load of firewood." },
+      { at: CAMP_HOST, radius: 3.5, hint: "Tell the camp host at Pine Hollow the wood is ready", done: "The campfire is stocked for the week." },
     ],
   },
 ];

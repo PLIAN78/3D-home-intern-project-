@@ -1,5 +1,5 @@
 import {describe,it,expect} from "vitest";
-import {STATIONS,RAIL_LENGTH,TRAIN_PERIOD,TRAIN_COUNT,TRAIN_MAX_SPEED,TRAIN_ACCEL,trainAt,SHIP_ROUTE,inRiver,riverZ,V6_BUILDINGS,SUBJECTS,COOPS} from "../game/src/world/v6";
+import {STATIONS,RAIL_LENGTH,TRAIN_PERIOD,TRAIN_COUNT,TRAIN_MAX_SPEED,TRAIN_ACCEL,trainAt,SHIP_ROUTE,riverZ,V6_BUILDINGS,SUBJECTS,COOPS} from "../game/src/world/v6";
 import {V6_LOTS} from "../game/src/world/v6Lots";
 import {terrainHeight,LAKE_Y,CITY_Y,inLake} from "../game/src/world/terrain";
 import {v6Boxes,buildingY} from "../game/src/world/v6Geometry";
@@ -11,7 +11,8 @@ describe("v6 river city",()=>{
   for(let s=82;s<218;s+=4)expect(Math.abs(terrainHeight(x,z+s+4)-terrainHeight(x,z+s))).toBeLessThan(2);
  });
  it("connects the lake to both map edges without blocking shipping",()=>{
-  for(const [x,z] of SHIP_ROUTE)if(Math.abs(x)<990){expect(inRiver(x,z)).toBe(true);expect(terrainHeight(x,z)).toBeLessThan(LAKE_Y);}
+  // v6.5: round the island the route swings out of the river band into Heron Lake: still open water.
+  for(const [x,z] of SHIP_ROUTE)if(Math.abs(x)<990){expect(inLake(x,z)).toBe(true);expect(terrainHeight(x,z)).toBeLessThan(LAKE_Y);}
   for(const x of [-950,0,950])expect(inLake(x,riverZ(x))).toBe(true);
  });
  it("provides two high-rise suites, four subjects and over 150 suburban lots",()=>{
