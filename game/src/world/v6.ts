@@ -1,6 +1,9 @@
-/** V6 world contract. All coordinates are metres; +z is south. No runtime imports. */
+/** V6 world contract. All coordinates are metres; +z is south. Runtime imports: pure data only (meadows.ts). */
+import { MEADOW_BUILDINGS, MEADOW_ROADS } from "./meadows";
 export type Point = [number, number];
-export const V6_VERSION = "6.1.0";
+export const V6_VERSION = "6.2.0";
+/** Water surface of Heron Lake and the Owawa River (terrain.ts LAKE_Y). */
+export const WATER_LEVEL = -1.4;
 export const riverZ = (x: number) => -555 + x * 0.07 + 24 * Math.sin(x / 240);
 export const riverWidth = (x: number) => 100 + 14 * Math.cos(x / 190);
 export const ISLANDS = [
@@ -26,6 +29,15 @@ export const SUBURBS = [
  {x0:455,z0:20,x1:900,z1:380},
  {x0:-320,z0:470,x1:380,z1:655},
 ];
+/**
+ * Road bridges over the Owawa River: the west one carries Heron Bridge Road
+ * (Lake Road to the north shore), the centre one carries Quarry Lane over
+ * from North Meadows, the east one carries Owawa Road into downtown. Decks
+ * end 4 m past each bank and sit 4 m above the water, so boats and jet skis
+ * pass under and the ramps stay short and gentle.
+ */
+export const BRIDGE_CLEARANCE = 4;
+export const BRIDGES = ([-480, 110, 690] as const).map((x, i) => ({ x, z: riverZ(x), width: i === 2 ? 14 : 11, length: riverWidth(x) + 8, y: WATER_LEVEL + BRIDGE_CLEARANCE }));
 export function inRect(x:number,z:number,r:{x0:number;z0:number;x1:number;z1:number},p=0) { return x>r.x0-p&&x<r.x1+p&&z>r.z0-p&&z<r.z1+p; }
 export const nearV6Development = (x:number,z:number,pad=0) => inRect(x,z,CAMPUS,pad)||inRect(x,z,AIRPORT,pad)||SUBURBS.some(r=>inRect(x,z,r,pad));
 export interface V6Building {
@@ -56,9 +68,12 @@ export const SUBURB_ROADS: V6Road[] = [
  rd("vataloo-ring-8",[510,650],[540,550]),
  rd("campus-east-access",[875,525],[875,875]),
  rd("airport-link",[-530,0],[-680,0]),rd("airport-drive",[-680,-240],[-680,210]),
- rd("west-river-approach",[-530,-235],[-480,riverZ(-480)+220]),
- rd("ridge-river-approach",[110,-130],[100,riverZ(100)+220]),
+ rd("west-river-approach",[-530,-235],[-480,-390]),
+ // North Meadows, between the panel factory and the river (meadows.ts).
+ ...MEADOW_ROADS,
 ];
+/** Length of the street stub where a bridge road meets a street grid (curbs open for it). */
+export const BRIDGEHEAD_STUB = 10;
 export const RIVER_WALK:Point[] = Array.from({length:25},(_,i)=>{const x=-930+i*77;return [x,NORTH_SHORE_Z(x)] as Point;});
 export const NORTH_ROADS:V6Road[] = RIVER_WALK.slice(1).map((p,i)=>rd("riverfront-"+i,RIVER_WALK[i],p));
 NORTH_ROADS.push(rd("heritage-avenue",[-900,-850],[540,-850]));
@@ -67,7 +82,12 @@ for(let x=-850;x<520;x+=225) {
  NORTH_ROADS.push(rd("north-link-"+x,[x,z],[x,-850]));
 }
 NORTH_ROADS.push(rd("city-west-link",[540,-850],[610,-820]));
-for(const x of [-480,100])NORTH_ROADS.push(rd("bridge-city-link-"+x,[x,NORTH_SHORE_Z(x)],[x,-850]));
+// The two north-shore bridgeheads: a street on into the city, and a short stub on the
+// river side so the riverfront's curb and sidewalk open for the bridge road.
+for(const x of [BRIDGES[0].x,BRIDGES[1].x]){
+ NORTH_ROADS.push(rd("bridge-city-link-"+x,[x,NORTH_SHORE_Z(x)],[x,-850]));
+ NORTH_ROADS.push(rd("bridgehead-"+x,[x,NORTH_SHORE_Z(x)+BRIDGEHEAD_STUB],[x,NORTH_SHORE_Z(x)]));
+}
 export function distanceToSegment(x:number,z:number,a:Point,b:Point) {
  const dx=b[0]-a[0],dz=b[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz)));
  return Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t);
@@ -99,11 +119,51 @@ V6_BUILDINGS.push(
  {id:"south-condos",name:"SOUTH COMMONS CONDOS",at:[-145,565],size:[34,24,15],kind:"condo",tone:2,level:"ground"},
  {id:"ridge-strip",name:"RIDGE MARKET · CAFE · PHARMACY",at:[-300,35],size:[55,25,7],kind:"shop",tone:1,level:"ground"},
 );
+V6_BUILDINGS.push(...MEADOW_BUILDINGS);
 for (let i=0;i<5;i++) V6_BUILDINGS.push({id:"island-home-"+i,name:"Heron Gardens "+(i+1),at:[-342+i*30,riverZ(-255)-20],size:[20,12,9],kind:"condo",tone:i%4,level:"island"});
 for(const b of V6_BUILDINGS.filter(b=>b.level==="island")){
  if(b.id.startsWith("island-home")){const n=Number(b.id.split("-").at(-1));b.at=[-708+n*29,-675];}
  else b.at=b.id==="showroom"?[-646,-639]:b.id==="sushi"?[-624,-638]:[-604,-638];
  b.size[0]*=.65;
+}
+/**
+ * Heron Gardens Island walkways. A perimeter loop runs behind the homes and
+ * along the shop fronts; a central promenade crosses the island between the
+ * homes and Elias's shack; a cross path runs between the buildings; spurs
+ * reach every home and shop door, the harbour piers and Elias's jetty. They
+ * are draped on the ground (and the pier decks), stay on the island and keep
+ * clear of buildings; trees and grass are kept off them.
+ */
+export interface Walk { id: string; points: Point[]; width: number }
+const ISLAND_LOOP = { x0: -728, x1: -572, z0: -692, z1: -625, r: 18 };
+function roundedLoop(r: typeof ISLAND_LOOP): Point[] {
+ const out: Point[] = [], k = 6;
+ const corners: [number, number, number][] = [[r.x1 - r.r, r.z1 - r.r, 0], [r.x0 + r.r, r.z1 - r.r, Math.PI / 2], [r.x0 + r.r, r.z0 + r.r, Math.PI], [r.x1 - r.r, r.z0 + r.r, 1.5 * Math.PI]];
+ for (const [cx, cz, a0] of corners) for (let i = 0; i <= k; i++) { const a = a0 + (i / k) * Math.PI / 2; out.push([cx + Math.cos(a) * r.r, cz + Math.sin(a) * r.r]); }
+ out.push(out[0]);
+ return out;
+}
+export const ISLAND_PROMENADE_Z = -663.5;
+export const ISLAND_WALKS: Walk[] = (() => {
+ const L = ISLAND_LOOP, walks: Walk[] = [
+  { id: "island-loop", points: roundedLoop(L), width: 3 },
+  { id: "island-promenade", points: [[L.x0, ISLAND_PROMENADE_Z], [L.x1, ISLAND_PROMENADE_Z]], width: 4 },
+  // Between homes 2 and 3 and between the showroom and the sushi bar.
+  { id: "island-cross", points: [[-634, L.z0], [-634, L.z1]], width: 2.6 },
+  // Down the beach onto the harbour's pier head.
+  { id: "island-harbour", points: [[-614, L.z1], [-614, -603.2]], width: 2.6 },
+  // West to Elias's fishing jetty.
+  { id: "island-jetty", points: [[L.x0, -656], [-758.5, -655.5]], width: 2.4 },
+ ];
+ for (const b of V6_BUILDINGS.filter(b => b.level === "island")) {
+  // Doors are in the south wall; homes open onto the promenade, shops onto the loop.
+  const door = b.at[1] + b.size[1] / 2, to = b.id.startsWith("island-home") ? ISLAND_PROMENADE_Z : L.z1;
+  walks.push({ id: "island-door-" + b.id, points: [[b.at[0], door + 0.3], [b.at[0], to]], width: 2.4 });
+ }
+ return walks;
+})();
+export function onIslandWalk(x: number, z: number, pad = 0) {
+ return ISLAND_WALKS.some(w => w.points.slice(1).some((p, i) => distanceToSegment(x, z, w.points[i], p) < w.width / 2 + pad));
 }
 // Mixed civic, commercial, heritage and residential blocks fill the north shore,
 // leaving generous road corridors and the original eastern civic centre intact.
@@ -123,7 +183,7 @@ export const CAMPUS_PATHS:Point[][]=[
  [[590,763],[590,783],[650,790],[699,810]],[[620,755],[630,755]],
  [[560,840],[560,810],[590,783]],[[650,790],[675,835],[695,843]],
  [[810,630],[860,630],[875,635],[912,635]],[[825,785],[860,785],[880,785],[912,779]],
- [[460,558],[505,558],[535,650],[530,700]],
+ [[476,558],[505,558],[535,650],[530,700]],
  [[834,705],[875,705],[912,695]],[[772,767],[798,780]],[[728,860],[675,865],[650,790]],
 ];
 export const CAMPUS_TREES:( {position:Point;y:number;scale:number;variant:0|1|2})[]=[];
@@ -149,7 +209,8 @@ export const STATIONS=[
  {id:"ridge",name:"Ridge West",at:[-480,0] as Point},
  {id:"airport",name:"Airport",at:[-620,-120] as Point},
  {id:"lake",name:"Heron Lake",at:[-520,-460] as Point},
- {id:"owawa",name:"Owawa Quay",at:[690,-440] as Point},
+ // On dry ground east of Owawa Road, clear of the bridge ramp (v6.2).
+ {id:"owawa",name:"Owawa Quay",at:[712,-414] as Point},
  {id:"centre",name:"Ridge Centre",at:[430,350] as Point},
  {id:"university",name:"University",at:[460,540] as Point},
  {id:"south",name:"South Commons",at:[-170,680] as Point},
@@ -206,11 +267,100 @@ export function trainAt(time:number,index:number){
   }t-=l.time;
  }return {...pathPoint(RAIL_PATH,0,true),speed:0,station:0,next:1,distance:0};
 }
+/**
+ * Ground access for each elevated station: the lift tower beside the
+ * platform, the entrance pavilion at its foot, the paved forecourt in front of
+ * the doors and the footpath out to the street. Rendering, colliders, the
+ * interaction prompt, train exits, trees, grass and the map all read this, so
+ * they cannot drift apart. `side` picks the side of the track for the lift,
+ * `along` slides it along the platform, `face` is the way the doors open
+ * (a compass axis, so walls and colliders stay axis-aligned) and `path`
+ * continues the footpath from the front edge of the forecourt to a sidewalk.
+ */
+interface AccessSpec { side: 1 | -1; along: number; face: Point; path: Point[]; extra?: Point[][] }
+const ACCESS: Record<string, AccessSpec> = {
+ // Forecourt meets the West Link sidewalk across the boulevard.
+ ridge: { side: -1, along: -14, face: [-1, 0], path: [[-490, 6.8]] },
+ // West to the Airport Drive sidewalk.
+ airport: { side: -1, along: 0, face: [-1, 0], path: [[-671.8, -119]] },
+ // East to the Heron Bridge Road shoulder, south of the Lake Road junction.
+ lake: { side: 1, along: 0, face: [0, 1], path: [[-505, -428], [-486.2, -428]] },
+ // West to the Owawa Road shoulder, plus a walk north along the road to the bridge.
+ owawa: { side: 1, along: 0, face: [-1, 0], path: [[685.6, -407.9]], extra: [[[696, -415], [697.5, -432], [698.6, -446], [696.8, -452.5]]] },
+ // North through the walkway between lots 49 and 50 to the East Link sidewalk.
+ centre: { side: -1, along: 3, face: [1, 0], path: [[457.5, 346.6], [457.5, 308.2]] },
+ // East to the campus path toward the quad.
+ university: { side: -1, along: 0, face: [0, 1], path: [[476, 558]] },
+ // North through the walkway between lots 200 and 201 to the South Return sidewalk.
+ south: { side: 1, along: 0, face: [1, 0], path: [[-158.5, 658], [-158.5, 619.2]] },
+};
+export const STATION_PLATFORM = { length: 42, width: 10 };
+/** Station footpaths are narrow enough for the 3 m walkways between lots. */
+export const STATION_PATH_WIDTH = 2.4;
+/** Lift tower: square plan, centred this far from the track. */
+export const STATION_LIFT = { offset: 8, size: 4.6 };
+/** Entrance pavilion: width across the doors, depth from the lift face. */
+export const STATION_PAVILION = { width: 6.3, depth: 7 };
+/** Forecourt depth beyond the lift face and its half-width across the doors. */
+export const STATION_FORECOURT = { depth: 16, half: 7 };
+export interface StationAccess {
+ id: string; name: string; at: Point; heading: number;
+ /** Unit vector along the track (direction of travel) and toward the lift side. */
+ tangent: Point; normal: Point;
+ lift: Point; face: Point; yaw: number;
+ /** Centre of the entrance pavilion, the spot in front of its doors, and the forecourt. */
+ door: Point; exit: Point; forecourt: { x0: number; z0: number; x1: number; z1: number };
+ /** Footpath from the forecourt's edge to the street, any further walkways, and the roadside sign. */
+ path: Point[]; extra: Point[][]; sign: { at: Point; heading: number };
+}
+export const STATION_ACCESS: StationAccess[] = STATIONS.map((st, i) => {
+ const a = pathPoint(RAIL_PATH, STATION_DISTANCES[i] - 4, true), b = pathPoint(RAIL_PATH, STATION_DISTANCES[i] + 4, true);
+ const heading = Math.atan2(b.z - a.z, b.x - a.x), tangent: Point = [Math.cos(heading), Math.sin(heading)];
+ const spec = ACCESS[st.id], normal: Point = [-tangent[1] * spec.side, tangent[0] * spec.side], f = spec.face;
+ const lift: Point = [st.at[0] + tangent[0] * spec.along + normal[0] * STATION_LIFT.offset, st.at[1] + tangent[1] * spec.along + normal[1] * STATION_LIFT.offset];
+ const out = (d: number, across = 0): Point => [lift[0] + f[0] * d - f[1] * across, lift[1] + f[1] * d + f[0] * across];
+ const face0 = STATION_LIFT.size / 2;
+ const c0 = out(face0, -STATION_FORECOURT.half), c1 = out(face0 + STATION_FORECOURT.depth, STATION_FORECOURT.half);
+ const forecourt = { x0: Math.min(c0[0], c1[0]), z0: Math.min(c0[1], c1[1]), x1: Math.max(c0[0], c1[0]), z1: Math.max(c0[1], c1[1]) };
+ // The footpath leaves the forecourt at the edge point nearest its first waypoint.
+ const w = spec.path[0], cx = Math.min(forecourt.x1, Math.max(forecourt.x0, w[0])), cz = Math.min(forecourt.z1, Math.max(forecourt.z0, w[1]));
+ const edge = Math.min(cx - forecourt.x0, forecourt.x1 - cx, cz - forecourt.z0, forecourt.z1 - cz);
+ const start: Point = edge === cx - forecourt.x0 ? [forecourt.x0, cz] : edge === forecourt.x1 - cx ? [forecourt.x1, cz] : edge === cz - forecourt.z0 ? [cx, forecourt.z0] : [cx, forecourt.z1];
+ const path: Point[] = [start, ...spec.path];
+ const end = path.at(-1)!, prev = path.at(-2) ?? lift, pathHeading = Math.atan2(end[1] - prev[1], end[0] - prev[0]);
+ const sign: Point = [end[0] - Math.cos(pathHeading) * 2.5 + Math.sin(pathHeading) * 3.2, end[1] - Math.sin(pathHeading) * 2.5 - Math.cos(pathHeading) * 3.2];
+ return {
+  id: st.id, name: st.name, at: st.at, heading, tangent, normal, lift, face: f, yaw: Math.atan2(f[0], f[1]),
+  door: out(face0 + STATION_PAVILION.depth / 2), exit: out(face0 + STATION_PAVILION.depth + 3),
+  forecourt, path, extra: spec.extra ?? [], sign: { at: sign, heading: pathHeading + Math.PI / 2 },
+ };
+});
+export const stationAccess = (id: string) => STATION_ACCESS.find(a => a.id === id)!;
+/** Is a point on a station forecourt or footpath (plus `pad`)? Keeps trees and grass off them. */
+export function onStationAccess(x: number, z: number, pad = 0) {
+ return STATION_ACCESS.some(a => inRect(x, z, a.forecourt, pad) || [a.path, ...a.extra].some(l => l.slice(1).some((p, i) => distanceToSegment(x, z, l[i], p) < STATION_PATH_WIDTH / 2 + pad)));
+}
 export const SHIP_ROUTE:Point[]=Array.from({length:81},(_,i)=>{const x=-1150+i*2300/80;return [x,riverZ(x)+riverWidth(x)*0.38] as Point;});
 export const SHIP_LENGTH=SHIP_ROUTE.slice(1).reduce((s,p,i)=>s+Math.hypot(p[0]-SHIP_ROUTE[i][0],p[1]-SHIP_ROUTE[i][1]),0);
+/**
+ * Jet-ski riders on the river (ambient, no physics). Each loops an open reach
+ * of river, well clear of the bridges and their piers, the harbour piers, the
+ * quay and the island; riders on the same reach go opposite ways.
+ */
+export const JETSKI_LOOPS = [{ cx: -900, a: 62 }, { cx: -250, a: 85 }, { cx: 270, a: 72 }, { cx: 560, a: 62 }, { cx: 880, a: 85 }];
+export const NPC_JETSKIS = JETSKI_LOOPS.length * 2;
+export function npcJetSki(i: number, time: number) {
+ const loop = JETSKI_LOOPS[i % JETSKI_LOOPS.length], dir = i < JETSKI_LOOPS.length ? 1 : -1;
+ const b = riverWidth(loop.cx) * 0.22, speed = 10 + ((i * 3.7) % 5);
+ const perimeter = 2 * Math.PI * Math.sqrt((loop.a * loop.a + b * b) / 2);
+ const at = (u: number) => { const x = loop.cx + loop.a * Math.cos(u); return [x, riverZ(x) + b * Math.sin(u) + 4 * Math.sin(3 * u)] as Point; };
+ const u = dir * time * speed / perimeter * 2 * Math.PI + i * 1.9, [x, z] = at(u), [x2, z2] = at(u + dir * 0.02);
+ return { x, z, heading: Math.atan2(z2 - z, x2 - x), speed };
+}
 export const PORT={at:[-610,-601] as Point};
 export const PORTS=[
- {id:"lake",name:"Heron Lake Marina",at:[-556,-542] as Point,heading:-Math.PI/2,shore:[-556,-526] as Point,boat:[-555.8,-564] as Point,ship:[-546,-564] as Point},
- {id:"island",name:"Heron Gardens Harbour",at:[-610,-601] as Point,heading:Math.PI/2,shore:[-610,-618] as Point,boat:[-615,-586] as Point,ship:[-626,-588] as Point},
- {id:"river",name:"Owawa River Quay",at:[420,riverZ(420)-riverWidth(420)/2+9] as Point,heading:Math.PI/2,shore:[420,riverZ(420)-riverWidth(420)/2-12] as Point,boat:[414,riverZ(420)-riverWidth(420)/2+22] as Point,ship:[429,riverZ(420)-riverWidth(420)/2+24] as Point},
+// Each harbour moors a motorboat between its piers and a jet ski along the outer pier.
+ {id:"lake",name:"Heron Lake Marina",at:[-556,-542] as Point,heading:-Math.PI/2,shore:[-556,-526] as Point,boat:[-555.8,-564] as Point,jetski:[-546.9,-567.5] as Point},
+ {id:"island",name:"Heron Gardens Harbour",at:[-610,-601] as Point,heading:Math.PI/2,shore:[-610,-618] as Point,boat:[-615,-586] as Point,jetski:[-622.1,-584] as Point},
+ {id:"river",name:"Owawa River Quay",at:[420,riverZ(420)-riverWidth(420)/2+9] as Point,heading:Math.PI/2,shore:[420,riverZ(420)-riverWidth(420)/2-12] as Point,boat:[414,riverZ(420)-riverWidth(420)/2+22] as Point,jetski:[427.1,riverZ(420)-riverWidth(420)/2+24] as Point},
 ];

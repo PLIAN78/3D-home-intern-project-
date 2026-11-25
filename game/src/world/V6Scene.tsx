@@ -14,39 +14,60 @@ import {useV6} from "../story/v6Store";
 import {AirportScene} from "./AirportScene";
 import {VatalooCampus} from "./VatalooCampus";
 import {StationEntrance} from "./StationEntrance";
+import {Walkway} from "./Walkways";
+import {deckAt} from "./lake";
+import {JetSkiRider} from "../models/jetski";
+import {MEADOW_PAVING} from "./meadows";
+import {railPosts,RAIL_POST_SIZE} from "./railPosts";
 import {B,Sign} from "./props";
 import {Building,facade} from "./OwawaScene";
-import {CITY_Y,LAKE_Y,groundAt,terrainHeight,HILL_TREES} from "./terrain";
+import {CITY_Y,LAKE_Y,groundAt,HILL_TREES} from "./terrain";
 import {buildingY,BRIDGES} from "./v6Geometry";
-import {V6_BUILDINGS,NORTH_ROADS,riverZ,riverWidth,PORTS,RAIL_PATH,RAIL_LENGTH,RAIL_Y,STATIONS,TRAIN_COUNT,trainAt,pathPoint,SHIP_ROUTE,SHIP_LENGTH,STUDENT_LOOPS,COOPS,type Point,type V6Building} from "./v6";
+import {V6_BUILDINGS,NORTH_ROADS,riverZ,riverWidth,PORTS,RAIL_PATH,RAIL_Y,STATION_ACCESS,TRAIN_COUNT,trainAt,pathPoint,ISLAND_WALKS,NPC_JETSKIS,npcJetSki,STUDENT_LOOPS,COOPS,type Point,type V6Building} from "./v6";
 
-function Ribbon({points,width,y,color}:{points:Point[];width:number;y:number;color:string}){
- const geo=useMemo(()=>{const p:number[]=[],idx:number[]=[];points.forEach(([x,z],i)=>{const a=points[Math.max(0,i-1)],b=points[Math.min(points.length-1,i+1)],dx=b[0]-a[0],dz=b[1]-a[1],L=Math.hypot(dx,dz)||1;for(const side of [-1,1])p.push(x-dz/L*width/2*side,y,z+dx/L*width/2*side);if(i){const n=i*2;idx.push(n-2,n-1,n,n-1,n+1,n);}});const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(p,3));g.setIndex(idx);g.computeVertexNormals();return g;},[points,width,y]);
- useEffect(()=>()=>geo.dispose(),[geo]);
- return <mesh geometry={geo} material={mat(color,{rough:.6})} receiveShadow/>;
-}
+/** Walkways on Heron Gardens Island follow the ground, and the pier decks where they run onto them. */
+const islandSurface=(x:number,z:number)=>Math.max(groundAt(x,z),deckAt(x,z)??-Infinity);
 const riverPoints:Point[]=Array.from({length:161},(_,i)=>{const x=-1100+i*2200/160;return [x,riverZ(x)];});
-function BridgeApproach({bridge}:{bridge:typeof BRIDGES[number]}){
- const geo=useMemo(()=>{const p:number[]=[],idx:number[]=[];for(let i=0;i<=110;i++){const z=bridge.z-220+i*4;const y=Math.abs(z-bridge.z)<bridge.length/2?bridge.y:groundAt(bridge.x,z);p.push(bridge.x-bridge.width/2+.3,y+.04,z,bridge.x+bridge.width/2-.3,y+.04,z);if(i){const n=i*2;idx.push(n-2,n,n-1,n-1,n,n+1);}}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setIndex(idx);g.computeVertexNormals();return g;},[bridge]);
- useEffect(()=>()=>geo.dispose(),[geo]);
- return <mesh geometry={geo} material={mat('#626a6a')} receiveShadow/>;
+/**
+ * A road bridge: a concrete deck (the road ribbon is drawn on top by
+ * CountryRoads), parapets, piers standing in the river, and abutments at each
+ * end where the ramps arrive.
+ */
+function Bridge({b}:{b:typeof BRIDGES[number]}){
+ const rise=b.y-LAKE_Y;
+ const piers=[-.3,0,.3].map(t=>t*b.length);
+ return <group position={[b.x,b.y,b.z]} name="River bridge">
+  <B size={[b.width,.6,b.length]} position={[0,-.3,0]} color="#7d8180"/>
+  <B size={[b.width+.4,.35,b.length]} position={[0,-.75,0]} color="#9a9b95"/>
+  {[-1,1].map(s=><group key={s}>
+   <B size={[.4,1,b.length]} position={[s*(b.width/2-.2),.5,0]} color="#c1c3bd"/>
+   <B size={[.12,.12,b.length]} position={[s*(b.width/2-.2),1.06,0]} color="#8d9496"/>
+   {piers.map(z=><B key={z} size={[1.1,rise+1.5,1.4]} position={[s*b.width*.3,-(rise+1.5)/2-.6,z]} color="#a5a49b"/>)}
+   <B size={[b.width+1.2,rise+2,1.6]} position={[0,-(rise+2)/2-.6,s*(b.length/2-.8)]} color="#a9a79f"/>
+  </group>)}
+  {piers.map(z=><B key={z} size={[b.width*.72,.8,1.2]} position={[0,-1.2,z]} color="#9a9b95"/>)}
+ </group>;
 }
 function River(){
  const water=useMemo(()=>{const p:number[]=[],idx:number[]=[];riverPoints.forEach(([x,z],i)=>{const w=riverWidth(x);p.push(x,LAKE_Y,z-w/2,x,LAKE_Y,z+w/2);if(i){const n=i*2;idx.push(n-2,n-1,n,n-1,n+1,n);}});const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(p,3));g.setIndex(idx);g.computeVertexNormals();return g;},[]);
  const m=useMemo(()=>new THREE.MeshPhysicalMaterial({color:"#397c89",roughness:.2,normalMap:waterNormalMap(),normalScale:new THREE.Vector2(.22,.22),metalness:.25,transparent:true,opacity:.87,clearcoat:1,side:THREE.DoubleSide}),[]);
  useEffect(()=>()=>{water.dispose();m.dispose();},[water,m]);
- return <group name="Owawa River"><mesh geometry={water} material={m} receiveShadow/>{BRIDGES.map(b=><BridgeApproach key={b.x} bridge={b}/>)}{BRIDGES.map(b=><group key={b.x} position={[b.x,b.y,b.z]}><B size={[b.width,.6,b.length]} position={[0,-.3,0]} color="#64696a"/>{[-1,1].map(s=><group key={s}><B size={[.4,1,b.length]} position={[s*(b.width/2-.2),.5,0]} color="#c1c3bd"/>{[-.32,.32].map(t=><B key={t} size={[1.2,b.y-LAKE_Y,1.5]} position={[s*b.width*.35,-(b.y-LAKE_Y)/2,b.length*t]} color="#a5a49b"/>)}</group>)}</group>)}
- <Ribbon points={[[-724,-658],[-584,-658]]} width={4} y={LAKE_Y+2.57} color="#b9ad96"/>
- <Ribbon points={[[-646,-658],[-646,-623]]} width={4} y={LAKE_Y+2.57} color="#b9ad96"/>
- {PORTS.map(p=><group key={p.id} position={[p.shore[0],0,p.shore[1]]}><Sign text={p.name.toUpperCase()} sub="F - motorboat / motor ship" at={[0,0]} heading={-Math.PI/2} width={8}/></group>)}
- {Array.from({length:6},(_,i)=><Ship key={i} index={i}/>)}
+ return <group name="Owawa River"><mesh geometry={water} material={m} receiveShadow/>{BRIDGES.map(b=><Bridge key={b.x} b={b}/>)}
+ {ISLAND_WALKS.map(w=><Walkway key={w.id} points={w.points} width={w.width} surface={islandSurface} color={w.id==="island-promenade"?"#c9bea6":"#bfb49c"}/>)}
+ {PORTS.map(p=><group key={p.id} position={[p.shore[0],0,p.shore[1]]}><Sign text={p.name.toUpperCase()} sub="F - motorboat / jet ski" at={[0,0]} heading={-Math.PI/2} width={8}/></group>)}
+ {Array.from({length:NPC_JETSKIS},(_,i)=><RiverJetSki key={i} index={i}/>)}
  </group>;
 }
-function Ship({index}:{index:number}){
- const ref=useRef<THREE.Group>(null);
- useFrame(()=>{if(!ref.current)return;const time=useV6.getState().time;const reverse=index%2===1;const s=(time*(5+index*.35)+index*SHIP_LENGTH/6)%SHIP_LENGTH;const p=pathPoint(SHIP_ROUTE,reverse?SHIP_LENGTH-s:s);ref.current.position.set(p.x,LAKE_Y+.2+Math.sin(time*.9+index)*.1,p.z+(reverse?-8:0));ref.current.rotation.set(0,-p.heading+(reverse?Math.PI:0),Math.sin(time*.5+index)*.015);});
- const cargo=index%3===0;
- return <group ref={ref} name="River traffic"><B size={[cargo?28:13,2.4,cargo?7:4.6]} position={[0,0,0]} color={index%2?"#e0e3db":"#304953"}/><B size={[cargo?25:11,.7,cargo?6.8:4.2]} position={[0,1.4,0]} color="#c4b6a0"/><B size={[cargo?6:5,3,3.6]} position={[-3,3,0]} color="#e6e7df"/><B size={[4,1.1,3.7]} position={[-2.7,3.6,0]} color="#33505c"/>{cargo&&[-1,1,3].map((x,i)=><B key={x} size={[5,2.5,5.8]} position={[x*3,3,0]} color={["#a14f37","#3e7173","#bd984d"][i]}/>)}<B size={[.14,1.5,.14]} position={[-4,4.8,0]} color="#b9c0bb"/></group>;
+/** A townsperson out on a jet ski, looping an open reach of the river and leaning into the bends. */
+function RiverJetSki({index}:{index:number}){
+ const ref=useRef<THREE.Group>(null),tilt=useRef<THREE.Group>(null),camera=useThree(s=>s.camera);
+ const speed=()=>npcJetSki(index,useV6.getState().time).speed;
+ useFrame(()=>{if(!ref.current)return;const time=useV6.getState().time,p=npcJetSki(index,time),q=npcJetSki(index,time+.3);
+  ref.current.visible=Math.hypot(camera.position.x-p.x,camera.position.z-p.z)<600;
+  ref.current.position.set(p.x,LAKE_Y-.05+Math.sin(time*2.3+index)*.05,p.z);ref.current.rotation.y=-p.heading;
+  let turn=q.heading-p.heading;turn=Math.atan2(Math.sin(turn),Math.cos(turn));
+  if(tilt.current)tilt.current.rotation.set(Math.max(-.35,Math.min(.35,turn*1.4)),0,.06);});
+ return <group ref={ref} name="River jet ski"><group ref={tilt}><JetSkiRider outfit={index} color={["#e0a43a","#2f8f9d","#c2463a","#4f7d3a","#7a5aa6"][index%5]} speed={speed}/></group></group>;
 }
 function CivicRoads(){
  const site=useMemo(()=>buildSite({id:"north",name:"North Shore",lots:[],trees:[],roads:NORTH_ROADS} as unknown as Community,[],{ground:false}),[]);
@@ -104,11 +125,11 @@ function Coop({id,index}:{id:string;index:number}){
 function Rail(){
  const structure=useMemo(()=>{const deck:THREE.BufferGeometry[]=[],rails:THREE.BufferGeometry[]=[],posts:THREE.BufferGeometry[]=[];
  for(let i=0;i<RAIL_PATH.length-1;i++){const a=RAIL_PATH[i],b=RAIL_PATH[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<.01)continue;const h=Math.atan2(b[1]-a[1],b[0]-a[0]);const part=(w:number,y:number,z:number,target:THREE.BufferGeometry[])=>{const g=new THREE.BoxGeometry(L+.04,y,w);g.translate(0,0,z);g.rotateY(-h);g.translate((a[0]+b[0])/2,RAIL_Y-1,(a[1]+b[1])/2);target.push(g);};part(5,.6,0,deck);part(.16,.85,-1.2,rails);part(.16,.85,1.2,rails);}
- for(let s=0;s<RAIL_LENGTH;s+=75){const p=pathPoint(RAIL_PATH,s,true),ground=terrainHeight(p.x,p.z),height=RAIL_Y-1-ground;if(height<1)continue;const g=new THREE.BoxGeometry(1.2,height,1.2);g.translate(p.x,ground+height/2,p.z);posts.push(g);}
+ for(const p of railPosts()){const g=new THREE.BoxGeometry(RAIL_POST_SIZE,p.height,RAIL_POST_SIZE);g.translate(p.x,p.ground+p.height/2,p.z);posts.push(g);}
  const merge=(a:THREE.BufferGeometry[])=>{const g=mergeGeometries(a,false);a.forEach(g=>g.dispose());return g;};return {deck:merge(deck),rails:merge(rails),posts:merge(posts)};},[]);
  useEffect(()=>()=>Object.values(structure).forEach(g=>g?.dispose()),[structure]);
  return <group name="Owawa Express">{Object.entries(structure).map(([key,g])=>g&&<mesh key={key} geometry={g} material={mat(key==="rails"?"#839397":"#a8aaa0")} castShadow receiveShadow/>)}
- {STATIONS.map(s=><StationEntrance key={s.id} station={s}/>)}
+ {STATION_ACCESS.map(a=><StationEntrance key={a.id} access={a}/>)}
  {Array.from({length:TRAIN_COUNT},(_,i)=><Train key={i} index={i}/>)}
  </group>;
 }
@@ -133,6 +154,15 @@ export function V6Dynamics(){
  useFrame((_,rawDt)=>{const v=useV6.getState();v.tick(Math.min(rawDt,.1));if(v.ride!==null&&host.sim){const t=trainAt(useV6.getState().time,v.ride);host.sim.teleport(t.x,t.z,RAIL_Y+1-groundAt(t.x,t.z),t.heading);runtime.body=host.sim.focus();runtime.body.speed=t.speed;}},-25);
  return null;
 }
+/** North Meadows parking courts: asphalt with a row of stalls along each side and an aisle between. */
+function MeadowParking(){
+ return <group name="North Meadows parking">{MEADOW_PAVING.map((p,i)=>{
+  const stalls:number[]=[];for(let x=p.x0+10;x<p.x1-1;x+=2.8)stalls.push(x);
+  return <group key={i}>
+   <B size={[p.x1-p.x0,.06,p.z1-p.z0]} position={[(p.x0+p.x1)/2,.03,(p.z0+p.z1)/2]} color="#585c5f" cast={false}/>
+   {stalls.flatMap(x=>[p.z0+2.5,p.z1-2.5].map(z=><B key={x+"-"+z} size={[.12,.02,4.6]} position={[x,.07,z]} color="#e7e3d6" cast={false}/>))}
+  </group>;})}</group>;
+}
 export function V6Scene(){
- return <group name="V6 River City"><River/><CivicRoads/>{V6_BUILDINGS.map(b=><CivicBuilding key={b.id} b={b}/>)}<Campus/><AirportScene/><Rail/>{Array.from({length:42},(_,i)=><Wildlife key={i} index={i}/>)}<V6Dynamics/></group>;
+ return <group name="V6 River City"><River/><CivicRoads/><MeadowParking/>{V6_BUILDINGS.map(b=><CivicBuilding key={b.id} b={b}/>)}<Campus/><AirportScene/><Rail/>{Array.from({length:42},(_,i)=><Wildlife key={i} index={i}/>)}<V6Dynamics/></group>;
 }

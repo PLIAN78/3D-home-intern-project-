@@ -6,7 +6,7 @@ import { riverZ,riverWidth,PORTS } from "../world/v6";
 import { CITY_TRAFFIC, CITY_WALKS } from "../world/owawa";
 import { BOAT_SPOT, deckAt } from "../world/lake";
 import {PlaneController,PLANE_SPOTS,type PlaneId} from "./plane";
-import { BoatController,BOAT } from "./boat";
+import { BoatController,BOAT,JETSKI } from "./boat";
 import { AnimalController, ANIMALS, type AnimalId } from "./animal";
 import { Breakables, BREAK_SPEED, type BreakEvent, type TreeInput } from "./breakables";
 import { CharacterController, JETPACK, NO_INTENT, type MoveIntent } from "./character";
@@ -159,9 +159,9 @@ export class Simulation {
     this.cityTown = opts.town ? new Town(R, this.world, CITY_TRAFFIC, CITY_WALKS, { carsPerLoop: [4, 3], walkersPerLoop: 9, laneOffset: ROAD.width / 4, y: CITY_Y }) : null;
     this.boat = new BoatController(R, this.world, BOAT_SPOT.at[0], BOAT_SPOT.at[1], BOAT_SPOT.heading, LAKE_Y);
     this.boats["lake-boat"]=this.boat;
-    for(const port of PORTS)for(const kind of ["boat","ship"] as const){
+    for(const port of PORTS)for(const kind of ["boat","jetski"] as const){
       const id=port.id+"-"+kind;if(id==="lake-boat")continue;
-      const p=port[kind];this.boats[id]=new BoatController(R,this.world,p[0],p[1],port.heading,LAKE_Y,kind==="ship"?{...BOAT,radius:1.7,halfLength:5.5,halfHeight:.6,top:13,reverse:3,turn:.75}:BOAT);
+      const p=port[kind];this.boats[id]=new BoatController(R,this.world,p[0],p[1],port.heading,LAKE_Y,kind==="jetski"?JETSKI:BOAT);
     }
     for(const id of Object.keys(PLANE_SPOTS) as PlaneId[])this.planes[id]=new PlaneController(R,this.world,id);
 
@@ -246,7 +246,7 @@ export class Simulation {
     // Big animals are climbed from a little further away (Peanut kneels for you).
     for (const [id, a] of Object.entries(this.animals) as [AnimalId, AnimalController][]) consider({ kind: "animal", id }, Math.hypot(a.x - p.x, a.z - p.z) - a.spec.radius * 1.6 - 0.4);
     if (this.heli) consider({ kind: "heli" }, Math.hypot(this.heli.x - p.x, this.heli.z - p.z) - 2);
-    for(const [id,b] of Object.entries(this.boats))consider({kind:"boat",id},Math.hypot(b.x-p.x,b.z-p.z)-(id.endsWith("ship")?4:2.4));
+    for(const [id,b] of Object.entries(this.boats))consider({kind:"boat",id},Math.hypot(b.x-p.x,b.z-p.z)-(id.endsWith("jetski")?1.6:2.4));
     for(const [id,a] of Object.entries(this.planes) as [PlaneId,PlaneController][])consider({kind:"plane",id},Math.hypot(a.x-p.x,a.z-p.z)-4);
     return best;
   }

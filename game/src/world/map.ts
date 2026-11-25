@@ -8,7 +8,8 @@ import { OFFICE, officeBoxes } from "./office";
 import { lakeBoxes } from "./lake";
 import { owawaBoxes } from "./owawa";
 import { V6_LOTS } from "./v6Lots";
-import { SUBURB_ROADS, V6_BUILDINGS } from "./v6";
+import { MEADOW_LOTS, MEADOW_PAVING, meadowStage } from "./meadows";
+import { SUBURB_ROADS, V6_BUILDINGS, onStationAccess } from "./v6";
 import { v6Boxes } from "./v6Geometry";
 import type { VehicleId } from "../sim/vehicle";
 
@@ -250,6 +251,11 @@ function startingStages(lots: Lot[]): Record<string, StageId> {
   let k = 0;
   let e = 0;
   for (const l of lots) {
+    if (l.id.startsWith("nm-")) {
+      const st = meadowStage(l.id);
+      if (st) stages[l.id] = st;
+      continue;
+    }
     if(l.id.startsWith("v6-")) {const n=Number(l.id.slice(7));if(n%7===0)stages[l.id]="permits";else if(n%5===0)stages[l.id]="framing";else if(n%9===0)stages[l.id]="foundation";continue;}
     const n = Number(l.number);
     if (isEastLot(n)) {
@@ -300,7 +306,7 @@ export function isOpenGround(x: number, z: number, lots: Lot[], pad = 3): boolea
     if (Math.abs(x - m.position[0]) < w / 2 + 12 && Math.abs(z - m.position[1]) < d / 2 + 12) return false;
   }
   if (Math.abs(x - PEN.centre[0]) < PEN.half + 4 && Math.abs(z - PEN.centre[1]) < PEN.half + 4) return false;
-  for (const p of PAVED) if (x > p.x0 - pad && x < p.x1 + pad && z > p.z0 - pad && z < p.z1 + pad) return false;
+  for (const p of [...PAVED, ...MEADOW_PAVING]) if (x > p.x0 - pad && x < p.x1 + pad && z > p.z0 - pad && z < p.z1 + pad) return false;
   for (const g of SIGNS) if (Math.hypot(x - g.x, z - g.z) < g.width / 2 + 1.5) return false;
   if (nearestCountryRoad(x, z).d < 5.5 + pad) return false;
   for (const c of CRANES) if (Math.hypot(x - c.x, z - c.z) < 6) return false;
@@ -318,6 +324,7 @@ function buildTrees(lots: Lot[]): Tree[] {
   const tryPlace = (x: number, z: number, variant?: 0 | 1 | 2, pad = 3) => {
     if(V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+pad+1&&Math.abs(z-b.at[1])<b.size[1]/2+pad+1))return;
     if (!isOpenGround(x, z, lots, pad)) return;
+    if (onStationAccess(x, z, 2.5)) return;
     if (CLEARINGS.some((c) => x > c.min[0] && x < c.max[0] && z > c.min[1] && z < c.max[1])) return;
     trees.push({ position: [x, z], scale: 0.85 + rand() * 0.8, variant: variant ?? ((Math.floor(rand() * 3)) as 0 | 1 | 2) });
   };
@@ -335,7 +342,7 @@ function buildTrees(lots: Lot[]): Tree[] {
   return trees;
 }
 
-const LOTS = [...buildLots(), ...V6_LOTS];
+const LOTS = [...buildLots(), ...V6_LOTS, ...MEADOW_LOTS];
 ROADS.push(...SUBURB_ROADS);
 
 export const CAIVAN_RIDGE: Community = {

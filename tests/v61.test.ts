@@ -1,6 +1,6 @@
 import {beforeAll,describe,expect,it} from "vitest";
 import {CITY_Y,LAKE_Y,terrainHeight,groundAt,HILL_TREES,roadSurfaceAt} from "../game/src/world/terrain";
-import {ISLANDS,PORTS,STATIONS,V6_BUILDINGS,SUBURB_ROADS} from "../game/src/world/v6";
+import {ISLANDS,PORTS,STATIONS,STATION_ACCESS,V6_BUILDINGS,SUBURB_ROADS} from "../game/src/world/v6";
 import {v6Boxes,buildingY} from "../game/src/world/v6Geometry";
 import {Simulation,IDLE_INPUT,type SimInput} from "../game/src/sim/simulation";
 import {loadRapier} from "../game/src/sim/rapier";
@@ -25,7 +25,8 @@ describe("V6.1 terrain and access",()=>{
   for(const b of V6_BUILDINGS.filter(b=>b.level==="island"))expect(Math.abs(groundAt(...b.at)-buildingY(b)),b.id).toBeLessThan(.12);
  });
  it("gives every station a visible, reachable ground entrance",()=>{
-  for(const st of STATIONS){const walls=v6Boxes().filter(b=>b.id==="station-entrance"&&Math.abs((b.x0+b.x1)/2-st.at[0])<3&&Math.abs((b.z0+b.z1)/2-st.at[1]-18)<2);expect(walls).toHaveLength(2);expect(walls[0].y).toBeCloseTo(groundAt(st.at[0],st.at[1]+18));}
+  for(const a of STATION_ACCESS){const walls=v6Boxes().filter(b=>b.id==="station-entrance"&&Math.hypot((b.x0+b.x1)/2-a.door[0],(b.z0+b.z1)/2-a.door[1])<2.5);expect(walls,a.id).toHaveLength(2);expect(walls[0].y).toBeCloseTo(groundAt(...a.door));}
+  expect(STATION_ACCESS.map(a=>a.id)).toEqual(STATIONS.map(s=>s.id));
  });
  it("provides a university ring road and characteristic Waterloo buildings",()=>{
   expect(SUBURB_ROADS.filter(r=>r.id.startsWith("vataloo-ring"))).toHaveLength(9);
@@ -40,9 +41,9 @@ describe("V6.1 terrain and access",()=>{
  });
 });
 describe("V6.1 controllable aircraft and watercraft",()=>{
- it("spawns one motorboat and one motor ship at each of three ports",async()=>{
+ it("spawns one motorboat and one jet ski at each of three ports",async()=>{
   const s=await sim();expect(PORTS).toHaveLength(3);expect(Object.keys(s.boats)).toHaveLength(6);
-  for(const p of PORTS){for(const type of ["boat","ship"] as const){const b=s.boats[p.id+"-"+type];expect(b).toBeDefined();expect(terrainHeight(b.x,b.z),p.id+"-"+type).toBeLessThan(LAKE_Y-.4);}}
+  for(const p of PORTS){for(const type of ["boat","jetski"] as const){const b=s.boats[p.id+"-"+type];expect(b).toBeDefined();expect(terrainHeight(b.x,b.z),p.id+"-"+type).toBeLessThan(LAKE_Y-.4);}}
  });
  it("allows each watercraft to be boarded from a neighbouring pier",async()=>{
   const s=await sim();

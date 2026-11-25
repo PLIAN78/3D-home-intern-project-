@@ -5,7 +5,9 @@ import {terrainHeight,LAKE_Y,CITY_Y,inLake} from "../game/src/world/terrain";
 import {v6Boxes,buildingY} from "../game/src/world/v6Geometry";
 describe("v6 river city",()=>{
  it("grades a visible continuous approach into the original flat community",()=>{
-  const x=100,z=riverZ(x);expect(terrainHeight(x,z+150)).toBeGreaterThan(1);
+  // v6.2: the south bank is North Meadows, built at community grade, so the approach
+  // is a dry bank that eases down to the flat ground rather than a hill.
+  const x=100,z=riverZ(x);expect(terrainHeight(x,z+66)).toBeGreaterThan(LAKE_Y+1);expect(Math.abs(terrainHeight(x,z+150))).toBeLessThan(.05);
   for(let s=82;s<218;s+=4)expect(Math.abs(terrainHeight(x,z+s+4)-terrainHeight(x,z+s))).toBeLessThan(2);
  });
  it("connects the lake to both map edges without blocking shipping",()=>{

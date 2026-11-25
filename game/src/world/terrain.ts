@@ -5,7 +5,8 @@
  * Pure functions: no three.js, no React.
  */
 
-import { riverZ, riverWidth, riverDistance, islandRadius, inRiver, inNorthCity, nearV6Development, CAMPUS, AIRPORT, SUBURBS, SUBURB_ROADS, distanceToSegment, V6_BUILDINGS } from "./v6";
+import { MEADOW_WAY_Z } from "./meadows";
+import { riverWidth, riverDistance, islandRadius, inRiver, inNorthCity, nearV6Development, CAMPUS, AIRPORT, SUBURBS, SUBURB_ROADS, distanceToSegment, V6_BUILDINGS, BRIDGES, BRIDGEHEAD_STUB, NORTH_SHORE_Z, WATER_LEVEL, STATION_ACCESS, onStationAccess, onIslandWalk } from "./v6";
 
 export type P2 = [number, number];
 
@@ -71,6 +72,18 @@ export const OWAWA = { centre: [690, -760] as P2, half: 175 };
 
 const PROFILE_STEP = 6;
 const MAX_GRADE = 0.11;
+/** Bridge ramps: gentler than the hill roads. */
+export const RAMP_GRADE = 0.085;
+/** How far either side of a bridge ramp the embankment blends back into the land. */
+const RAMP_SHOULDER = 18;
+
+/** A bridge deck a road crosses (centre, length along the road, deck height). */
+export interface Deck {
+  x: number;
+  z: number;
+  length: number;
+  y: number;
+}
 
 /**
  * A two-lane country road out of town: a polyline with a smoothed height
@@ -81,10 +94,13 @@ export class CountryRoad {
   readonly length: number;
   private readonly pts: { x: number; z: number; s: number }[];
   private readonly h: number[];
+  /** Stretches of road carried by a bridge deck (s from the start), at the deck's height. */
+  readonly decks: { s0: number; s1: number; y: number }[] = [];
   constructor(
     readonly name: string,
     readonly points: P2[],
     readonly width = 7,
+    bridges: Deck[] = [],
   ) {
     const pts: { x: number; z: number; s: number }[] = [];
     let s = 0;
@@ -108,8 +124,39 @@ export class CountryRoad {
     for (let i = h.length - 2; i >= 0; i--) h[i] = Math.min(h[i], h[i + 1] + MAX_GRADE * PROFILE_STEP);
     h[0] = 0;
     this.pts = pts;
-    this.h = h;
     this.length = s;
+    // Bridges: pin the deck, then lift the road on either side into ramps no steeper than RAMP_GRADE.
+    if (bridges.length) {
+      for (const b of bridges) {
+        const sb = this.nearest(b.x, b.z).s;
+        this.decks.push({ s0: sb - b.length / 2, s1: sb + b.length / 2, y: b.y });
+      }
+      // Profile points at the exact deck ends, so the ramps start precisely where the deck does.
+      for (const d of this.decks)
+        for (const sEnd of [d.s0, d.s1]) {
+          const i = pts.findIndex((p) => p.s > sEnd);
+          if (i > 0 && Math.abs(pts[i - 1].s - sEnd) > 0.01 && Math.abs(pts[i].s - sEnd) > 0.01) {
+            const at = this.pointAt(sEnd);
+            pts.splice(i, 0, { x: at.x, z: at.z, s: sEnd });
+            h.splice(i, 0, 0);
+          }
+        }
+      const pin = () =>
+        pts.forEach((p, i) => {
+          const d = this.decks.find((d) => p.s >= d.s0 - 1e-6 && p.s <= d.s1 + 1e-6);
+          if (d) h[i] = d.y;
+        });
+      pin();
+      for (let i = 1; i < h.length; i++) h[i] = Math.max(h[i], h[i - 1] - RAMP_GRADE * (pts[i].s - pts[i - 1].s));
+      for (let i = h.length - 2; i >= 0; i--) h[i] = Math.max(h[i], h[i + 1] - RAMP_GRADE * (pts[i + 1].s - pts[i].s));
+      pin();
+    }
+    this.h = h;
+  }
+
+  /** The deck under distance `s` along the road, if it's on a bridge. */
+  deckAt(s: number) {
+    return this.decks.find((d) => s >= d.s0 && s <= d.s1) ?? null;
   }
 
   /** Height at the far end (where the road arrives). */
@@ -137,7 +184,10 @@ export class CountryRoad {
 
   /** Road surface height at distance `s` along it. */
   heightAt(s: number) {
-    const i = Math.min(this.h.length - 2, Math.max(0, Math.floor(s / PROFILE_STEP)));
+    // Profile points are about PROFILE_STEP apart (plus any deck ends): find the pair around s.
+    let i = Math.min(this.h.length - 2, Math.max(0, Math.floor(s / PROFILE_STEP)));
+    while (i > 0 && this.pts[i].s > s) i--;
+    while (i < this.h.length - 2 && this.pts[i + 1].s < s) i++;
     const a = this.pts[i];
     const b = this.pts[i + 1];
     const t = Math.min(1, Math.max(0, (s - a.s) / Math.max(1e-6, b.s - a.s)));
@@ -181,7 +231,7 @@ export const LAKE_ROAD = new CountryRoad("Lake Road", [
   [-490, -470],
   DOCK_LAND,
 ]);
-/** Owawa Road: from the east end of Caivan Boulevard up to the city. */
+/** Owawa Road: from the east end of Caivan Boulevard, over the east bridge, into downtown. */
 export const OWAWA_ROAD = new CountryRoad("Owawa Road", [
   [430, 0],
   [480, -60],
@@ -189,9 +239,21 @@ export const OWAWA_ROAD = new CountryRoad("Owawa Road", [
   [630, -320],
   [690, -430],
   [690, OWAWA.centre[1] + OWAWA.half],
-], 9);
+], 9, [BRIDGES[2]]);
+/** Heron Bridge Road: on from Ridge West's river street, across Lake Road, over the west bridge to the north shore. */
+export const HERON_BRIDGE_ROAD = new CountryRoad("Heron Bridge Road", [
+  [BRIDGES[0].x, -390],
+  [BRIDGES[0].x, NORTH_SHORE_Z(BRIDGES[0].x) + BRIDGEHEAD_STUB],
+], 9, [BRIDGES[0]]);
+/** Quarry Bridge: Quarry Lane carries on from North Meadows over the centre bridge. */
+export const QUARRY_BRIDGE_ROAD = new CountryRoad("Quarry Bridge", [
+  [BRIDGES[1].x, MEADOW_WAY_Z - BRIDGEHEAD_STUB],
+  [BRIDGES[1].x, NORTH_SHORE_Z(BRIDGES[1].x) + BRIDGEHEAD_STUB],
+], 9, [BRIDGES[1]]);
 
-export const COUNTRY_ROADS = [COTTAGE_ROAD, LAKE_ROAD, OWAWA_ROAD];
+export const COUNTRY_ROADS = [COTTAGE_ROAD, LAKE_ROAD, OWAWA_ROAD, HERON_BRIDGE_ROAD, QUARRY_BRIDGE_ROAD];
+/** The country roads that cross the river. */
+export const BRIDGE_ROADS = [HERON_BRIDGE_ROAD, QUARRY_BRIDGE_ROAD, OWAWA_ROAD];
 
 // Older names for Cottage Road, used around the code.
 export const HILL_ROAD = COTTAGE_ROAD.points;
@@ -215,7 +277,7 @@ const COTTAGE_PAD = 26;
 const cottageHeight = COTTAGE_ROAD.endHeight;
 export const COTTAGE_Y = cottageHeight;
 /** Lake surface: a little below where Lake Road reaches the shore. */
-export const LAKE_Y = -1.4;
+export const LAKE_Y = WATER_LEVEL;
 /** Owawa's ground level: where Owawa Road arrives. */
 export const CITY_Y = 0;
 
@@ -229,12 +291,25 @@ export function inLake(x: number, z: number) {
 }
 
 /** Ground height anywhere: hills, with the lake, the city, the cottage yard and the roads worked in. */
+/** Station forecourts are levelled to the ground at their centre; the terrain eases back over this distance. */
+const FORECOURT_APRON = 10;
+let forecourtLevels: number[] | null = null;
 export function terrainHeight(x:number,z:number) {
+ let h=shapedHeight(x,z);
+ for(let i=0;i<STATION_ACCESS.length;i++){
+  const r=STATION_ACCESS[i].forecourt,d=Math.hypot(Math.max(r.x0-x,0,x-r.x1),Math.max(r.z0-z,0,z-r.z1));
+  if(d>=FORECOURT_APRON)continue;
+  forecourtLevels??=STATION_ACCESS.map(a=>shapedHeight((a.forecourt.x0+a.forecourt.x1)/2,(a.forecourt.z0+a.forecourt.z1)/2));
+  h+=(forecourtLevels[i]-h)*smoothstep(FORECOURT_APRON,0,d);
+ }
+ return h;
+}
+function shapedHeight(x:number,z:number) {
  let h=naturalHeight(x,z);
  const outside=(r:{x0:number;z0:number;x1:number;z1:number})=>Math.hypot(Math.max(r.x0-x,0,x-r.x1),Math.max(r.z0-z,0,z-r.z1));
  for(const r of [CAMPUS,AIRPORT,...SUBURBS])h*=smoothstep(0,65,outside(r));
  const road=nearestCountryRoad(x,z);
- if(road.d<40)h+=(road.road.heightAt(road.s)-h)*smoothstep(40,road.road.width/2+2,road.d);
+ if(road.d<40&&!road.road.deckAt(road.s))h+=(road.road.heightAt(road.s)-h)*smoothstep(40,road.road.width/2+2,road.d);
  for(const rd of SUBURB_ROADS){const d=distanceToSegment(x,z,rd.from,rd.to);if(d<45)h*=smoothstep(rd.width/2+rd.sidewalkWidth+rd.boulevardWidth,45,d);}
  const dc=Math.hypot(x-COTTAGE.position[0],z-COTTAGE.position[1]);
  if(dc<60)h+=(cottageHeight-h)*smoothstep(60,COTTAGE_PAD,dc);
@@ -246,9 +321,12 @@ export function terrainHeight(x:number,z:number) {
  else if(r<1.5)h=Math.min(h,LAKE_Y+(Math.max(0,h)-LAKE_Y)*smoothstep(1,1.5,r));
  const island=islandRadius(x,z);
  if(island<1.18)h=Math.max(h,LAKE_Y+2.5*smoothstep(1.18,.82,island));
- for(const bx of [-480,100,690]){
-  const lateral=Math.abs(x-bx),along=Math.abs(z-riverZ(bx)),rw=riverWidth(bx)/2;
-  if(lateral<20&&along<220&&along>rw-2){const deck=LAKE_Y+7,target=deck+(h-deck)*smoothstep(rw+24,220,along);h+=(target-h)*smoothstep(20,7,lateral);}
+ // Bridge ramps and abutments: built up after the river is cut, so the bank doesn't eat
+ // the embankment. Under the decks the river stays open.
+ for(const road of BRIDGE_ROADS){
+  const n=road.nearest(x,z);
+  if(n.d>=RAMP_SHOULDER||road.deckAt(n.s))continue;
+  h+=(road.heightAt(n.s)-h)*smoothstep(RAMP_SHOULDER,road.width/2+2,n.d);
  }
  return h;
 }
@@ -266,7 +344,7 @@ export const HILL_TREES: {position:P2;y:number;scale:number;variant:0|1|2}[]=(()
  const rand=(i:number)=>hash(i*1.37+.5,i*2.71+.25);
  const add=(x:number,z:number,i:number)=>{
   if(nearestCountryRoad(x,z).d<15 || SUBURB_ROADS.some(r=>distanceToSegment(x,z,r.from,r.to)<14))return;
-  if(lakeRadius(x,z)<1.25 || inRiver(x,z) || inNorthCity(x,z,20) || nearV6Development(x,z,12))return;
+  if(lakeRadius(x,z)<1.25 || inRiver(x,z) || inNorthCity(x,z,20) || nearV6Development(x,z,12) || onStationAccess(x,z,3))return;
   if(Math.hypot(x-COTTAGE.position[0],z-COTTAGE.position[1])<38 || Math.hypot(x-ELEPHANT_SPOT[0],z-ELEPHANT_SPOT[1])<CLEARING)return;
   if(V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+7&&Math.abs(z-b.at[1])<b.size[1]/2+7))return;
   out.push({position:[x,z],y:terrainHeight(x,z),scale:.85+rand(i+70000)*.9,variant:rand(i+80000)<.62?1:rand(i+90000)<.6?0:2});
@@ -278,6 +356,7 @@ export const HILL_TREES: {position:P2;y:number;scale:number;variant:0|1|2}[]=(()
   add(x,z,n+100000);
  }
  for(let n=0;n<14;n++){const angle=n*2.4,x=-650+Math.cos(angle)*85,z=-655+Math.sin(angle)*36;
+  if(onIslandWalk(x,z,2))continue;
   if(V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+5&&Math.abs(z-b.at[1])<b.size[1]/2+5)||Math.hypot(x+697,z+656)<8)continue;
   out.push({position:[x,z],y:terrainHeight(x,z),scale:.85+(n%4)*.13,variant:n%3===0?0:1});
  }
@@ -305,8 +384,14 @@ export function groundAt(x: number, z: number) {
   return u + v <= 1 ? ha + (hb - ha) * u + (hd - ha) * v : he + (hd - he) * (1 - u) + (hb - he) * (1 - v);
 }
 
-/** Road decks and the interpolated heightfield use the same world coordinates. */
+/**
+ * What a road ribbon drapes on: the bridge deck where a road is carried over
+ * the river, otherwise the drawn ground (so it matches the terrain triangles).
+ */
 export function roadSurfaceAt(x:number,z:number){
- for(const bx of [-480,100,690])if(Math.abs(x-bx)<8&&Math.abs(z-riverZ(bx))<riverWidth(bx)/2+24)return LAKE_Y+7;
+ for(const road of BRIDGE_ROADS){
+  const n=road.nearest(x,z),d=road.deckAt(n.s);
+  if(d&&n.d<road.width/2+2.5)return d.y;
+ }
  return groundAt(x,z);
 }

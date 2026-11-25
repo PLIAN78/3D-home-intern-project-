@@ -1,4 +1,5 @@
-import { riverZ,riverWidth,ISLANDS,NORTH_ROADS,RAIL_PATH,STATIONS,PORTS,CAMPUS_PATHS } from "../world/v6";
+import { riverZ,riverWidth,ISLANDS,ISLAND_WALKS,NORTH_ROADS,RAIL_PATH,STATION_ACCESS,STATION_PATH_WIDTH,STATION_PLATFORM,PORTS,CAMPUS_PATHS,BRIDGES } from "../world/v6";
+import { MEADOW_PAVING, MEADOW_STREET_NAMES, MEADOW_X, MEADOW_Z } from "../world/meadows";
 import { runtime } from "../core/runtime";
 import { host, TREES } from "../core/simHost";
 import type { Owned } from "../story/economy";
@@ -111,6 +112,7 @@ function paintBase(stages: Record<string, string>) {
   // River, new island communities and express rail share the world contract.
   for(let x=-1000;x<1000;x+=4){ctx.fillStyle=PALETTE.water;ctx.fillRect(wx(x),wx(riverZ(x)-riverWidth(x)/2),4*PPM,riverWidth(x)*PPM);}
   for(const island of ISLANDS){ctx.fillStyle=PALETTE.field;ctx.beginPath();ctx.ellipse(wx(island.at[0]),wx(island.at[1]),island.rx*PPM,island.rz*PPM,0,0,Math.PI*2);ctx.fill();}
+  for(const w of ISLAND_WALKS)strokePath(ctx,w.points,w.width+.6,"#d5cdb9");
   // Woods: every tree as a soft canopy dot.
   ctx.fillStyle = PALETTE.woods;
   for (const t of TREES) {
@@ -150,9 +152,23 @@ function paintBase(stages: Record<string, string>) {
   ctx.fillStyle = PALETTE.field;
   ctx.fillRect(wx(SQUARE.x0), wx(SQUARE.z0), (SQUARE.x1 - SQUARE.x0) * PPM, (SQUARE.z1 - SQUARE.z0) * PPM);
 
-  // Roads: casing, then surface. Country roads get a cream fill.
+  // North Meadows parking and forecourts.
+  ctx.fillStyle = PALETTE.parking;
+  for (const p of MEADOW_PAVING) ctx.fillRect(wx(p.x0), wx(p.z0), (p.x1 - p.x0) * PPM, (p.z1 - p.z0) * PPM);
+
+  // Bridges: the deck and parapets as a dark band over the water; the road is painted on top.
+  ctx.fillStyle = PALETTE.buildingEdge;
+  for (const b of BRIDGES) ctx.fillRect(wx(b.x - b.width / 2 - 0.6), wx(b.z - b.length / 2), (b.width + 1.2) * PPM, b.length * PPM);
+
+  // Roads: casing, then surface. Country roads (and the bridge roads) get a cream fill.
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+  // Station forecourts and their footpaths (under the road edges they meet).
+  for (const a of STATION_ACCESS) {
+    ctx.fillStyle = "#d9d2bf";
+    ctx.fillRect(wx(a.forecourt.x0), wx(a.forecourt.z0), (a.forecourt.x1 - a.forecourt.x0) * PPM, (a.forecourt.z1 - a.forecourt.z0) * PPM);
+    for (const p of [a.path, ...a.extra]) strokePath(ctx, p, STATION_PATH_WIDTH + 0.6, "#d5cdb9");
+  }
   const streets = [...CAIVAN_RIDGE.roads, ...OWAWA_ROADS, ...NORTH_ROADS];
   for (const r of streets) strokePath(ctx, [r.from as V2, r.to as V2], r.width + 2.4, PALETTE.roadCase);
   for (const r of COUNTRY_ROADS) strokePath(ctx, r.points, r.width + 2.4, PALETTE.roadCase);
@@ -161,7 +177,7 @@ function paintBase(stages: Record<string, string>) {
 
   // Buildings: homes, frames under construction, landmarks.
   for (const b of collisionBoxes(stages as never)) {
-    if (b.id === "parked" || b.id === "sign" || b.id === "porch" || b.id === "office") continue;
+    if (b.id === "parked" || b.id === "sign" || b.id === "porch" || b.id === "office" || b.id === "river-bridge" || b.id === "bridge-rail" || b.id?.startsWith("station-") || b.id === "rail-post") continue;
     ctx.fillStyle = b.kind === "frame" ? PALETTE.construction : b.kind === "landmark" || b.kind === "post" ? PALETTE.landmark : PALETTE.building;
     ctx.strokeStyle = PALETTE.buildingEdge;
     ctx.lineWidth = 0.8 * PPM;
@@ -194,7 +210,17 @@ function paintBase(stages: Record<string, string>) {
   ctx.fillStyle = PALETTE.landmark;
   ctx.fillRect(wx(COTTAGE.position[0] - 23), wx(COTTAGE.position[1] - 2), 10 * PPM, 8 * PPM);
   strokePath(ctx,RAIL_PATH,3,"#37a6bd");
-  for(const station of STATIONS){ctx.fillStyle="#e9f6f5";ctx.strokeStyle="#237e97";ctx.lineWidth=2;ctx.beginPath();ctx.arc(wx(station.at[0]),wx(station.at[1]),7,0,Math.PI*2);ctx.fill();ctx.stroke();}
+  // Stations: the platform along the track, the lift and entrance, and the stop marker.
+  for(const a of STATION_ACCESS){
+    const [tx,tz]=a.tangent,hl=STATION_PLATFORM.length/2,hw=STATION_PLATFORM.width/2;
+    ctx.fillStyle="#b9b5a8";ctx.strokeStyle=PALETTE.buildingEdge;ctx.lineWidth=.8*PPM;ctx.beginPath();
+    for(const [u,v] of [[-hl,-hw],[hl,-hw],[hl,hw],[-hl,hw]])ctx.lineTo(wx(a.at[0]+tx*u-tz*v),wx(a.at[1]+tz*u+tx*v));
+    ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle="#317986";ctx.fillRect(wx(a.lift[0]-2.3),wx(a.lift[1]-2.3),4.6*PPM,4.6*PPM);
+    const [fx,fz]=a.face,dw=Math.abs(fx)*7+Math.abs(fz)*6.3,dd=Math.abs(fz)*7+Math.abs(fx)*6.3;
+    ctx.fillStyle="#2b6d7c";ctx.fillRect(wx(a.door[0]-dw/2),wx(a.door[1]-dd/2),dw*PPM,dd*PPM);
+    ctx.fillStyle="#e9f6f5";ctx.strokeStyle="#237e97";ctx.lineWidth=2;ctx.beginPath();ctx.arc(wx(a.at[0]),wx(a.at[1]),7,0,Math.PI*2);ctx.fill();ctx.stroke();
+  }
   for(const path of CAMPUS_PATHS)strokePath(ctx,path,5,"#d5cdb9");
   ctx.fillStyle=PALETTE.parking;ctx.fillRect(wx(-896),wx(-275),42*PPM,550*PPM);
   base = c;
@@ -323,12 +349,13 @@ const LABELS: { text: string; at: V2; minScale?: number }[] = [
   { text: "Burgers", at: [LANDMARKS.burger.position[0], LANDMARKS.burger.position[1] + 11] },
   { text: "Heron Lake", at: [LAKE.centre[0] - 70, LAKE.centre[1] + 60] },
   {text:"Heron Gardens Island",at:[-650,-700]},
+  {text:"North Meadows",at:[165,-270]},
   { text: "Boat Dock", at: [-575, -520] },
   { text: "City Hall", at: [CITY_HALL.at[0], CITY_HALL.at[1] - 20] },
   { text: "Owawa Square", at: [650, -612] },
   { text: "Shawarma", at: [SHAWARMA.at[0], SHAWARMA.at[1] - 11] },
   ...PORTS.map(p=>({text:p.name,at:[p.at[0],p.at[1]-16] as V2})),
-  ...STATIONS.map(s=>({text:s.name+" Station",at:[s.at[0],s.at[1]+24] as V2})),
+  ...STATION_ACCESS.map(a=>({text:a.name+" Station",at:[a.at[0]-a.normal[0]*16,a.at[1]-a.normal[1]*16] as V2})),
   ...[{text:"UNIVERSITY OF VATALOO",at:[675,700] as V2},{text:"Owawa River",at:[70,riverZ(70)] as V2},{text:"Regional Airport",at:[-800,0] as V2},{text:"Riverbank Financial",at:[-410,-830] as V2},{text:"Northshore Condos",at:[-170,-830] as V2}],
   { text: "OWAWA", at: [OWAWA.centre[0], OWAWA.centre[1] - OWAWA.half + 4] },
 ];
@@ -351,6 +378,14 @@ const STREET_LABELS: { text: string; at: V2; vertical?: boolean }[] = [
   { text: CITY_STREETS.lyon.name, at: [CITY_STREETS.lyon.x, -620], vertical: true },
   { text: CITY_STREETS.elgin.name, at: [CITY_STREETS.elgin.x, -540], vertical: true },
   { text: CITY_STREETS.kent.name, at: [CITY_STREETS.kent.x, -700], vertical: true },
+  // North Meadows
+  { text: MEADOW_STREET_NAMES.fieldstone, at: [165, MEADOW_Z.fieldstone] },
+  { text: MEADOW_STREET_NAMES.clover, at: [165, MEADOW_Z.clover] },
+  { text: MEADOW_STREET_NAMES.meadow, at: [275, MEADOW_Z.meadow] },
+  { text: MEADOW_STREET_NAMES.sorrel, at: [MEADOW_X.sorrel, -270], vertical: true },
+  { text: MEADOW_STREET_NAMES.court, at: [MEADOW_X.court, -300], vertical: true },
+  { text: "Quarry Lane", at: [MEADOW_X.quarry, -270], vertical: true },
+  { text: "Heron Bridge Road", at: [BRIDGES[0].x, -420], vertical: true },
 ];
 
 /** Draws the map for a view. `full` adds place and street names. */

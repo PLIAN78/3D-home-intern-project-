@@ -7,7 +7,7 @@ import { ElephantModel, HorseModel } from "../models/animals";
 import { HeliModel } from "../models/heli";
 import { ModelCar } from "../models/cars";
 import { BusShell } from "../models/bus";
-import {MotorShipModel} from "../models/motorShip";
+import {JetSkiModel,JETSKI_COLORS} from "../models/jetski";
 import {LightPlaneModel} from "../models/planes";
 import {PLANE_SPOTS,type PlaneId} from "../sim/plane";
 import { BoatModel } from "../models/boat";
@@ -173,8 +173,9 @@ function VehicleEntity({ id }: { id: VehicleId }) {
   );
 }
 
-/** The Lakerunner: bobs on the water, rolls into turns, pitches up under power. */
+/** The Lakerunner or a harbour jet ski: bobs on the water, rolls into turns, pitches up under power. */
 function BoatEntity({id}:{id:string}) {
+  const jetski = id.endsWith("jetski");
   const outfit = useGame((g) => g.outfit);
   const root = useRef<THREE.Group>(null);
   const tilt = useRef<THREE.Group>(null);
@@ -194,9 +195,9 @@ function BoatEntity({id}:{id:string}) {
   return (
     <group ref={root} name="boat">
       <group ref={tilt}>
-        {id.endsWith("ship")?<MotorShipModel/>:<BoatModel speed={speed} />}
-        <group ref={skipper} position={[-0.5, 0.02, 0.48]} visible={false}>
-          <Human outfit={outfit} pose="sit" />
+        {jetski?<JetSkiModel speed={speed} color={JETSKI_COLORS[id.split("-")[0]]} />:<BoatModel speed={speed} />}
+        <group ref={skipper} position={jetski?[-0.32, -0.12, 0]:[-0.5, 0.02, 0.48]} visible={false}>
+          <Human outfit={outfit} pose={jetski?"ride":"sit"} />
         </group>
       </group>
     </group>

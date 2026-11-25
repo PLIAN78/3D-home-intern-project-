@@ -1,7 +1,7 @@
 import {create} from "zustand";
 import {persist} from "zustand/middleware";
 import {useGame} from "./store";
-import {COOPS,SUBJECTS,STATIONS,trainAt,V6_BUILDINGS} from "../world/v6";
+import {COOPS,SUBJECTS,STATIONS,STATION_ACCESS,trainAt,V6_BUILDINGS} from "../world/v6";
 import {host} from "../core/simHost";
 import {runtime} from "../core/runtime";
 import {buildingY} from "../world/v6Geometry";
@@ -35,7 +35,7 @@ export const useV6=create<V6State>()(persist((set,get)=>({
   set({time:s.time+dt,workSeconds:work,rentSeconds:rent});
  },
  board:id=>{const s=get();const t=trainAt(s.time,id);if(t.station<0)return;set({ride:id,panel:null});useGame.getState().toast("On board · E to leave at a station. Next: "+STATIONS[t.next].name);},
- leaveTrain:()=>{const s=get();if(s.ride===null)return;const t=trainAt(s.time,s.ride);if(t.station<0){useGame.getState().toast("Wait until the train stops at a station.");return;}const p=STATIONS[t.station].at;set({ride:null});host.sim?.teleport(p[0],p[1]+18,0);runtime.cameraDistance=1;},
+ leaveTrain:()=>{const s=get();if(s.ride===null)return;const t=trainAt(s.time,s.ride);if(t.station<0){useGame.getState().toast("Wait until the train stops at a station.");return;}const a=STATION_ACCESS[t.station];set({ride:null});host.sim?.teleport(a.exit[0],a.exit[1],0,Math.atan2(a.face[1],a.face[0]));runtime.cameraDistance=1;},
  visit:id=>{const b=V6_BUILDINGS.find(b=>b.id===id);if(!b)return;set({panel:null,interior:id});host.sim?.teleport(b.at[0],b.at[1]+3,buildingY(b)+48.35-groundAt(b.at[0],b.at[1]+3));runtime.cameraDistance=.45;},
  exit:()=>{const b=V6_BUILDINGS.find(b=>b.id===get().interior);if(!b)return;set({interior:null,panel:null});host.sim?.teleport(b.at[0],b.at[1]+b.size[1]/2+4,buildingY(b)-groundAt(b.at[0],b.at[1]+b.size[1]/2+4));runtime.cameraDistance=1;},
  buyCondo:()=>{if(get().condo)return;if(!useGame.getState().spend(14000))return;set({condo:true});useGame.getState().toast("Northshore suite purchased. Rent: $325 every 2 minutes of play.");},
@@ -49,7 +49,7 @@ export function v6Offer():{text:string;run:()=>void}|null{
  if(v.ride!==null){const t=trainAt(v.time,v.ride);return {text:t.station>=0?"Leave train · "+STATIONS[t.station].name:"Riding express · next "+STATIONS[t.next].name,run:v.leaveTrain};}
  if(v.interior){return {text:"Visit "+V6_BUILDINGS.find(x=>x.id===v.interior)?.name+" · services / elevator",run:()=>v.setPanel({kind:"building",id:v.interior!})};}
  if(b.control.kind!=="foot")return null;
- for(const s of STATIONS)if(Math.hypot(b.x-s.at[0],b.z-s.at[1]-18)<8)return {text:"Express rail · "+s.name,run:()=>v.setPanel({kind:"station",id:s.id})};
+ for(const a of STATION_ACCESS)if(Math.hypot(b.x-(a.door[0]+a.exit[0])/2,b.z-(a.door[1]+a.exit[1])/2)<5.5)return {text:"Express rail · "+a.name,run:()=>v.setPanel({kind:"station",id:a.id})};
  for(const x of V6_BUILDINGS){
   if(Math.abs(b.y-buildingY(x))>5)continue;
   if(Math.hypot(b.x-x.at[0],b.z-(x.at[1]+x.size[1]/2+3))>5)continue;

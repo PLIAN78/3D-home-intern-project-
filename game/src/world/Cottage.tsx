@@ -14,34 +14,69 @@ import { B } from "./props";
  */
 
 const ALONG = 2;
-const ACROSS = [-1, -0.5, 0, 0.5, 1];
+const SHOULDER = 1.4;
 
-/** A ribbon following a road, `half` metres either side of the centre line, draped on the ground. */
-function ribbon(road: CountryRoad, half: number, lift: number, from = 0, to = road.length) {
+type Gaps = [number, number][];
+const inGaps = (s: number, gaps: Gaps) => gaps.some(([a, b]) => s >= a && s <= b);
+
+/** Where another country road crosses this one (s ranges), padded by `pad` metres. */
+export function crossings(road: CountryRoad, others: CountryRoad[], pad: number): Gaps {
+  const out: Gaps = [];
+  for (const o of others) {
+    if (o === road) continue;
+    let open: number | null = null;
+    for (let s = 0; s <= road.length; s += 1) {
+      const p = road.pointAt(s);
+      const near = o.nearest(p.x, p.z).d < o.width / 2 + pad;
+      if (near && open === null) open = s;
+      if (!near && open !== null) {
+        out.push([open, s]);
+        open = null;
+      }
+    }
+    if (open !== null) out.push([open, road.length]);
+  }
+  return out;
+}
+
+/**
+ * A band along a road between `inner` and `outer` metres from the centre line
+ * (both sides; inner 0 gives the full carriageway), draped on the ground or
+ * the bridge deck, leaving out the stretches in `gaps`.
+ */
+function band(road: CountryRoad, inner: number, outer: number, lift: number, gaps: Gaps = []) {
   const pos: number[] = [];
   const idx: number[] = [];
-  const n = Math.ceil((to - from) / ALONG);
+  const across = inner === 0 ? [-outer, -outer / 2, 0, outer / 2, outer] : [-outer, -inner, inner, outer];
+  // Quads to leave out between the two inner columns of a split band.
+  const skipCol = inner === 0 ? -1 : 1;
+  const n = Math.ceil(road.length / ALONG);
+  const keep: boolean[] = [];
   for (let i = 0; i <= n; i++) {
-    const s = Math.min(to, from + i * ALONG);
+    const s = Math.min(road.length, i * ALONG);
+    keep.push(!inGaps(s, gaps));
     const a = road.pointAt(Math.max(0, s - 3));
     const b = road.pointAt(Math.min(road.length, s + 3));
     const c = road.pointAt(s);
     const len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
     const nx = -(b.z - a.z) / len;
     const nz = (b.x - a.x) / len;
-    for (const k of ACROSS) {
-      const x = c.x + nx * half * k;
-      const z = c.z + nz * half * k;
-      pos.push(x, roadSurfaceAt(x,z) + lift, z);
+    for (const k of across) {
+      const x = c.x + nx * k;
+      const z = c.z + nz * k;
+      pos.push(x, roadSurfaceAt(x, z) + lift, z);
     }
   }
-  const w = ACROSS.length;
-  for (let i = 0; i < n; i++)
+  const w = across.length;
+  for (let i = 0; i < n; i++) {
+    if (!keep[i] || !keep[i + 1]) continue;
     for (let k = 0; k < w - 1; k++) {
+      if (k === skipCol) continue;
       const a = i * w + k;
       const b = a + w;
       idx.push(a, a + 1, b, a + 1, b + 1, b);
     }
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
   g.setIndex(idx);
@@ -49,11 +84,12 @@ function ribbon(road: CountryRoad, half: number, lift: number, from = 0, to = ro
   return g;
 }
 
-/** Dashed centre line (and solid white edge lines) along a road. */
-function markings(road: CountryRoad) {
+/** Dashed centre line (and solid white edge lines) along a road, broken at junctions. */
+function markings(road: CountryRoad, gaps: Gaps) {
   const parts: THREE.BufferGeometry[] = [];
   const edges: THREE.BufferGeometry[] = [];
   for (let s = 8; s < road.length - 6; s += 1.5) {
+    if (inGaps(s, gaps) || inGaps(s + 1.5, gaps)) continue;
     const p = road.pointAt(s);
     const q = road.pointAt(s + 1.5);
     const ang = Math.atan2(q.z - p.z, q.x - p.x);
@@ -64,7 +100,7 @@ function markings(road: CountryRoad) {
       const g = new THREE.PlaneGeometry(1.6, 0.13);
       g.rotateX(-Math.PI / 2);
       g.rotateY(-ang);
-      g.translate(p.x, roadSurfaceAt(p.x,p.z) + 0.075, p.z);
+      g.translate(p.x, roadSurfaceAt(p.x, p.z) + 0.085, p.z);
       parts.push(g);
     }
     for (const side of [-1, 1]) {
@@ -73,32 +109,54 @@ function markings(road: CountryRoad) {
       const g = new THREE.PlaneGeometry(1.6, 0.11);
       g.rotateX(-Math.PI / 2);
       g.rotateY(-ang);
-      g.translate(ex, roadSurfaceAt(ex,ez) + 0.075, ez);
+      g.translate(ex, roadSurfaceAt(ex, ez) + 0.085, ez);
       edges.push(g);
     }
   }
-  return { centre: mergeGeometries(parts, false), edges: mergeGeometries(edges, false) };
+  return { centre: parts.length ? mergeGeometries(parts, false) : null, edges: edges.length ? mergeGeometries(edges, false) : null };
 }
 
-/** One country road: gravel shoulders, asphalt and paint. */
-function CountryRoadMesh({ road }: { road: CountryRoad }) {
-  const geo = useMemo(() => ({ road: ribbon(road, road.width / 2, 0.06), shoulder: ribbon(road, road.width / 2 + 1.4, 0.035), lines: markings(road) }), [road]);
+/**
+ * One country road: gravel shoulders outside the asphalt (none on bridge
+ * decks or inside junctions), asphalt, and paint. Where it crosses a road
+ * listed before it, its asphalt draws underneath, so the junction doesn't
+ * flicker between the two.
+ */
+function CountryRoadMesh({ road, index }: { road: CountryRoad; index: number }) {
+  const geo = useMemo(() => {
+    const junctions = crossings(road, COUNTRY_ROADS, SHOULDER + 0.5);
+    const decks: Gaps = road.decks.map((d) => [d.s0 - 0.5, d.s1 + 0.5]);
+    return {
+      road: band(road, 0, road.width / 2, 0.06),
+      shoulder: band(road, road.width / 2 - 0.2, road.width / 2 + SHOULDER, 0.045, [...junctions, ...decks]),
+      lines: markings(road, junctions),
+    };
+  }, [road]);
+  const minor = COUNTRY_ROADS.slice(0, index).some((o) => crossings(road, [o], 0).length > 0);
+  const asphalt = useMemo(() => {
+    if (!minor) return groundAsphalt();
+    const m = groundAsphalt().clone();
+    m.polygonOffset = true;
+    m.polygonOffsetFactor = 2;
+    m.polygonOffsetUnits = 2;
+    return m;
+  }, [minor]);
   return (
     <group name={road.name}>
       <mesh geometry={geo.shoulder} material={groundDirt()} receiveShadow />
-      <mesh geometry={geo.road} material={groundAsphalt()} receiveShadow />
+      <mesh geometry={geo.road} material={asphalt} receiveShadow />
       {geo.lines.centre && <mesh geometry={geo.lines.centre} material={mat("#e9b62a", { rough: 0.6 })} />}
       {geo.lines.edges && <mesh geometry={geo.lines.edges} material={mat("#eeeeea", { rough: 0.6 })} />}
     </group>
   );
 }
 
-/** Cottage Road, Lake Road and Owawa Road. */
+/** Cottage Road, Lake Road, Owawa Road and the two bridge roads. */
 export function CountryRoads() {
   return (
     <group name="CountryRoads">
-      {COUNTRY_ROADS.map((r) => (
-        <CountryRoadMesh key={r.name} road={r} />
+      {COUNTRY_ROADS.map((r, i) => (
+        <CountryRoadMesh key={r.name} road={r} index={i} />
       ))}
     </group>
   );

@@ -23,7 +23,7 @@ let appliedStages = -1;
 
 function rideName(r: Ride) {
   if (r.kind === "heli") return "Fly the Skylark";
-  if (r.kind === "boat") return r.id?.endsWith("ship")?"Board the motor ship":"Take the motorboat";
+  if (r.kind === "boat") return r.id?.endsWith("jetski")?"Ride the jet ski":"Take the motorboat";
   if(r.kind==="plane")return "Fly the "+r.id+" - F to board";
   if (r.kind === "vehicle" && r.id === "bus") return "Drive the school bus";
   if (r.kind === "animal") return r.id === "horse" ? "Ride Biscuit" : "Ride Peanut";

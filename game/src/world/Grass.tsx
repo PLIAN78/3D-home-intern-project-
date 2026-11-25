@@ -9,7 +9,8 @@ import { useQuality } from "../render/quality";
 import { useGame } from "../story/store";
 import { CAIVAN_RIDGE, collisionBoxes, LANDMARKS, PAVED } from "./map";
 import {CITY_PAVING,OWAWA_ROADS} from "./owawa";
-import { CAMPUS_PATHS, AIRPORT, NORTH_ROADS, riverZ, riverWidth } from "./v6";
+import { MEADOW_PAVING } from "./meadows";
+import { CAMPUS_PATHS, AIRPORT, NORTH_ROADS, riverZ, riverWidth, STATION_ACCESS, STATION_PATH_WIDTH, ISLAND_WALKS } from "./v6";
 import { COUNTRY_ROADS, PLAY_HALF,LAKE } from "./terrain";
 
 /**
@@ -92,7 +93,8 @@ function paintMask(stages: Record<string, string>) {
   ctx.beginPath();
   ctx.arc(X(px + 10), Z(pz + 5), 13 * k, 0, Math.PI * 2);
   ctx.fill();
-  // Parking lots, the track and pitch, the mall's loading dock
+  // Parking lots (North Meadows too), the track and pitch, the mall's loading dock
+  for (const p of MEADOW_PAVING) ctx.fillRect(X(p.x0 - 0.5), Z(p.z0 - 0.5), (p.x1 - p.x0 + 1) * k, (p.z1 - p.z0 + 1) * k);
   for (const p of PAVED) {
     if (p.kind === "parking") ctx.fillRect(X(p.x0 - 0.5), Z(p.z0 - 0.5), (p.x1 - p.x0 + 1) * k, (p.z1 - p.z0 + 1) * k);
     else {
@@ -120,6 +122,14 @@ function paintMask(stages: Record<string, string>) {
   // V6: the mask covers the whole playable world, including university paths and airport pavement.
   ctx.lineWidth=9*k;
   for(const path of CAMPUS_PATHS){ctx.beginPath();path.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.stroke();}
+  // Heron Gardens Island walkways.
+  for(const w of ISLAND_WALKS){ctx.lineWidth=(w.width+1)*k;ctx.beginPath();w.points.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.stroke();}
+  // Station forecourts and footpaths.
+  ctx.lineWidth=(STATION_PATH_WIDTH+2)*k;
+  for(const a of STATION_ACCESS){
+    const f=a.forecourt;ctx.fillRect(X(f.x0-1),Z(f.z0-1),(f.x1-f.x0+2)*k,(f.z1-f.z0+2)*k);
+    for(const path of [a.path,...a.extra]){ctx.beginPath();path.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.stroke();}
+  }
   ctx.fillRect(X(891),Z(828),48*k,28*k);
   ctx.fillRect(X(643),Z(685),30*k,22*k);
   ctx.fillRect(X(CITY_PAVING.x0),Z(CITY_PAVING.z0),(CITY_PAVING.x1-CITY_PAVING.x0)*k,(CITY_PAVING.z1-CITY_PAVING.z0)*k);

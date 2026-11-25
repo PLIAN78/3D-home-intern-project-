@@ -16,6 +16,12 @@ export const BOAT = {
 };
 
 /**
+ * A sit-down jet ski: light and quick to plane, with sharp steering, a short
+ * coast and little reverse. A box hull 3.1 m long and 1.24 m wide.
+ */
+export const JETSKI = { ...BOAT, radius: 0.62, halfHeight: 0.35, halfLength: 1.55, accel: 9, top: 21, reverse: 2.5, drag: 0.9, turn: 1.9, draft: 0.12 };
+
+/**
  * A motorboat on Heron Lake. It stays on the water surface, throttles up and
  * coasts down, turns harder at speed (like a real hull with a prop wash), and
  * is moved by a character controller so the shore, the island and the jetties
