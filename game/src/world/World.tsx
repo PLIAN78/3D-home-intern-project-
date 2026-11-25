@@ -11,6 +11,7 @@ import { useSimVersion } from "../core/simVersion";
 import { concreteSurface, groundAsphalt, groundConcrete, groundGrass, siteHomeMaterial } from "../render/materials";
 import { useGame } from "../story/store";
 import { Grass } from "./Grass";
+import { siteRoads } from "./campus";
 import { Landmarks } from "./Landmarks";
 import { CAIVAN_RIDGE, collisionBoxes, HERO_LOT_ID, lotById, progressFor } from "./map";
 import { Countryside, RoadMarkings } from "./Countryside";
@@ -32,7 +33,8 @@ function Ground() {
       const off = houseOffsetOnLot(lot, g);
       return { lot, start: [g.garageDoor.x + off[0], g.garageDoor.y + off[2]], startY: 0.05, width: 5.4 };
     });
-    return buildSite(CAIVAN_RIDGE, driveways);
+    // Ring Road is drawn by the campus as one loop; its side streets stop at its edge (campus.ts siteRoads).
+    return buildSite({ ...CAIVAN_RIDGE, roads: siteRoads(CAIVAN_RIDGE.roads) }, driveways);
   }, []);
   useEffect(() => () => Object.values(site).forEach((g) => g.dispose()), [site]);
   return (

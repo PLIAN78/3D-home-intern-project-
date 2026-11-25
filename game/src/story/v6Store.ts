@@ -28,6 +28,11 @@ interface V6State {
  /** Opened a business or mall shop (counts toward the mall survey). */
  visited:(id:string)=>void;
 }
+/** Saved-progress upgrades. v7 (6.4): the Northshore condo is reset (it kept collecting rent); everything else carries over. */
+export function migrateV6(persisted: unknown, version: number) {
+ const p = (persisted ?? {}) as Partial<V6State>;
+ return (version < 7 ? { ...p, condo: false, rentSeconds: 0 } : p) as V6State;
+}
 export const useV6=create<V6State>()(persist((set,get)=>({
  panel:null,ride:null,time:0,interior:null,lessons:[],coops:{},workSeconds:0,loanVisit:"none",condo:false,rentSeconds:0,
  gig:null,gigsDone:[],mallVisits:[],investments:0,
@@ -64,7 +69,9 @@ export const useV6=create<V6State>()(persist((set,get)=>({
  loanAction:()=>{const s=get(),g=useGame.getState();if(s.loanVisit==="none"){set({loanVisit:"documents"});g.toast("Visit Northshore Residences and collect the appraisal in its upper suite.");}
  else if(s.loanVisit==="documents"){g.toast("Collect the appraisal at Northshore before returning.");}
  },
-}),{name:"caivan-v6-progress",version:6,partialize:s=>({lessons:s.lessons,coops:s.coops,loanVisit:s.loanVisit,condo:s.condo,workSeconds:s.workSeconds,rentSeconds:s.rentSeconds,gig:s.gig,gigsDone:s.gigsDone,mallVisits:s.mallVisits,investments:s.investments})}));
+}),{name:"caivan-v6-progress",version:7,
+ migrate:migrateV6,
+ partialize:s=>({lessons:s.lessons,coops:s.coops,loanVisit:s.loanVisit,condo:s.condo,workSeconds:s.workSeconds,rentSeconds:s.rentSeconds,gig:s.gig,gigsDone:s.gigsDone,mallVisits:s.mallVisits,investments:s.investments})}));
 export function approveLoan(){const s=useV6.getState();if(s.loanVisit!=="documents")return;useV6.setState({loanVisit:"approved"});useGame.getState().pay(900,"Riverbank appraisal visit");}
 export function v6Offer():{text:string;run:()=>void}|null{
  const v=useV6.getState(),b=runtime.body;

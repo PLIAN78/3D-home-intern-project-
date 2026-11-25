@@ -219,3 +219,36 @@ describe("v6.4 paved north shore", () => {
     }
   });
 });
+
+import { migrateV6 } from "../game/src/story/v6Store";
+import { RING_JUNCTIONS, RING_LENGTH, nearestOnRing, siteRoads } from "../game/src/world/campus";
+
+describe("v6.4 follow-up: Ring Road joints and the condo", () => {
+  it("draws Ring Road as one loop and stops its side streets clear of its asphalt", () => {
+    const drawn = siteRoads(SUBURB_ROADS);
+    expect(drawn.some((r) => r.id.startsWith("vataloo-ring"))).toBe(false);
+    expect(RING_JUNCTIONS.map((j) => j.id).sort()).toEqual(["hagey-boulevard", "ring-link-north", "university-ring-link"]);
+    for (const j of RING_JUNCTIONS) {
+      const r = drawn.find((x) => x.id === j.id)!;
+      expect(r.to).toEqual(j.cut);
+      // Both curb ends (at the edges of the street) are outside the ring's asphalt.
+      const [dx, dz] = j.dir;
+      for (const side of [-1, 1]) {
+        const ex = j.cut[0] - dz * side * (j.road.width / 2 + 0.18), ez = j.cut[1] + dx * side * (j.road.width / 2 + 0.18);
+        expect(nearestOnRing(ex, ez).d, j.id).toBeGreaterThan(4 - 0.05);
+      }
+      expect(j.gap[1] - j.gap[0]).toBeLessThan(RING_LENGTH / 10);
+    }
+  });
+
+  it("resets the Northshore condo in saved progress (it kept collecting rent) and keeps the rest", () => {
+    const old = { lessons: ["science"], condo: true, rentSeconds: 80, investments: 140, gigsDone: ["courier"] };
+    const migrated = migrateV6(old, 6) as unknown as Record<string, unknown>;
+    expect((migrateV6({ condo: true }, 7) as unknown as Record<string, unknown>).condo).toBe(true);
+    expect(migrated.condo).toBe(false);
+    expect(migrated.rentSeconds).toBe(0);
+    expect(migrated.lessons).toEqual(["science"]);
+    expect(migrated.investments).toBe(140);
+    expect(migrated.gigsDone).toEqual(["courier"]);
+  });
+});

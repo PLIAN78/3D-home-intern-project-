@@ -3,10 +3,10 @@ import type {ReactNode} from "react";
 import * as THREE from "three";
 import {B,Windows,Sign} from "./props";
 import {Decal} from "../render/decal";
-import {mat} from "../render/materials";
+import {concreteSurface,groundAsphalt,groundConcrete,mat} from "../render/materials";
 import {Walkway} from "./Walkways";
 import type {Point} from "./v6";
-import {CAMPUS_BUILDINGS,CAMPUS_WALKWAYS,COLUMBIA_Z,CREEK_WIDTH,LAUREL_CREEK,PLAZA_POLYGON,PONDS,SKYBRIDGE,SKYBRIDGES,toWing,type CampusBuilding,type CampusWing} from "./campus";
+import {CAMPUS_BUILDINGS,CAMPUS_WALKWAYS,COLUMBIA_Z,CREEK_WIDTH,LAUREL_CREEK,PLAZA_POLYGON,PONDS,RING_DIMS,RING_JUNCTIONS,RING_LENGTH,RING_LENGTHS,RING_POINTS,SKYBRIDGE,SKYBRIDGES,toWing,type CampusBuilding,type CampusWing} from "./campus";
 
 /**
  * Each building's look: brick, buff stone, concrete or glass, loosely after the
@@ -80,6 +80,97 @@ function Creek(){
  </group>;
 }
 
+/**
+ * Ring Road as one continuous loop: mitred asphalt, curbs and sidewalks on both
+ * sides, and dashed centre lines. Drawn by hand because the site builder lays
+ * each straight piece separately, and on a curve that left wedge-shaped gaps
+ * at every joint and cut the sidewalks into pieces. The outer curb and
+ * sidewalk open where the side streets join, and an apron of asphalt fills
+ * the space between each side street's end and the ring.
+ */
+const RING_TOP = .028;
+function ringGeometry(){
+ const N=RING_POINTS.length,P=RING_POINTS;
+ // Cross-section frames: the average direction at each point, with a mitre so widths stay even.
+ const frames=P.map((p,i)=>{
+  const a=P[(i+N-1)%N],b=P[(i+1)%N];
+  let ux=p[0]-a[0],uz=p[1]-a[1],vx=b[0]-p[0],vz=b[1]-p[1];
+  const lu=Math.hypot(ux,uz),lv=Math.hypot(vx,vz);ux/=lu;uz/=lu;vx/=lv;vz/=lv;
+  let tx=ux+vx,tz=uz+vz;const lt=Math.hypot(tx,tz);tx/=lt;tz/=lt;
+  const m=Math.min(2,1/Math.max(.5,tx*ux+tz*uz));
+  return {p,n:[-tz,tx] as Point,m};
+ });
+ // Which side of the centre line is outside the ring (+1 = along the frame normal).
+ const cx=P.reduce((s,p)=>s+p[0],0)/N,cz=P.reduce((s,p)=>s+p[1],0)/N;
+ const out=Math.sign(frames[0].n[0]*(P[0][0]-cx)+frames[0].n[1]*(P[0][1]-cz));
+ const inGap=(s:number)=>RING_JUNCTIONS.some(j=>{const d=((s-(j.gap[0]+j.gap[1])/2)%RING_LENGTH+RING_LENGTH*1.5)%RING_LENGTH-RING_LENGTH/2;return Math.abs(d)<(j.gap[1]-j.gap[0])/2;});
+ const at=(i:number,off:number,y:number)=>{const f=frames[i%N];return [f.p[0]+f.n[0]*f.m*off,y,f.p[1]+f.n[1]*f.m*off];};
+ const build=()=>({pos:[] as number[],uv:[] as number[]});
+ const quad=(g:{pos:number[];uv:number[]},a:number[],b:number[],c:number[],d:number[],uv:number[][])=>{g.pos.push(...a,...b,...c,...a,...c,...d);for(const k of [0,1,2,0,2,3])g.uv.push(...uv[k]);};
+ const asphalt=build(),curb=build(),walk=build();
+ /** A raised strip between two offsets (signed, along the normal), top and both sides; `gapped` opens it at the junctions. */
+ const strip=(g:{pos:number[];uv:number[]},o0:number,o1:number,y0:number,y1:number,gapped:boolean)=>{
+  for(let i=0;i<N;i++){
+   const s0=RING_LENGTHS[i],s1=RING_LENGTHS[i+1];
+   if(gapped&&inGap((s0+s1)/2))continue;
+   const w=Math.abs(o1-o0);
+   quad(g,at(i,o0,y1),at(i,o1,y1),at(i+1,o1,y1),at(i+1,o0,y1),[[s0,0],[s0,w],[s1,w],[s1,0]]);
+   // Side faces: this winding faces −normal, so the face on the larger offset is turned round to face +normal.
+   if(y0<y1)for(const o of [o0,o1]){
+    const u=[[s0,0],[s0,y1-y0],[s1,y1-y0],[s1,0]];
+    if(o===Math.max(o0,o1))quad(g,at(i,o,y0),at(i+1,o,y0),at(i+1,o,y1),at(i,o,y1),[u[0],u[3],u[2],u[1]]);
+    else quad(g,at(i,o,y0),at(i,o,y1),at(i+1,o,y1),at(i+1,o,y0),u);
+   }
+  }
+ };
+ const {width:W,boulevardWidth:BL,sidewalkWidth:SW}=RING_DIMS,h=W/2;
+ strip(asphalt,-h,h,RING_TOP,RING_TOP,false);
+ for(const side of [1,-1]){
+  const gapped=side===out;
+  strip(curb,side*h,side*(h+.18),0,.14,gapped);
+  strip(walk,side*(h+BL),side*(h+BL+SW),0,.08,gapped);
+ }
+ // Aprons: asphalt from where each side street stops to the ring's centre line.
+ for(const j of RING_JUNCTIONS){
+  const r=j.road,[dx,dz]=j.dir,nx=-dz*r.width/2,nz=dx*r.width/2,y=RING_TOP-.004;
+  quad(asphalt,[j.cut[0]-nx,y,j.cut[1]-nz],[j.cut[0]+nx,y,j.cut[1]+nz],[r.to[0]+nx,y,r.to[1]+nz],[r.to[0]-nx,y,r.to[1]-nz],[[0,0],[1,0],[1,1],[0,1]]);
+ }
+ // Dashed yellow centre line, broken at the junctions.
+ const dash=build();
+ for(let s=3;s<RING_LENGTH-3;s+=9){
+  if(inGap(s+1.5))continue;
+  let i=0;while(RING_LENGTHS[i+1]<s)i++;
+  const a=P[i],b=P[(i+1)%N],L=RING_LENGTHS[i+1]-RING_LENGTHS[i],u=(s-RING_LENGTHS[i])/L,tx=(b[0]-a[0])/L,tz=(b[1]-a[1])/L,x=a[0]+(b[0]-a[0])*u,z=a[1]+(b[1]-a[1])*u,y=RING_TOP+.006;
+  quad(dash,[x-tz*.07,y,z+tx*.07],[x+tz*.07,y,z-tx*.07],[x+tx*3+tz*.07,y,z+tz*3-tx*.07],[x+tx*3-tz*.07,y,z+tz*3+tx*.07],[[0,0],[0,1],[1,1],[1,0]]);
+ }
+ const geo=(g:{pos:number[];uv:number[]})=>{
+  const out=new THREE.BufferGeometry();
+  out.setAttribute("position",new THREE.Float32BufferAttribute(g.pos,3));
+  out.setAttribute("uv",new THREE.Float32BufferAttribute(g.uv,2));
+  // Wind every triangle to face out of the road (up, or away from the strip), whichever way the loop runs.
+  const p=out.getAttribute("position") as THREE.BufferAttribute,A=new THREE.Vector3(),B=new THREE.Vector3(),C=new THREE.Vector3(),n=new THREE.Vector3();
+  for(let i=0;i<p.count;i+=3){
+   A.fromBufferAttribute(p,i);B.fromBufferAttribute(p,i+1);C.fromBufferAttribute(p,i+2);
+   n.subVectors(B,A).cross(C.clone().sub(A));
+   const flat=Math.abs(n.y)>Math.hypot(n.x,n.z);
+   if(flat?n.y<0:false){p.setXYZ(i+1,C.x,C.y,C.z);p.setXYZ(i+2,B.x,B.y,B.z);}
+  }
+  out.computeVertexNormals();
+  return out;
+ };
+ return {asphalt:geo(asphalt),curb:geo(curb),walk:geo(walk),dash:geo(dash)};
+}
+function RingRoad(){
+ const g=useMemo(()=>ringGeometry(),[]);
+ useEffect(()=>()=>Object.values(g).forEach(x=>x.dispose()),[g]);
+ return <group name="Ring Road">
+  <mesh geometry={g.asphalt} material={groundAsphalt()} receiveShadow/>
+  <mesh geometry={g.curb} material={concreteSurface()} receiveShadow/>
+  <mesh geometry={g.walk} material={groundConcrete()} receiveShadow/>
+  <mesh geometry={g.dash} material={mat("#e9b62a",{rough:.6})} receiveShadow/>
+ </group>;
+}
+
 /** A glazed skybridge between two buildings, second floor up. */
 function Skybridge({s}:{s:(typeof SKYBRIDGES)[number]}){
  const {width:W,height:H,y}=SKYBRIDGE;
@@ -94,6 +185,7 @@ function Skybridge({s}:{s:(typeof SKYBRIDGES)[number]}){
 export function VatalooCampus({children}:{children?:ReactNode}){
  const benches=useMemo(()=>CAMPUS_WALKWAYS.filter(w=>w.width>3).flatMap(w=>w.points.slice(1).map((q,i)=>{const p=w.points[i],L=Math.hypot(q[0]-p[0],q[1]-p[1]);if(L<30)return null;const dx=(q[0]-p[0])/L,dz=(q[1]-p[1])/L;return {x:(p[0]+q[0])/2-dz*3.4,z:(p[1]+q[1])/2+dx*3.4,h:Math.atan2(dz,dx)};}).filter(b=>b!==null)),[]);
  return <group name="University of Vataloo">
+  <RingRoad/>
   {CAMPUS_WALKWAYS.map(w=><Walkway key={w.id} points={w.points} width={w.width}/>)}
   <Flat poly={PLAZA_POLYGON} color="#cdc6b3" y={.09}/>
   <Creek/>

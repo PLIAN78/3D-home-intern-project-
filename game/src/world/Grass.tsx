@@ -12,7 +12,7 @@ import { CAIVAN_RIDGE, collisionBoxes, LANDMARKS, PAVED } from "./map";
 import {CITY_PAVING,OWAWA_ROADS} from "./owawa";
 import { MEADOW_PAVING } from "./meadows";
 import { BAY_OUTLINE } from "./bay";
-import { CREEK_WIDTH, LAUREL_CREEK, PLAZA_POLYGON, PONDS } from "./campus";
+import { CREEK_WIDTH, LAUREL_CREEK, PLAZA_POLYGON, PONDS, RING_POINTS, RING_RESERVE } from "./campus";
 import { CAMPUS_WALKWAYS, AIRPORT, NORTH_ROADS, riverZ, riverWidth, STATION_ACCESS, STATION_PATH_WIDTH, ISLAND_WALKS } from "./v6";
 import { COUNTRY_ROADS, PLAY_HALF,LAKE } from "./terrain";
 
@@ -41,7 +41,14 @@ function paintMask(stages: Record<string, string>) {
   ctx.strokeStyle = "#000";
   ctx.lineCap = "butt";
   // Streets: the whole right-of-way except the grass boulevard strip.
-  for (const r of [...CAIVAN_RIDGE.roads,...NORTH_ROADS,...OWAWA_ROADS]) {
+  // Ring Road: one closed band, round-jointed (stroked piece by piece it left wedges of lawn at the joints).
+  ctx.lineWidth = RING_RESERVE * 2 * k;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  RING_POINTS.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z))));
+  ctx.closePath();
+  ctx.stroke();
+  for (const r of [...CAIVAN_RIDGE.roads.filter((x) => !x.id.startsWith("vataloo-ring")),...NORTH_ROADS,...OWAWA_ROADS]) {
     ctx.lineWidth = (r.width + 0.6) * k;
     ctx.beginPath();
     ctx.moveTo(X(r.from[0]), Z(r.from[1]));

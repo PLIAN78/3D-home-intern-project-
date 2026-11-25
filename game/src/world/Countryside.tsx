@@ -151,7 +151,8 @@ export function RoadMarkings() {
     const parts: THREE.BufferGeometry[] = [];
     const dash = 3;
     const gap = 6;
-    for (const r of CAIVAN_RIDGE.roads) {
+    // (Ring Road draws its own centre line.)
+    for (const r of CAIVAN_RIDGE.roads.filter((x) => !x.id.startsWith("vataloo-ring"))) {
       const dx = r.to[0] - r.from[0];
       const dz = r.to[1] - r.from[1];
       const L = Math.hypot(dx, dz);

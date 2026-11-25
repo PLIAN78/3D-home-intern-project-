@@ -151,7 +151,7 @@ describe("vehicles are separate from the character", () => {
     const speeds = { sedan: await top("sedan"), roadster: await top("roadster"), suv: await top("suv"), coupe: await top("coupe"), super: await top("super") };
     for (const v of Object.values(speeds)) expect(v).toBeGreaterThan(15);
     expect(speeds.super).toBeGreaterThan(Math.max(speeds.sedan, speeds.suv, speeds.roadster, speeds.coupe));
-  });
+  }, 30000); // five cars × six seconds of physics: past the 5 s default when the whole suite runs at once
 
   it("a meal boost makes you run faster", async () => {
     const plain = await sim();

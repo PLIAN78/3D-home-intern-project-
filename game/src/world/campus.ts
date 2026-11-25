@@ -122,3 +122,43 @@ export const FLOWER_BEDS: Point[] = ["math", "porter", "cafeteria", "davis", "ar
   const b = campusBuilding(id)!;
   return [b.door[0] + b.doorOut[0] * 2.5 + b.doorOut[1] * 6, b.door[1] + b.doorOut[1] * 2.5 - b.doorOut[0] * 6] as Point;
 });
+
+/**
+ * Ring Road is drawn as one continuous loop (VatalooCampus RingRoad): mitred
+ * asphalt, curbs and sidewalks, so its many short pieces join without gaps.
+ * The streets that meet it (Hagey Boulevard, the north link, University
+ * Avenue's link) stop just short of its asphalt, an apron fills the rest, and
+ * the ring's outer curb and sidewalk open where each one joins.
+ */
+export const RING_LENGTHS: number[] = (() => {
+  const out = [0];
+  for (let i = 1; i <= RING_POINTS.length; i++) { const a = RING_POINTS[i - 1], b = RING_POINTS[i % RING_POINTS.length]; out.push(out[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
+  return out;
+})();
+export const RING_LENGTH = RING_LENGTHS[RING_POINTS.length];
+/** Nearest point on Ring Road's centre line: arc length, distance and the tangent there. */
+export function nearestOnRing(x: number, z: number) {
+  let best = { s: 0, d: Infinity, t: [1, 0] as Point };
+  for (let i = 0; i < RING_POINTS.length; i++) {
+    const a = RING_POINTS[i], b = RING_POINTS[(i + 1) % RING_POINTS.length], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
+    const u = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (L * L))), d = Math.hypot(x - a[0] - dx * u, z - a[1] - dz * u);
+    if (d < best.d) best = { s: RING_LENGTHS[i] + u * L, d, t: [dx / L, dz / L] };
+  }
+  return best;
+}
+export interface RingJunction { id: string; road: V6Road; /** Where the drawn street stops (just clear of the ring's asphalt). */ cut: Point; dir: Point; s: number; /** Arc-length range where the outer curb and sidewalk open. */ gap: [number, number] }
+export const RING_JUNCTIONS: RingJunction[] = CAMPUS_ROADS.filter((r) => !r.id.startsWith("vataloo-ring") && nearestOnRing(r.to[0], r.to[1]).d < 0.5).map((r) => {
+  const L = Math.hypot(r.to[0] - r.from[0], r.to[1] - r.from[1]), dir: Point = [(r.to[0] - r.from[0]) / L, (r.to[1] - r.from[1]) / L];
+  const n = nearestOnRing(r.to[0], r.to[1]), sin = Math.max(0.35, Math.abs(dir[0] * n.t[1] - dir[1] * n.t[0])), cos = Math.abs(dir[0] * n.t[0] + dir[1] * n.t[1]);
+  // Far enough back that both curbs end clear of the ring's asphalt, however it meets the ring.
+  const trim = (RING_DIMS.width / 2 + (r.width / 2 + 0.2) * cos) / sin;
+  const open = (r.width / 2 + r.boulevardWidth + r.sidewalkWidth + 1) / sin;
+  return { id: r.id, road: r, cut: [r.to[0] - dir[0] * trim, r.to[1] - dir[1] * trim], dir, s: n.s, gap: [n.s - open, n.s + open] };
+});
+/** The roads as drawn by the site builder: Ring Road left out (it has its own mesh), its side streets stopped short. */
+export function siteRoads<T extends { id: string; from: Point; to: Point }>(roads: T[]): T[] {
+  return roads.filter((r) => !r.id.startsWith("vataloo-ring")).map((r) => {
+    const j = RING_JUNCTIONS.find((k) => k.id === r.id);
+    return j ? { ...r, to: j.cut } : r;
+  });
+}

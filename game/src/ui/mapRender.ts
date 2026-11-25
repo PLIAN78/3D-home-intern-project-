@@ -6,8 +6,9 @@ import { BEACH, SHORES } from "../world/shoreline";
 import { bayDistance } from "../world/bay";
 import { isPaved } from "../world/paving";
 
-/** Campus buildings are labelled with their short codes, as on the campus map. */
-const CAMPUS_LABELS = CAMPUS_BUILDINGS.map((b) => ({ text: b.id === "porter" ? "Dana Porter" : b.code, at: [b.at[0], b.at[1]] as V2 }));
+/** Only four campus buildings are named on the map (all of them was too crowded): the ones you visit. */
+const CAMPUS_NAMED: Record<string, string> = { principal: "Needles Hall", cafeteria: "Student Centre", porter: "Library", engineering: "Engineering" };
+const CAMPUS_LABELS = CAMPUS_BUILDINGS.filter((b) => CAMPUS_NAMED[b.id]).map((b) => ({ text: CAMPUS_NAMED[b.id], at: [b.at[0], b.at[1]] as V2 }));
 const RING_WEST = RING_POINTS.reduce((a, p) => (p[0] < a[0] ? p : a));
 const RING_SOUTH = RING_POINTS.reduce((a, p) => (p[1] > a[1] ? p : a));
 import { runtime } from "../core/runtime";
