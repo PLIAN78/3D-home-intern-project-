@@ -3,9 +3,12 @@ import type { StageId } from "@/lib/models/construction";
 import { collisionBoxes, FLAT_GROUND_HALF, LANDMARKS, ROAD, TOWER, TRAFFIC_LOOPS, WALK_LOOPS, type Box } from "../world/map";
 import { CITY_Y, inLake, LAKE, LAKE_Y, PLAY_HALF, TERRAIN_STEP, terrainHeight } from "../world/terrain";
 import { riverZ,riverWidth,PORTS } from "../world/v6";
-import { CITY_TRAFFIC, CITY_WALKS } from "../world/owawa";
+import { CITY_TRAFFIC, CITY_WALKS, OWAWA_ROADS } from "../world/owawa";
+import { CITY_LOOPS, NORTH_ROADS } from "../world/v6";
+import { CITY_RESERVE } from "../world/owawaCity";
+import { signalPoints } from "../world/signals";
 import { BOAT_SPOT, deckAt } from "../world/lake";
-import {PlaneController,PLANE_SPOTS,type PlaneId} from "./plane";
+import {HELIPAD,PlaneController,PLANE_SPOTS,type PlaneId} from "./plane";
 import { BoatController,BOAT,JETSKI } from "./boat";
 import { AnimalController, ANIMALS, type AnimalId } from "./animal";
 import { Breakables, BREAK_SPEED, type BreakEvent, type TreeInput } from "./breakables";
@@ -17,7 +20,7 @@ import { Town, type Obstacle } from "./town";
 import { PARKED, VEHICLES, VehicleController, type VehicleId } from "./vehicle";
 
 /** Who the player is controlling right now. */
-export type Control = { kind: "foot" } | { kind: "vehicle"; id: VehicleId } | { kind: "animal"; id: AnimalId } | { kind: "heli" } | { kind: "boat"; id?:string } | {kind:"plane";id:PlaneId};
+export type Control = { kind: "foot" } | { kind: "vehicle"; id: VehicleId } | { kind: "animal"; id: AnimalId } | { kind: "heli"; id?: string } | { kind: "boat"; id?:string } | {kind:"plane";id:PlaneId};
 
 /** One frame of player input; the simulation routes it to whatever is being controlled. */
 export interface SimInput extends MoveIntent {
@@ -62,7 +65,7 @@ const MAX_STEPS = 8;
 export const BOARD_RANGE = 4;
 
 /** Something you can get in or on. */
-export type Ride = { kind: "vehicle"; id: VehicleId } | { kind: "animal"; id: AnimalId } | { kind: "heli" } | { kind: "boat"; id?:string } | {kind:"plane";id:PlaneId};
+export type Ride = { kind: "vehicle"; id: VehicleId } | { kind: "animal"; id: AnimalId } | { kind: "heli"; id?: string } | { kind: "boat"; id?:string } | {kind:"plane";id:PlaneId};
 
 export interface SimOptions {
   stages: Record<string, StageId>;
@@ -83,7 +86,9 @@ export class Simulation {
   readonly player: CharacterController;
   readonly vehicles: Partial<Record<VehicleId, VehicleController>> = {};
   readonly animals: Partial<Record<AnimalId, AnimalController>> = {};
+  /** Your Skylark (once bought), and helicopters that live somewhere (the airport's), by id. */
   heli: HelicopterController | null = null;
+  readonly helis: Record<string, HelicopterController> = {};
   /** The Heron Lake motorboat (always there, free to use). */
   boat: BoatController;
   readonly boats:Record<string,BoatController>={};
@@ -156,7 +161,9 @@ export class Simulation {
     const [sx, sz] = opts.spawn.position;
     this.player = new CharacterController(R, this.world, sx, sz, opts.spawn.heading);
     this.town = opts.town ? new Town(R, this.world, TRAFFIC_LOOPS, WALK_LOOPS, { carsPerLoop: [3, 3, 2, 5, 2], walkersPerLoop: 3, laneOffset: ROAD.width / 4 }) : null;
-    this.cityTown = opts.town ? new Town(R, this.world, CITY_TRAFFIC, CITY_WALKS, { carsPerLoop: [4, 3], walkersPerLoop: 9, laneOffset: ROAD.width / 4, y: CITY_Y }) : null;
+    // Owawa: Downtown and the north-shore grid, with traffic lights and a few police cruisers in the traffic.
+    const cityWalks = CITY_LOOPS.map((l) => { const k = CITY_RESERVE - 0.8, [[x0, z0], , [x1, z1]] = l; return [[x0 + k, z0 + k], [x1 - k, z0 + k], [x1 - k, z1 - k], [x0 + k, z1 - k]] as [number, number][]; });
+    this.cityTown = opts.town ? new Town(R, this.world, [...CITY_TRAFFIC, ...CITY_LOOPS], [...CITY_WALKS, ...cityWalks], { carsPerLoop: [5, 4, ...CITY_LOOPS.map(() => 5)], walkersPerLoop: 10, laneOffset: ROAD.width / 4, y: CITY_Y, signals: signalPoints([...NORTH_ROADS, ...OWAWA_ROADS.map((r) => ({ ...r, from: r.from as [number, number], to: r.to as [number, number] }))]), policeEvery: 6 }) : null;
     this.boat = new BoatController(R, this.world, BOAT_SPOT.at[0], BOAT_SPOT.at[1], BOAT_SPOT.heading, LAKE_Y);
     this.boats["lake-boat"]=this.boat;
     for(const port of PORTS)for(const kind of ["boat","jetski"] as const){
@@ -164,6 +171,7 @@ export class Simulation {
       const p=port[kind];this.boats[id]=new BoatController(R,this.world,p[0],p[1],port.heading,LAKE_Y,kind==="jetski"?JETSKI:BOAT);
     }
     for(const id of Object.keys(PLANE_SPOTS) as PlaneId[])this.planes[id]=new PlaneController(R,this.world,id);
+    this.helis[HELIPAD.id]=new HelicopterController(R,this.world,HELIPAD.x,HELIPAD.z,HELIPAD.heading,terrainHeight(HELIPAD.x,HELIPAD.z));
 
   }
 
@@ -214,6 +222,12 @@ export class Simulation {
     return a;
   }
 
+  /** The helicopter being flown: your Skylark, or one of the parked ones (the airport's). */
+  flying(): HelicopterController | null {
+    const c = this.control;
+    return c.kind === "heli" ? (c.id ? this.helis[c.id] ?? null : this.heli) : null;
+  }
+
   spawnHeli(x: number, z: number, heading: number) {
     if (!this.heli) this.heli = new HelicopterController(this.R, this.world, x, z, heading, terrainHeight(x, z));
     else this.heli.place(x, z, heading, terrainHeight(x, z));
@@ -246,6 +260,7 @@ export class Simulation {
     // Big animals are climbed from a little further away (Peanut kneels for you).
     for (const [id, a] of Object.entries(this.animals) as [AnimalId, AnimalController][]) consider({ kind: "animal", id }, Math.hypot(a.x - p.x, a.z - p.z) - a.spec.radius * 1.6 - 0.4);
     if (this.heli) consider({ kind: "heli" }, Math.hypot(this.heli.x - p.x, this.heli.z - p.z) - 2);
+    for (const [id, h] of Object.entries(this.helis)) consider({ kind: "heli", id }, Math.hypot(h.x - p.x, h.z - p.z) - 2);
     for(const [id,b] of Object.entries(this.boats))consider({kind:"boat",id},Math.hypot(b.x-p.x,b.z-p.z)-(id.endsWith("jetski")?1.6:2.4));
     for(const [id,a] of Object.entries(this.planes) as [PlaneId,PlaneController][])consider({kind:"plane",id},Math.hypot(a.x-p.x,a.z-p.z)-4);
     return best;
@@ -256,12 +271,12 @@ export class Simulation {
     if (this.control.kind !== "foot") return false;
     if (r.kind === "vehicle" && !this.vehicles[r.id]) return false;
     if (r.kind === "animal" && !this.animals[r.id]) return false;
-    if (r.kind === "heli" && !this.heli) return false;
+    if (r.kind === "heli" && !(r.id ? this.helis[r.id] : this.heli)) return false;
     if(r.kind==="plane"&&!this.planes[r.id])return false;
     if(r.kind==="boat"){const b=this.boats[r.id??"lake-boat"];if(!b)return false;this.boat=b;}
     this.player.jetpack = false;
     this.player.setActive(false);
-    this.control = r.kind === "vehicle" ? { kind: "vehicle", id: r.id } : r.kind === "animal" ? { kind: "animal", id: r.id } : r.kind === "boat" ? { kind: "boat",id:r.id??"lake-boat" } : r.kind==="plane"?{kind:"plane",id:r.id}:{ kind: "heli" };
+    this.control = r.kind === "vehicle" ? { kind: "vehicle", id: r.id } : r.kind === "animal" ? { kind: "animal", id: r.id } : r.kind === "boat" ? { kind: "boat",id:r.id??"lake-boat" } : r.kind==="plane"?{kind:"plane",id:r.id}:{ kind: "heli", id: r.id };
     return true;
   }
 
@@ -296,7 +311,7 @@ export class Simulation {
       ].map((o) => rotate(v.rotation, o));
       v.step(FIXED_DT, PARKED);
     } else {
-      const body = c.kind === "animal" ? this.animals[c.id]! : c.kind==="plane"?this.planes[c.id]:this.heli!;
+      const body = c.kind === "animal" ? this.animals[c.id]! : c.kind==="plane"?this.planes[c.id]:this.flying()!;
       origin = { x: body.x, y: body.y, z: body.z };
       heading = body.heading;
       if (c.kind === "animal") (body as AnimalController).speed = 0;
@@ -403,7 +418,7 @@ export class Simulation {
       v.place(x, z, heading ?? v.heading, ground);
       if (y > 0) v.body.setTranslation({ x, y: ground + y + 1, z }, true);
     } else if (c.kind === "animal") this.animals[c.id]!.place(x, z, heading, ground + y);
-    else if (c.kind === "heli") this.heli!.place(x, z, heading, ground + y);
+    else if (c.kind === "heli") this.flying()!.place(x, z, heading, ground + y);
     else if (c.kind === "boat") this.boat.place(x, z, heading);
     else if(c.kind==="plane")this.planes[c.id].place(x,z,heading,ground+y);
     else this.player.place(x, z, ground + y, heading);
@@ -433,7 +448,9 @@ export class Simulation {
       v.step(dt, driving ? { throttle: input.forward, steer: input.side, handbrake: input.handbrake } : PARKED);
     }
     for (const [id, a] of Object.entries(this.animals) as [AnimalId, AnimalController][]) a.step(dt, c.kind === "animal" && c.id === id ? input : null);
-    if (this.heli) this.heli.step(dt, c.kind === "heli" ? { forward: input.forward, side: input.side, up: input.jumpHeld, down: input.sprint } : null);
+    const heliInput = { forward: input.forward, side: input.side, up: input.jumpHeld, down: input.sprint };
+    if (this.heli) this.heli.step(dt, c.kind === "heli" && !c.id ? heliInput : null);
+    for (const [id, h] of Object.entries(this.helis)) h.step(dt, c.kind === "heli" && c.id === id ? heliInput : null);
     for(const b of Object.values(this.boats))b.step(dt,c.kind==="boat"&&b===this.boat?input:null);
     for(const [id,p] of Object.entries(this.planes))p.step(dt,c.kind==="plane"&&c.id===id?{forward:input.forward,side:input.side,up:input.jumpHeld,down:input.sprint,brake:input.handbrake&&p.grounded&&input.forward<0}:null);
     if (c.kind === "foot") this.player.step(dt, input);
@@ -501,8 +518,8 @@ export class Simulation {
     } else if (c.kind === "animal") {
       const a = this.animals[c.id]!;
       smash(a.hits, Math.abs(a.speed), a.spec.breaksAt, { x: Math.cos(a.heading), y: 0, z: Math.sin(a.heading) }, { x: a.x, y: a.y, z: a.z });
-    } else if (c.kind === "heli" && this.heli) {
-      const h = this.heli;
+    } else if (c.kind === "heli" && this.flying()) {
+      const h = this.flying()!;
       smash(h.hits, h.preSpeed, 8, { x: Math.cos(h.heading), y: 0, z: Math.sin(h.heading) }, { x: h.x, y: h.y, z: h.z });
     }
 
@@ -528,7 +545,7 @@ export class Simulation {
       const t = v.position;
       src = { x: t.x, y: Math.max(0, t.y - 1), z: t.z, heading: v.heading };
     } else if (c.kind === "animal") src = this.animals[c.id]!;
-    else if (c.kind === "heli" && this.heli) src = this.heli;
+    else if (c.kind === "heli" && this.flying()) src = this.flying();
     else if(c.kind==="plane")src=this.planes[c.id];
     else if (c.kind === "boat") src = { x: this.boat.x, y: this.boat.y, z: this.boat.z, heading: this.boat.heading };
     if (src) {
@@ -554,8 +571,8 @@ export class Simulation {
       const a = this.animals[c.id]!;
       return { ...base, x: a.x, y: a.y, z: a.z, heading: a.heading, speed: a.speed, vy: a.vy, grounded: a.grounded };
     }
-    if (c.kind === "heli" && this.heli) {
-      const h = this.heli;
+    if (c.kind === "heli" && this.flying()) {
+      const h = this.flying()!;
       return { ...base, x: h.x, y: h.y, z: h.z, heading: h.heading, speed: h.speed, vy: h.vel.y, grounded: h.grounded };
     }
     if(c.kind==="plane"){const a=this.planes[c.id];return {...base,x:a.x,y:a.y,z:a.z,heading:a.heading,speed:a.speed,vy:a.vel.y,grounded:a.grounded};}
@@ -573,6 +590,7 @@ export class Simulation {
     for (const id of Object.keys(this.animals)) this.prev.set(id, this.rawPose(id));
     for (const id of Object.keys(this.vehicles)) this.prev.set(id, this.rawPose(id));
     if (this.heli) this.prev.set("heli", this.rawPose("heli"));
+    for (const id of Object.keys(this.helis)) this.prev.set("heli:" + id, this.rawPose("heli:" + id));
     if (this.boat) this.prev.set("boat", this.rawPose("boat"));
     for(const id of Object.keys(this.boats))this.prev.set("boat:"+id,this.rawPose("boat:"+id));
     for(const id of Object.keys(this.planes))this.prev.set("plane:"+id,this.rawPose("plane:"+id));
@@ -581,6 +599,7 @@ export class Simulation {
   private rawPose(name: string): Pose {
     if (name === "player") return { x: this.player.x, y: this.player.y, z: this.player.z, q: quatFromHeading(this.player.heading) };
     if (name === "heli" && this.heli) return { x: this.heli.x, y: this.heli.y, z: this.heli.z, q: quatFromHeading(this.heli.heading) };
+    if (name.startsWith("heli:")) { const h = this.helis[name.slice(5)]; if (h) return { x: h.x, y: h.y, z: h.z, q: quatFromHeading(h.heading) }; }
     if (name === "boat") return { x: this.boat.x, y: this.boat.y, z: this.boat.z, q: quatFromHeading(this.boat.heading) };
     if(name.startsWith("boat:")){const b=this.boats[name.slice(5)];if(b)return {x:b.x,y:b.y,z:b.z,q:quatFromHeading(b.heading)};}
     if(name.startsWith("plane:")){const a=this.planes[name.slice(6) as PlaneId];if(a)return {x:a.x,y:a.y,z:a.z,q:quatFromHeading(a.heading)};}
@@ -605,7 +624,7 @@ export class Simulation {
   /** Name of what the player is controlling, for pose() and the camera. */
   focusName(): string {
     const c = this.control;
-    return c.kind==="plane"?"plane:"+c.id:c.kind === "vehicle" || c.kind === "animal" ? c.id : c.kind === "heli" || c.kind === "boat" ? c.kind : "player";
+    return c.kind==="plane"?"plane:"+c.id:c.kind === "vehicle" || c.kind === "animal" ? c.id : c.kind === "heli" ? (c.id ? "heli:" + c.id : "heli") : c.kind === "boat" ? c.kind : "player";
   }
 
   /** Free distance from `from` toward `to` before hitting solid world (for the camera). */

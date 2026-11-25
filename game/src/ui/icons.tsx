@@ -200,6 +200,15 @@ export function CloseIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+export function SpeakerIcon({ size = 16, off = false }: { size?: number; off?: boolean }) {
+  return (
+    <Svg size={size}>
+      <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z" />
+      {off ? <path d="m16 9.5 5 5M21 9.5l-5 5" /> : <path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11" />}
+    </Svg>
+  );
+}
+
 export function MapIcon({ size = 16 }: { size?: number }) {
   return (
     <Svg size={size}>

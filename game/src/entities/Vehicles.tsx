@@ -33,6 +33,7 @@ export function Vehicles() {
         <AnimalEntity key={id} id={id} />
       ))}
       {sim.heli && <HeliEntity />}
+      {Object.keys(sim.helis).map((id) => <ParkedHeliEntity key={id} id={id} />)}
       {Object.keys(sim.boats).map(id=><BoatEntity key={id} id={id}/>)}
       {(Object.keys(sim.planes) as PlaneId[]).map(id=><PlaneEntity key={id} id={id}/>)}
       <Debris />
@@ -256,13 +257,42 @@ function HeliEntity() {
     root.current.quaternion.set(p.q.x, p.q.y, p.q.z, p.q.w);
     // Nose dips when flying forward; banks into turns.
     if (tilt.current) tilt.current.rotation.set(h.roll, 0, -h.pitch);
-    if (pilot.current) pilot.current.visible = s.control.kind === "heli";
+    if (pilot.current) pilot.current.visible = s.control.kind === "heli" && !s.control.id;
   });
   const rotor = () => host.sim?.heli?.rotor ?? 0;
   return (
     <group ref={root} name="heli">
       <group ref={tilt}>
         <HeliModel rotor={rotor} />
+        <group ref={pilot} position={[0.55, 0.62, -0.32]} visible={false}>
+          <Human outfit={outfit} pose="sit" />
+        </group>
+      </group>
+    </group>
+  );
+}
+
+/** A helicopter that lives somewhere (the airport's, on its helipad), free for anyone to fly. */
+function ParkedHeliEntity({ id }: { id: string }) {
+  const outfit = useGame((g) => g.outfit);
+  const root = useRef<THREE.Group>(null);
+  const tilt = useRef<THREE.Group>(null);
+  const pilot = useRef<THREE.Group>(null);
+  useFrame(() => {
+    const s = host.sim;
+    const h = s?.helis[id];
+    if (!s || !h || !root.current) return;
+    const p = s.pose("heli:" + id, host.alpha);
+    root.current.position.set(p.x, p.y, p.z);
+    root.current.quaternion.set(p.q.x, p.q.y, p.q.z, p.q.w);
+    if (tilt.current) tilt.current.rotation.set(h.roll, 0, -h.pitch);
+    if (pilot.current) pilot.current.visible = s.control.kind === "heli" && s.control.id === id;
+  });
+  const rotor = () => host.sim?.helis[id]?.rotor ?? 0;
+  return (
+    <group ref={root} name={"heli " + id}>
+      <group ref={tilt}>
+        <HeliModel rotor={rotor} color="#c2463a" label="OWAWA AIR" />
         <group ref={pilot} position={[0.55, 0.62, -0.32]} visible={false}>
           <Human outfit={outfit} pose="sit" />
         </group>

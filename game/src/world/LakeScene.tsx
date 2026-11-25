@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { logs, metricBox, seamRoof } from "../render/architecture";
 import { lumber, mat } from "../render/materials";
-import { waterNormalMap } from "../render/textures";
+import { WorldWater } from "./Shores";
 import { Decal } from "../render/decal";
 import { runtime } from "../core/runtime";
 import { Human, type Outfit } from "../models/human";
@@ -22,7 +22,7 @@ import { groundAt, LAKE, LAKE_Y, lakeRadius } from "./terrain";
 export function LakeScene() {
   return (
     <group name="HeronLake">
-      <LakeWater />
+      <WorldWater />
       <Reeds />
       {JETTIES.map((j, i) => (
         <Jetty key={i} {...j} />
@@ -37,40 +37,6 @@ export function LakeScene() {
   );
 }
 
-/** The lake surface: dark glossy water mirroring the sky, ripples drifting across. */
-function LakeWater() {
-  const ref = useRef<THREE.Mesh>(null);
-  const material = useMemo(() => {
-    const normal = waterNormalMap().clone();
-    normal.wrapS = normal.wrapT = THREE.RepeatWrapping;
-    normal.repeat.set(LAKE.rx / 5, LAKE.rz / 5);
-    normal.needsUpdate = true;
-    return new THREE.MeshPhysicalMaterial({
-      color: "#1f4048",
-      roughness: 0.05,
-      metalness: 0,
-      normalMap: normal,
-      normalScale: new THREE.Vector2(0.4, 0.4),
-      clearcoat: 1,
-      clearcoatRoughness: 0.05,
-      envMapIntensity: 1.5,
-      transparent: true,
-      opacity: 0.9,
-    });
-  }, []);
-  useEffect(() => () => material.dispose(), [material]);
-  useFrame((_, dt) => {
-    const n = (ref.current?.material as THREE.MeshPhysicalMaterial | undefined)?.normalMap;
-    if (!n) return;
-    n.offset.x += dt * 0.01;
-    n.offset.y += dt * 0.006;
-  });
-  return (
-    <mesh ref={ref} position={[LAKE.centre[0], LAKE_Y, LAKE.centre[1]]} rotation={[-Math.PI / 2, 0, 0]} scale={[LAKE.rx * 1.01, LAKE.rz * 1.01, 1]} material={material} receiveShadow>
-      <circleGeometry args={[1, 120]} />
-    </mesh>
-  );
-}
 
 function hash(i: number) {
   const s = Math.sin(i * 127.1 + 311.7) * 43758.5453;

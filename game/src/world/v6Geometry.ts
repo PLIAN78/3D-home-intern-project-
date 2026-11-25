@@ -2,6 +2,7 @@ import type {Box} from "./map";
 import {CITY_Y,LAKE_Y,groundAt} from "./terrain";
 import {V6_BUILDINGS,RAIL_Y,BRIDGES,STATION_ACCESS,STATION_LIFT,STATION_PLATFORM} from "./v6";
 import {railPosts,RAIL_POST_SIZE} from "./railPosts";
+import {SKYBRIDGE} from "./campus";
 export const buildingY=(b:typeof V6_BUILDINGS[number])=>b.level==="city"?CITY_Y:b.level==="island"?LAKE_Y+2.5:0;
 export {BRIDGES};
 export function v6Boxes():Box[]{
@@ -36,6 +37,6 @@ export function v6Boxes():Box[]{
  add(-735,-100,10,10,30,0,"control-tower");
  add(-650,145,45,70,14,0,"parking-garage");
  add(-680,130,28,5,3,5.5,"airport-skybridge");
- add(846,752,90,6,3.2,11.4,"campus-skybridge");
+ add(SKYBRIDGE.x,(SKYBRIDGE.z0+SKYBRIDGE.z1)/2,SKYBRIDGE.width,SKYBRIDGE.z1-SKYBRIDGE.z0+2,SKYBRIDGE.height,SKYBRIDGE.y,"campus-skybridge");
  return out;
 }

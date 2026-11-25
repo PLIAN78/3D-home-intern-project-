@@ -1,5 +1,16 @@
 import { riverZ,riverWidth,ISLANDS,ISLAND_WALKS,NORTH_ROADS,RAIL_PATH,STATION_ACCESS,STATION_PATH_WIDTH,STATION_PLATFORM,PORTS,CAMPUS_PATHS,BRIDGES } from "../world/v6";
 import { MEADOW_PAVING, MEADOW_STREET_NAMES, MEADOW_X, MEADOW_Z } from "../world/meadows";
+import { CAMPUS_BUILDINGS, CAMPUS_LAWNS, COLUMBIA_Z, CREEK_WIDTH, LAUREL_CREEK, RING } from "../world/campus";
+import { CITY_STREET_NAMES } from "../world/owawaCity";
+import { BEACH, SHORES } from "../world/shores";
+
+/** Short names for the campus buildings, as on the campus map. */
+const CAMPUS_SHORT: Record<string, string> = {
+  gym: "PAC", cafeteria: "SLC", exp: "EXP", bmh: "BMH", m3: "M3", davis: "DC", qnc: "QNC", math: "MC", m4: "M4", c2: "C2", esc: "ESC",
+  principal: "NH", science: "STC", b1: "B1", porter: "Dana Porter", ml: "ML", business: "TC", environment: "EV3", ev1: "EV1", al: "AL",
+  arts: "HH", pas: "PAS", engineering: "E7", "engineering-5": "E5", stj: "STJ",
+};
+const CAMPUS_LABELS = CAMPUS_BUILDINGS.map((b) => ({ text: CAMPUS_SHORT[b.id] ?? b.name, at: [b.at[0], b.at[1]] as V2 }));
 import { runtime } from "../core/runtime";
 import { host, TREES } from "../core/simHost";
 import type { Owned } from "../story/economy";
@@ -8,7 +19,7 @@ import { DEPOT, ELEPHANT_SEARCH, ROSA, type Delivery, type ElephantQuest } from 
 import { PLACE_IDS, PLACES } from "../story/places";
 import { OFFICE } from "../world/office";
 import { CAIVAN_RIDGE, collisionBoxes, LANDMARKS, PAVED, PEN, STREETS, type V2 } from "../world/map";
-import { COTTAGE, COUNTRY_ROADS, FLAT_HALF, LAKE, LAKE_Y, lakeRadius, OWAWA, PLAY_HALF, terrainHeight } from "../world/terrain";
+import { COTTAGE, COUNTRY_ROADS, FLAT_HALF, LAKE_Y, lakeRadius, OWAWA, PLAY_HALF, terrainHeight } from "../world/terrain";
 import { CITY_HALL, CITY_PAVING, CITY_STREETS, OWAWA_ROADS, SHAWARMA, SQUARE } from "../world/owawa";
 import { ELIAS, TACKLE_SEARCH } from "../world/lake";
 import { activeQuests, TRAN } from "../story/quests";
@@ -163,6 +174,20 @@ function paintBase(stages: Record<string, string>) {
   // Roads: casing, then surface. Country roads (and the bridge roads) get a cream fill.
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+  // Meadows Beach: sand along the river's south bank.
+  for (const s of SHORES.filter((s) => s.id.startsWith("river-south"))) {
+    const pts = s.points.map((p, i) => [p, s.normals[i]] as const).filter(([p]) => p[0] > BEACH.x0 && p[0] < BEACH.x1);
+    if (pts.length < 2) continue;
+    ctx.fillStyle = "#e4d6ad";
+    ctx.beginPath();
+    pts.forEach(([p], i) => (i ? ctx.lineTo(wx(p[0]), wx(p[1])) : ctx.moveTo(wx(p[0]), wx(p[1]))));
+    [...pts].reverse().forEach(([p, n]) => ctx.lineTo(wx(p[0] + n[0] * BEACH.depth), wx(p[1] + n[1] * BEACH.depth)));
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Campus lawns and Laurel Creek.
+  for (const l of CAMPUS_LAWNS) { ctx.fillStyle = "#b9cf9f"; ctx.fillRect(wx(l.x0), wx(l.z0), (l.x1 - l.x0) * PPM, (l.z1 - l.z0) * PPM); }
+  strokePath(ctx, LAUREL_CREEK, CREEK_WIDTH, PALETTE.water);
   // Station forecourts and their footpaths (under the road edges they meet).
   for (const a of STATION_ACCESS) {
     ctx.fillStyle = "#d9d2bf";
@@ -177,7 +202,7 @@ function paintBase(stages: Record<string, string>) {
 
   // Buildings: homes, frames under construction, landmarks.
   for (const b of collisionBoxes(stages as never)) {
-    if (b.id === "parked" || b.id === "sign" || b.id === "porch" || b.id === "office" || b.id === "river-bridge" || b.id === "bridge-rail" || b.id?.startsWith("station-") || b.id === "rail-post") continue;
+    if (b.id === "parked" || b.id === "sign" || b.id === "porch" || b.id === "office" || b.id === "river-bridge" || b.id === "bridge-rail" || b.id?.startsWith("station-") || b.id === "rail-post" || b.id === "mall-counter" || b.id === "mall-shelf") continue;
     ctx.fillStyle = b.kind === "frame" ? PALETTE.construction : b.kind === "landmark" || b.kind === "post" ? PALETTE.landmark : PALETTE.building;
     ctx.strokeStyle = PALETTE.buildingEdge;
     ctx.lineWidth = 0.8 * PPM;
@@ -347,17 +372,20 @@ const LABELS: { text: string; at: V2; minScale?: number }[] = [
   { text: "Outfitters", at: [LANDMARKS.clothing.position[0], LANDMARKS.clothing.position[1] - 11] },
   { text: "Subs", at: [LANDMARKS.subs.position[0], LANDMARKS.subs.position[1] + 10] },
   { text: "Burgers", at: [LANDMARKS.burger.position[0], LANDMARKS.burger.position[1] + 11] },
-  { text: "Heron Lake", at: [LAKE.centre[0] - 70, LAKE.centre[1] + 60] },
   {text:"Heron Gardens Island",at:[-650,-700]},
   {text:"North Meadows",at:[165,-270]},
   { text: "Boat Dock", at: [-575, -520] },
   { text: "City Hall", at: [CITY_HALL.at[0], CITY_HALL.at[1] - 20] },
   { text: "Owawa Square", at: [650, -612] },
   { text: "Shawarma", at: [SHAWARMA.at[0], SHAWARMA.at[1] - 11] },
-  ...PORTS.map(p=>({text:p.name,at:[p.at[0],p.at[1]-16] as V2})),
+  // The lake's marina and the island harbour share the busy top-left corner with the dock, the island and the station: only those three are named there.
+  ...PORTS.filter(p=>p.id==="river").map(p=>({text:p.name,at:[p.at[0],p.at[1]-16] as V2})),
   ...STATION_ACCESS.map(a=>({text:a.name+" Station",at:[a.at[0]-a.normal[0]*16,a.at[1]-a.normal[1]*16] as V2})),
-  ...[{text:"UNIVERSITY OF VATALOO",at:[675,700] as V2},{text:"Owawa River",at:[70,riverZ(70)] as V2},{text:"Regional Airport",at:[-800,0] as V2},{text:"Riverbank Financial",at:[-410,-830] as V2},{text:"Northshore Condos",at:[-170,-830] as V2}],
-  { text: "OWAWA", at: [OWAWA.centre[0], OWAWA.centre[1] - OWAWA.half + 4] },
+  ...CAMPUS_LABELS,
+  ...[{text:"UNIVERSITY OF VATALOO",at:[715,545] as V2},{text:"Owawa River",at:[70,riverZ(70)] as V2},{text:"Regional Airport",at:[-800,0] as V2},{text:"Riverbank Financial",at:[-410,-830] as V2},{text:"Northshore Condos",at:[-170,-830] as V2}],
+  { text: "DOWNTOWN", at: [OWAWA.centre[0], OWAWA.centre[1] - OWAWA.half + 4] },
+  { text: "OWAWA", at: [-170, -885] },
+  { text: "Meadows Beach", at: [245, -440] },
 ];
 
 const STREET_LABELS: { text: string; at: V2; vertical?: boolean }[] = [
@@ -378,6 +406,13 @@ const STREET_LABELS: { text: string; at: V2; vertical?: boolean }[] = [
   { text: CITY_STREETS.lyon.name, at: [CITY_STREETS.lyon.x, -620], vertical: true },
   { text: CITY_STREETS.elgin.name, at: [CITY_STREETS.elgin.x, -540], vertical: true },
   { text: CITY_STREETS.kent.name, at: [CITY_STREETS.kent.x, -700], vertical: true },
+  // Owawa's avenues (west of Downtown)
+  ...Object.entries(CITY_STREET_NAMES).map(([z, text]) => ({ text, at: [Number(z) === -920 ? -300 : -330, Number(z)] as V2 })),
+  // University of Vataloo
+  { text: "Columbia Street", at: [705, COLUMBIA_Z] },
+  { text: "Ring Road", at: [RING.x1, 760], vertical: true },
+  { text: "Ring Road", at: [700, RING.z1] },
+  { text: "Laurel Creek", at: [LAUREL_CREEK[3][0] - 9, 700], vertical: true },
   // North Meadows
   { text: MEADOW_STREET_NAMES.fieldstone, at: [165, MEADOW_Z.fieldstone] },
   { text: MEADOW_STREET_NAMES.clover, at: [165, MEADOW_Z.clover] },
@@ -476,6 +511,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, w: number, h: number, v: 
     for (const veh of Object.values(sim.vehicles)) if (veh) spots.push([veh.position.x, veh.position.z]);
     for (const [id, a] of Object.entries(sim.animals)) if (a && (id !== "elephant" || st.owned.elephant)) spots.push([a.x, a.z]);
     if (sim.heli) spots.push([sim.heli.x, sim.heli.z]);
+    for (const h of Object.values(sim.helis)) spots.push([h.x, h.z]);
     for(const b of Object.values(sim.boats))spots.push([b.x,b.z]);
     for(const p of Object.values(sim.planes))spots.push([p.x,p.z]);
     const b = runtime.body;

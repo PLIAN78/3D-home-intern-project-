@@ -6,6 +6,7 @@ import { chrome, mat } from "../render/materials";
 import { CarBody, Wheel } from "../models/vehicles";
 import { LANDMARKS, PARKED_CARS, PAVED } from "./map";
 import { B, ParkingLot, Windows } from "./props";
+import { MallInterior, MallShell } from "./MallInterior";
 
 /**
  * Market Street, the new south end of Caivan Ridge: a corner market, the
@@ -199,16 +200,16 @@ function Mall() {
   const [x, z] = LANDMARKS.mall.position;
   const [w, d, h] = LANDMARKS.mall.size;
   const front = z - d / 2;
-  const body = useMemo(() => metricBox(w, h, d, 2), [w, h, d]);
   const anchorL = useMemo(() => metricBox(30, h + 1.5, 1), [h]);
-  const atrium = useMemo(() => metricBox(22, 11, 4, 5.5), []);
   const p = lot("parking", [x, z - 40]);
   const mullions = useMemo(() => Array.from({ length: 11 }, (_, i) => -10 + i * 2), []);
   const alu = mat("#2a2e33", { metal: 0.6, rough: 0.35 });
   const rows = p ? [p.z0 + 5, p.z0 + 13.5, p.z1 - 5] : [];
   return (
     <group name="Mall">
-      <mesh geometry={body} position={[x, h / 2, z]} material={panel("#d3cec3")} castShadow receiveShadow />
+      {/* Walk-in: a shell with doorways, and the shops inside (MallInterior). */}
+      <MallShell />
+      <MallInterior />
       {/* Two anchor stores: brick on the west, dark panels on the east */}
       <mesh geometry={anchorL} position={[x - w / 2 + 15, (h + 1.5) / 2, front - 0.5]} material={brick("#7d5a4a")} castShadow receiveShadow />
       <mesh position={[x + w / 2 - 15, (h + 1.5) / 2, front - 0.5]} material={panel("#5c6066")} castShadow receiveShadow>
@@ -216,16 +217,18 @@ function Mall() {
       </mesh>
       <Decal text="MARKET HALL" color="#f2ede2" position={[x - w / 2 + 15, h - 1, front - 1.02]} rotation={[0, Math.PI, 0]} height={1.1} />
       <Decal text="HOME + GARDEN" color="#f2ede2" position={[x + w / 2 - 15, h - 1, front - 1.02]} rotation={[0, Math.PI, 0]} height={1.1} />
-      {/* Central glass atrium with the mall's name above */}
-      <mesh geometry={atrium} position={[x, 5.5, front - 2]} material={shopGlass()} />
-      {mullions.map((dx) => (
-        <mesh key={dx} position={[x + dx, 5.5, front - 4.05]} material={alu}>
-          <boxGeometry args={[0.14, 11, 0.14]} />
+      {/* Glass entrance porch: side panels either side of the doors, glass above them. */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[x + s * 8, 5.5, front - 2]} material={shopGlass()}>
+          <boxGeometry args={[6, 11, 4]} />
         </mesh>
       ))}
-      {[3.6, 7.3].map((y) => (
-        <mesh key={y} position={[x, y, front - 4.05]} material={alu}>
-          <boxGeometry args={[22, 0.14, 0.14]} />
+      <mesh position={[x, 7.4, front - 2]} material={shopGlass()}>
+        <boxGeometry args={[10, 7.2, 4]} />
+      </mesh>
+      {mullions.filter((dx) => Math.abs(dx) > 5).map((dx) => (
+        <mesh key={dx} position={[x + dx, 5.5, front - 4.05]} material={alu}>
+          <boxGeometry args={[0.14, 11, 0.14]} />
         </mesh>
       ))}
       <B size={[23, 0.6, 4.6]} position={[x, 11.3, front - 2]} color="#2b2f34" />

@@ -1,4 +1,5 @@
 /** Tiny synthesized sound effects (no audio files). Silent wherever Web Audio isn't available. */
+import { audible, audio } from "./audio";
 
 type Sound = "cash" | "blip" | "good" | "bad" | "step" | "fanfare" | "switch" | "pickup" | "crash" | "thud";
 
@@ -33,7 +34,7 @@ const NOTES: Record<Sound, [number, number, OscillatorType][]> = {
 };
 
 /** Filtered noise burst: splintering wood (crash) or a heavy landing (thud). */
-function noise(c: AudioContext, kind: "crash" | "thud") {
+function noise(c: AudioContext, out: AudioNode, kind: "crash" | "thud") {
   const dur = kind === "crash" ? 0.55 : 0.25;
   const buf = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
   const data = buf.getChannelData(0);
@@ -45,11 +46,10 @@ function noise(c: AudioContext, kind: "crash" | "thud") {
   filter.frequency.value = kind === "crash" ? 1400 : 220;
   const gain = c.createGain();
   gain.gain.value = kind === "crash" ? 0.18 : 0.3;
-  src.connect(filter).connect(gain).connect(c.destination);
+  src.connect(filter).connect(gain).connect(out);
   src.start();
 }
 
-let ctx: AudioContext | null = null;
 let muted = false;
 
 export function setMuted(m: boolean) {
@@ -57,11 +57,13 @@ export function setMuted(m: boolean) {
 }
 
 export function sfx(sound: Sound) {
-  if (muted || typeof window === "undefined" || !("AudioContext" in window)) return;
+  if (muted || !audible()) return;
+  const a = audio();
+  if (!a) return;
+  const { ctx, out } = a;
   try {
-    ctx ??= new AudioContext();
     if (sound === "crash" || sound === "thud") {
-      noise(ctx, sound);
+      noise(ctx, out, sound);
       return;
     }
     let t = ctx.currentTime;
@@ -72,7 +74,7 @@ export function sfx(sound: Sound) {
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.06, t);
       gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      osc.connect(gain).connect(ctx.destination);
+      osc.connect(gain).connect(out);
       osc.start(t);
       osc.stop(t + dur);
       t += dur * 0.9;

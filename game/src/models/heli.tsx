@@ -9,7 +9,7 @@ import { Decal } from "../render/decal";
  * bubble canopy, tail boom with fin and tail rotor, skids, and a two-blade main
  * rotor that blurs into a disc as it spools up. Faces +x; skids at y = 0.
  */
-export function HeliModel({ rotor }: { rotor: () => number }) {
+export function HeliModel({ rotor, color = "#2a5d8f", label = "SKYLARK" }: { rotor: () => number; color?: string; label?: string }) {
   const main = useRef<THREE.Group>(null);
   const tail = useRef<THREE.Group>(null);
   const disc = useRef<THREE.Mesh>(null);
@@ -57,7 +57,7 @@ export function HeliModel({ rotor }: { rotor: () => number }) {
     }
   });
 
-  const paint = carPaint("#2a5d8f");
+  const paint = carPaint(color);
   const white = carPaint("#eef0f2");
   const dark = mat("#22252a", { rough: 0.5, metal: 0.4 });
   return (
@@ -93,8 +93,8 @@ export function HeliModel({ rotor }: { rotor: () => number }) {
             <circleGeometry args={[5.2, 40]} />
           </mesh>
         </group>
-        <Decal text="SKYLARK" color="#ffffff" position={[-1.0, 0.0, 0.79]} rotation={[0, 0, 0]} size={[1.2, 0.3]} />
-        <Decal text="SKYLARK" color="#ffffff" position={[-1.0, 0.0, -0.79]} rotation={[0, Math.PI, 0]} size={[1.2, 0.3]} />
+        <Decal text={label} color="#ffffff" position={[-1.0, 0.0, 0.79]} rotation={[0, 0, 0]} size={[1.2, 0.3]} />
+        <Decal text={label} color="#ffffff" position={[-1.0, 0.0, -0.79]} rotation={[0, Math.PI, 0]} size={[1.2, 0.3]} />
       </group>
       {/* Skids */}
       {[0.82, -0.82].map((z) => (

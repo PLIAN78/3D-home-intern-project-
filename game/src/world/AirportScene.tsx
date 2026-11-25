@@ -4,6 +4,7 @@ import {Decal} from "../render/decal";
 import {mat} from "../render/materials";
 import {AirlinerModel} from "../models/planes";
 import {CarBody,Wheel} from "../models/vehicles";
+import {HELIPAD} from "../sim/plane";
 function ParkedCar({x,z,color}:{x:number;z:number;color:string}){
  return <group position={[x,.75,z]} rotation={[0,Math.PI/2,0]} scale={.85}><CarBody color={color}/>{[-1.4,1.4].flatMap(a=>[-.8,.8].map(b=><group key={a+"-"+b} position={[a,-.35,b]}><Wheel radius={.35} width={.22} side={b>0?1:-1}/></group>))}</group>;
 }
@@ -27,6 +28,17 @@ function Hangar({x,z,w=48,d=35}:{x:number;z:number;w?:number;d?:number}){
  <Decal text="FLIGHT TRAINING" color="#eee4c7" position={[0,8.8,d/2+.2]} rotation={[0,0,0]} size={[w*.8,1.2]}/>
  </group>;
 }
+/** The airport helicopter's pad by the control tower: a marked square with an H in a circle. */
+function Helipad(){
+ const {x,z,size}=HELIPAD;
+ return <group position={[x,0,z]} name="Helipad">
+  <B size={[size,.12,size]} position={[0,.06,0]} color="#4e575c" cast={false}/>
+  <mesh position={[0,.14,0]} rotation={[-Math.PI/2,0,0]} material={mat("#ece7d9")}><ringGeometry args={[size*.36,size*.4,40]}/></mesh>
+  <Decal text="H" color="#ece7d9" position={[0,.15,0]} rotation={[-Math.PI/2,0,Math.PI/2]} size={[5,6]}/>
+  {[-1,1].flatMap(a=>[-1,1].map(b=><mesh key={a+"-"+b} position={[a*size/2,.25,b*size/2]} material={mat("#e8d36a",{emissive:"#8a7a2a"})}><sphereGeometry args={[.18,6,4]}/></mesh>))}
+  <Sign text="HELIPAD" sub="F - OWAWA AIR HELICOPTER" at={[size/2+3,0]} heading={0} width={6}/>
+ </group>;
+}
 export function AirportScene(){
  const lights=useMemo(()=>Array.from({length:48},(_,i)=>({z:-270+i*11,x:-875+(i%2?21:-21)})),[]);
  return <group name="Owawa Regional Airport - expanded">
@@ -41,6 +53,7 @@ export function AirportScene(){
   <Terminal x={-710} z={90} w={40} d={90} label="OWAWA REGIONAL - TERMINAL A"/>
   <Terminal x={-735} z={-30} w={45} d={38} label="TERMINAL B - REGIONAL"/>
   <Hangar x={-735} z={-235} w={55} d={40}/><Hangar x={-725} z={-170} w={40} d={35}/>
+  <Helipad/>
   <group position={[-735,0,-100]}><B size={[10,26,10]} position={[0,13,0]} color="#b6bbae"/><B size={[16,5,16]} position={[0,28,0]} color="#345967"/><B size={[18,.5,18]} position={[0,30.8,0]} color="#d9dbd0"/><B size={[.2,7,.2]} position={[0,34,0]} color="#c3cac3"/></group>
   <B size={[45,14,70]} position={[-650,7,145]} color="#b5b8ae"/>
   {[3.5,7,10.5].map(y=><B key={y} size={[45.2,1.7,70.2]} position={[-650,y,145]} color="#56656a"/>)}

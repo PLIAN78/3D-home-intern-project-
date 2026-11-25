@@ -7,7 +7,10 @@ import { currentStep, stepTarget } from "../story/missions";
 import { DEPOT } from "../story/sidequests";
 import { activeQuests } from "../story/quests";
 import { objective, useGame } from "../story/store";
-import { GearIcon, LockIcon, MapIcon } from "./icons";
+import { GearIcon, LockIcon, MapIcon, SpeakerIcon } from "./icons";
+import { useAudio } from "../core/audio";
+import { useV6 } from "../story/v6Store";
+import { gigById } from "../story/gigs";
 import { Minimap } from "./MapView";
 
 const NAMES: Record<ModeId, string> = { walk: "On foot", boat: "Watercraft", plane:"Training plane", ...Object.fromEntries(Object.values(GEAR).map((g) => [g.id, g.name])) } as Record<ModeId, string>;
@@ -127,6 +130,42 @@ function SideJobs() {
   );
 }
 
+/** The side job from an Owawa business or the mall's info desk, with the distance to its next spot. */
+function SideGig() {
+  const gig = useV6((s) => s.gig);
+  const visits = useV6((s) => s.mallVisits.length);
+  const g = gig ? gigById(gig.id) : null;
+  const st = g?.steps[gig!.step];
+  if (!g || !st) return null;
+  return (
+    <div className="panel side-job">
+      <div className="eyebrow">Side job · {g.title} · ${g.reward}</div>
+      <div className="task">
+        {st.hint}
+        {st.visits ? ` (${visits}/${st.visits})` : <Distance target={st.at} />}
+      </div>
+    </div>
+  );
+}
+
+/** Master volume for engines and effects: slider, plus a mute button (or V). Remembered between visits. */
+function Volume() {
+  const volume = useAudio((s) => s.volume);
+  const muted = useAudio((s) => s.muted);
+  const setVolume = useAudio((s) => s.setVolume);
+  const toggleMute = useAudio((s) => s.toggleMute);
+  const shown = muted ? 0 : Math.round(volume * 100);
+  return (
+    <div className="volume panel">
+      <button type="button" onClick={(e) => { toggleMute(); e.currentTarget.blur(); }} title={muted ? "Sound on (V)" : "Mute (V)"} aria-label={muted ? "Sound on" : "Mute"}>
+        <SpeakerIcon size={15} off={shown === 0} />
+      </button>
+      <input type="range" min={0} max={100} step={5} value={shown} aria-label="Volume" onChange={(e) => setVolume(Number(e.target.value) / 100)} onPointerUp={(e) => e.currentTarget.blur()} />
+      <span className="volume-value">{shown}</span>
+    </div>
+  );
+}
+
 export function Hud() {
   const cash = useGame((s) => s.cash);
   const mode = useGame((s) => s.mode);
@@ -166,7 +205,8 @@ export function Hud() {
           )}
         </div>
         <SideJobs />
-        {mode==="plane"&&<div className="panel hint">W/S throttle · A/D steer · Space take off/climb · Shift descend · F exit when stopped</div>}
+        <SideGig />
+        {mode==="plane"&&<div className="panel hint">Hold W to take off · S slows, then reverses on the ground · A/D steer · Space climb · Shift descend · F exit when stopped</div>}
         {!delivery && deliveries === 0 && obj && progress.mission >= 2 && (
           <div className="hint">
             Need cash? Bring a pickup to the factory dock for delivery runs. <Distance target={DEPOT} />
@@ -194,6 +234,7 @@ export function Hud() {
         <div className="map-hint">
           <MapIcon size={14} /> <kbd>M</kbd> Map
         </div>
+        <Volume />
       </div>
 
       <div className="toasts">
@@ -211,7 +252,7 @@ export function Hud() {
             <span>{label}</span>
           </div>
         )}
-        <div className="mode-name">{NAMES[mode]}</div>
+        <div className="mode-name">{mode === "heli" && host.sim?.control.kind === "heli" && host.sim.control.id ? "Owawa Air helicopter" : NAMES[mode]}</div>
         <div className="hotbar">
           {HOTBAR_ORDER.map((slot, i) => {
             const locked = !slotOwned(slot, owned);
@@ -271,6 +312,10 @@ export function Hud() {
               <kbd>M</kbd> <kbd>G</kbd> <kbd>H</kbd>
             </dt>
             <dd>Map, graphics, hide this</dd>
+            <dt>
+              <kbd>V</kbd>
+            </dt>
+            <dd>Sound on or off (volume under the map)</dd>
           </dl>
         </div>
       )}

@@ -1357,3 +1357,47 @@ svg.crane-game {
 .v6-choice{display:block;width:100%;text-align:left;margin:10px 0}.v6-panel .v6-close{position:absolute;right:17px;top:14px;background:transparent;color:#27323a;font-size:26px;padding:0 10px}
 .v6-panel .v6-done{display:block;margin:25px 0 0 auto;background:#d2a44c;color:#202a30;font-weight:700}.v6-feedback{padding:14px;background:#e5ebdc;border-radius:8px}
 .v6-route{display:flex;flex-wrap:wrap;gap:6px;margin:20px 0}.v6-route span{font-size:11px;padding:6px 10px;border-radius:20px;border:1px solid #bacbce}.v6-route .active{background:#368e9e;color:white}
+
+/* Master volume, under the map. */
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 9px 4px 5px;
+  pointer-events: auto;
+}
+.volume button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.volume button:hover {
+  background: var(--panel-2);
+}
+.volume input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.volume-value {
+  width: 24px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-2);
+}
+.v6-link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+}

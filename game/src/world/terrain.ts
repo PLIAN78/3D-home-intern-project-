@@ -73,9 +73,14 @@ export const OWAWA = { centre: [690, -760] as P2, half: 175 };
 const PROFILE_STEP = 6;
 const MAX_GRADE = 0.11;
 /** Bridge ramps: gentler than the hill roads. */
-export const RAMP_GRADE = 0.085;
+export const RAMP_GRADE = 0.1;
 /** How far either side of a bridge ramp the embankment blends back into the land. */
 const RAMP_SHOULDER = 18;
+/** Abutment fill under each deck end (m along the deck): full height to here (past the next
+ * terrain grid row), then a 1.5 m face, still well clear of the shipping channel. */
+export const ABUTMENT = 10;
+/** Level road on the bank at each end of a deck, at deck height. */
+const LANDING = 10;
 
 /** A bridge deck a road crosses (centre, length along the road, deck height). */
 export interface Deck {
@@ -131,9 +136,15 @@ export class CountryRoad {
         const sb = this.nearest(b.x, b.z).s;
         this.decks.push({ s0: sb - b.length / 2, s1: sb + b.length / 2, y: b.y });
       }
-      // Profile points at the exact deck ends, so the ramps start precisely where the deck does.
-      for (const d of this.decks)
-        for (const sEnd of [d.s0, d.s1]) {
+      // Each end gets a level landing, shortened where the road ends soon after it (Owawa Road
+      // reaches Downtown's plateau 37 m past the north bank) so the ramp still gets back down.
+      const land = this.decks.map((d) => ({
+        before: Math.max(0, Math.min(LANDING, d.s0 - d.y / RAMP_GRADE - 0.5)),
+        after: Math.max(0, Math.min(LANDING, s - d.s1 - d.y / RAMP_GRADE - 0.5)),
+      }));
+      // Profile points at the exact deck ends and landing ends, so the ramps start precisely there.
+      for (const [k, d] of this.decks.entries())
+        for (const sEnd of [d.s0 - land[k].before, d.s0, d.s1, d.s1 + land[k].after]) {
           const i = pts.findIndex((p) => p.s > sEnd);
           if (i > 0 && Math.abs(pts[i - 1].s - sEnd) > 0.01 && Math.abs(pts[i].s - sEnd) > 0.01) {
             const at = this.pointAt(sEnd);
@@ -141,10 +152,12 @@ export class CountryRoad {
             h.splice(i, 0, 0);
           }
         }
+      // The deck and a level landing on the bank at each end (longer than the terrain grid
+      // step, so the ground meets the deck without a lip), then the ramps.
       const pin = () =>
         pts.forEach((p, i) => {
-          const d = this.decks.find((d) => p.s >= d.s0 - 1e-6 && p.s <= d.s1 + 1e-6);
-          if (d) h[i] = d.y;
+          const k = this.decks.findIndex((d, j) => p.s >= d.s0 - land[j].before - 1e-6 && p.s <= d.s1 + land[j].after + 1e-6);
+          if (k >= 0) h[i] = this.decks[k].y;
         });
       pin();
       for (let i = 1; i < h.length; i++) h[i] = Math.max(h[i], h[i - 1] - RAMP_GRADE * (pts[i].s - pts[i - 1].s));
@@ -322,11 +335,18 @@ function shapedHeight(x:number,z:number) {
  const island=islandRadius(x,z);
  if(island<1.18)h=Math.max(h,LAKE_Y+2.5*smoothstep(1.18,.82,island));
  // Bridge ramps and abutments: built up after the river is cut, so the bank doesn't eat
- // the embankment. Under the decks the river stays open.
+ // the embankment. Each deck end sits on an abutment fill reaching just under the deck,
+ // so the ramp runs straight onto the deck with no slot and the bank meets the bridge;
+ // between the abutments the river stays open.
  for(const road of BRIDGE_ROADS){
   const n=road.nearest(x,z);
-  if(n.d>=RAMP_SHOULDER||road.deckAt(n.s))continue;
-  h+=(road.heightAt(n.s)-h)*smoothstep(RAMP_SHOULDER,road.width/2+2,n.d);
+  if(n.d>=RAMP_SHOULDER)continue;
+  const deck=road.deckAt(n.s);
+  if(!deck){h+=(road.heightAt(n.s)-h)*smoothstep(RAMP_SHOULDER,road.width/2+2,n.d);continue;}
+  const into=Math.min(n.s-deck.s0,deck.s1-n.s);
+  if(into>=ABUTMENT+1.5)continue;
+  const w=smoothstep(road.width/2+7,road.width/2+2,n.d)*smoothstep(ABUTMENT+1.5,ABUTMENT,into);
+  h=Math.max(h,h+(deck.y-.1-h)*w);
  }
  return h;
 }

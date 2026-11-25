@@ -6,6 +6,8 @@ import { bindInput } from "./core/input";
 import { Blueprints, Goats, Npcs, ObjectiveMarker } from "./entities/Npcs";
 import { Player } from "./entities/Player";
 import { Vehicles } from "./entities/Vehicles";
+import { EngineAudio } from "./entities/EngineAudio";
+import { useAudio } from "./core/audio";
 import { Town } from "./entities/Town";
 import { FollowCamera } from "./render/FollowCamera";
 import { PostFX } from "./render/PostFX";
@@ -45,6 +47,10 @@ export function App() {
         const g = useGame.getState();
         if (!g.dialog && !g.minigame && !g.shopOpen && !g.panel && !g.job) g.toggleMap();
       }
+      if (e.code === "KeyV") {
+        useAudio.getState().toggleMute();
+        useGame.getState().toast(useAudio.getState().muted ? "Sound off (V to turn it back on)" : "Sound on");
+      }
       if (e.code === "KeyG") {
         useQuality.getState().toggle();
         useGame.getState().toast(`Graphics: ${useQuality.getState().level === "high" ? "high" : "fast"}`);
@@ -64,7 +70,7 @@ export function App() {
         <Canvas
           shadows="soft"
           dpr={high ? [1, 1.75] : 1}
-          gl={{ antialias: false, powerPreference: "high-performance", toneMapping: THREE.NoToneMapping, stencil: false }}
+          gl={{ antialias: false, powerPreference: "high-performance", toneMapping: THREE.NoToneMapping, stencil: false, logarithmicDepthBuffer: true }}
           camera={{ position: [-190, 8, 18], fov: 55, near: 0.15, far: 6000 }}
         >
           {/* Drop to fast graphics automatically if the frame rate can't keep up. */}
@@ -83,6 +89,7 @@ export function App() {
             <Town />
             <FollowCamera />
             <Director />
+            <EngineAudio />
             </>}
             <PostFX />
           </Suspense>

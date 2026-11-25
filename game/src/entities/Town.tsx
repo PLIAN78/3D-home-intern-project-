@@ -6,6 +6,8 @@ import { useSim } from "../core/simHost";
 import { Human, OUTFITS, TOWNSFOLK } from "../models/human";
 import { CarBody, TruckBody, Wheel } from "../models/vehicles";
 import { ModelCar } from "../models/cars";
+import { mat } from "../render/materials";
+import { Decal } from "../render/decal";
 import { angleDelta } from "../sim/math";
 import type { TrafficCar, Walker } from "../sim/town";
 import { VEHICLES, type VehicleId } from "../sim/vehicle";
@@ -40,7 +42,7 @@ function rig(model: VehicleId) {
 
 /** Traffic is a mix of everyday cars; the physics box is the same, only the look changes. */
 const LOOKS: VehicleId[] = ["sedan", "suv", "car", "sedan", "coupe", "suv", "roadster", "sedan"];
-const lookOf = (car: TrafficCar): VehicleId => (car.model === "truck" ? "truck" : LOOKS[car.id % LOOKS.length]);
+const lookOf = (car: TrafficCar): VehicleId => (car.model === "truck" ? "truck" : car.model === "police" ? "sedan" : LOOKS[car.id % LOOKS.length]);
 const RIGS = Object.fromEntries((["truck", ...new Set(LOOKS)] as VehicleId[]).map((id) => [id, rig(id)])) as Record<VehicleId, ReturnType<typeof rig>>;
 
 function TrafficCarView({ car, y = 0 }: { car: TrafficCar; y?: number }) {
@@ -62,6 +64,7 @@ function TrafficCarView({ car, y = 0 }: { car: TrafficCar; y?: number }) {
   return (
     <group ref={root}>
       {look === "truck" ? <TruckBody color={car.color} livery={false} /> : look === "car" ? <CarBody color={car.color} /> : <ModelCar id={look} color={car.color} />}
+      {car.model === "police" && <PoliceKit />}
       {r.hubs.map((h, i) => (
         <group key={i} position={h}>
           <Wheel
@@ -72,6 +75,29 @@ function TrafficCarView({ car, y = 0 }: { car: TrafficCar; y?: number }) {
             side={i % 2 === 0 ? 1 : -1}
             rimColor={look === "truck" ? "#9aa1aa" : "#c9ccd1"}
           />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/** A police cruiser's light bar (flashing red and blue), a black band and the word POLICE. */
+function PoliceKit() {
+  const red = useRef<THREE.Mesh>(null), blue = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    const on = Math.floor(clock.elapsedTime * 3) % 2 === 0;
+    if (red.current) red.current.visible = on;
+    if (blue.current) blue.current.visible = !on;
+  });
+  return (
+    <group>
+      <mesh position={[-0.1, 1.62, 0]} material={mat("#22262b")}><boxGeometry args={[0.32, 0.1, 1.2]} /></mesh>
+      <mesh ref={red} position={[-0.1, 1.7, 0.32]} material={mat("#ff2a2a", { emissive: "#ff2a2a", emissiveIntensity: 3 })}><boxGeometry args={[0.28, 0.1, 0.5]} /></mesh>
+      <mesh ref={blue} position={[-0.1, 1.7, -0.32]} material={mat("#2a6bff", { emissive: "#2a6bff", emissiveIntensity: 3 })}><boxGeometry args={[0.28, 0.1, 0.5]} /></mesh>
+      {[1, -1].map((s) => (
+        <group key={s}>
+          <mesh position={[0, 0.78, s * 0.93]} material={mat("#15171a")}><boxGeometry args={[2.4, 0.42, 0.04]} /></mesh>
+          <Decal text="POLICE" color="#f2f2ef" position={[0, 0.78, s * 0.955]} rotation={[0, s > 0 ? 0 : Math.PI, 0]} height={0.24} />
         </group>
       ))}
     </group>

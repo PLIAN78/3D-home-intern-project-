@@ -10,6 +10,7 @@ import { useGame } from "../story/store";
 import { CAIVAN_RIDGE, collisionBoxes, LANDMARKS, PAVED } from "./map";
 import {CITY_PAVING,OWAWA_ROADS} from "./owawa";
 import { MEADOW_PAVING } from "./meadows";
+import { CREEK_WIDTH, LAUREL_CREEK } from "./campus";
 import { CAMPUS_PATHS, AIRPORT, NORTH_ROADS, riverZ, riverWidth, STATION_ACCESS, STATION_PATH_WIDTH, ISLAND_WALKS } from "./v6";
 import { COUNTRY_ROADS, PLAY_HALF,LAKE } from "./terrain";
 
@@ -131,7 +132,8 @@ function paintMask(stages: Record<string, string>) {
     for(const path of [a.path,...a.extra]){ctx.beginPath();path.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.stroke();}
   }
   ctx.fillRect(X(891),Z(828),48*k,28*k);
-  ctx.fillRect(X(643),Z(685),30*k,22*k);
+  // Laurel Creek (water) through the campus.
+  ctx.lineWidth=(CREEK_WIDTH+3)*k;ctx.beginPath();LAUREL_CREEK.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.stroke();
   ctx.fillRect(X(CITY_PAVING.x0),Z(CITY_PAVING.z0),(CITY_PAVING.x1-CITY_PAVING.x0)*k,(CITY_PAVING.z1-CITY_PAVING.z0)*k);
   ctx.beginPath();ctx.ellipse(X(LAKE.centre[0]),Z(LAKE.centre[1]),LAKE.rx*1.2*k,LAKE.rz*1.2*k,0,0,Math.PI*2);ctx.fill();
   for(let x=-1050;x<1050;x+=6)ctx.fillRect(X(x),Z(riverZ(x)-riverWidth(x)/2-25),7*k,(riverWidth(x)+50)*k);

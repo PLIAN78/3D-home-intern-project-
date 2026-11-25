@@ -9,6 +9,7 @@ import { lakeBoxes } from "./lake";
 import { owawaBoxes } from "./owawa";
 import { V6_LOTS } from "./v6Lots";
 import { MEADOW_LOTS, MEADOW_PAVING, meadowStage } from "./meadows";
+import { mallBoxes } from "./mall";
 import { SUBURB_ROADS, V6_BUILDINGS, onStationAccess } from "./v6";
 import { v6Boxes } from "./v6Geometry";
 import type { VehicleId } from "../sim/vehicle";
@@ -405,8 +406,10 @@ export function collisionBoxes(stages: Record<string, StageId>): Box[] {
   }
   // The office is walk-in: walls, a door, furniture and the floor above (see office.ts).
   boxes.push(...officeBoxes());
+  // So is the mall: walls with doorways, shop fronts, counters and shelving (see mall.ts).
+  boxes.push(...mallBoxes());
   for (const m of Object.values(LANDMARKS)) {
-    if (m.id === "park" || m.id === "tower" || m.id === "office") continue;
+    if (m.id === "park" || m.id === "tower" || m.id === "office" || m.id === "mall") continue;
     const [w, d, h] = m.size;
     boxes.push({ x0: m.position[0] - w / 2, z0: m.position[1] - d / 2, x1: m.position[0] + w / 2, z1: m.position[1] + d / 2, h, kind: "landmark", id: m.id, y: m.id === "cottage" ? COTTAGE_Y : 0 });
   }

@@ -165,7 +165,7 @@ function Signals() {
 /** Paved blocks (plazas between the sidewalks and the buildings). */
 function Paving() {
   return (
-    <mesh position={[(X0 + X1) / 2, 0.012, (Z0 + Z1) / 2]} rotation={[-Math.PI / 2, 0, 0]} material={groundConcrete()} receiveShadow>
+    <mesh position={[(X0 + X1) / 2, 0.02, (Z0 + Z1) / 2]} rotation={[-Math.PI / 2, 0, 0]} material={groundConcrete()} receiveShadow>
       <planeGeometry args={[X1 - X0, Z1 - Z0]} />
     </mesh>
   );

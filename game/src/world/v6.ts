@@ -1,5 +1,7 @@
 /** V6 world contract. All coordinates are metres; +z is south. Runtime imports: pure data only (meadows.ts). */
 import { MEADOW_BUILDINGS, MEADOW_ROADS } from "./meadows";
+import { buildNorthCity, businessSpots, cityLoops } from "./owawaCity";
+import { CAMPUS_BUILDINGS, CAMPUS_LOOPS, CAMPUS_ROADS, CAMPUS_WALKS, DOOR_PATHS, LAUREL_CREEK, CREEK_WIDTH } from "./campus";
 export type Point = [number, number];
 export const V6_VERSION = "6.2.0";
 /** Water surface of Heron Lake and the Owawa River (terrain.ts LAKE_Y). */
@@ -56,17 +58,8 @@ export const SUBURB_ROADS: V6Road[] = [
  rd("east-cross",[670,60],[670,300]),
  rd("south-link",[-110,300],[-110,520]),rd("south-avenue",[-290,520],[360,520]),
  rd("south-loop",[360,520],[360,610]),rd("south-return",[360,610],[-290,610]),rd("south-west",[-290,610],[-290,520]),
- rd("campus-approach",[860,300],[875,525]),
- rd("vataloo-ring-0",[540,550],[575,520]),
- rd("vataloo-ring-1",[575,520],[785,520]),
- rd("vataloo-ring-2",[785,520],[840,565]),
- rd("vataloo-ring-3",[840,565],[850,770]),
- rd("vataloo-ring-4",[850,770],[810,895]),
- rd("vataloo-ring-5",[810,895],[590,910]),
- rd("vataloo-ring-6",[590,910],[520,840]),
- rd("vataloo-ring-7",[520,840],[510,650]),
- rd("vataloo-ring-8",[510,650],[540,550]),
- rd("campus-east-access",[875,525],[875,875]),
+ // University of Vataloo: Columbia Street, Ring Road and the links (campus.ts).
+ ...CAMPUS_ROADS,
  rd("airport-link",[-530,0],[-680,0]),rd("airport-drive",[-680,-240],[-680,210]),
  rd("west-river-approach",[-530,-235],[-480,-390]),
  // North Meadows, between the panel factory and the river (meadows.ts).
@@ -76,18 +69,9 @@ export const SUBURB_ROADS: V6Road[] = [
 export const BRIDGEHEAD_STUB = 10;
 export const RIVER_WALK:Point[] = Array.from({length:25},(_,i)=>{const x=-930+i*77;return [x,NORTH_SHORE_Z(x)] as Point;});
 export const NORTH_ROADS:V6Road[] = RIVER_WALK.slice(1).map((p,i)=>rd("riverfront-"+i,RIVER_WALK[i],p));
-NORTH_ROADS.push(rd("heritage-avenue",[-900,-850],[540,-850]));
-for(let x=-850;x<520;x+=225) {
- const z=NORTH_SHORE_Z(x);
- NORTH_ROADS.push(rd("north-link-"+x,[x,z],[x,-850]));
-}
-NORTH_ROADS.push(rd("city-west-link",[540,-850],[610,-820]));
-// The two north-shore bridgeheads: a street on into the city, and a short stub on the
-// river side so the riverfront's curb and sidewalk open for the bridge road.
-for(const x of [BRIDGES[0].x,BRIDGES[1].x]){
- NORTH_ROADS.push(rd("bridge-city-link-"+x,[x,NORTH_SHORE_Z(x)],[x,-850]));
- NORTH_ROADS.push(rd("bridgehead-"+x,[x,NORTH_SHORE_Z(x)+BRIDGEHEAD_STUB],[x,NORTH_SHORE_Z(x)]));
-}
+// The two north-shore bridgeheads: a short stub on the river side so the riverfront's
+// curb and sidewalk open for the bridge road (the bridge streets are part of Owawa's grid).
+for(const x of [BRIDGES[0].x,BRIDGES[1].x])NORTH_ROADS.push(rd("bridgehead-"+x,[x,NORTH_SHORE_Z(x)+BRIDGEHEAD_STUB],[x,NORTH_SHORE_Z(x)]));
 export function distanceToSegment(x:number,z:number,a:Point,b:Point) {
  const dx=b[0]-a[0],dz=b[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz)));
  return Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t);
@@ -99,19 +83,6 @@ export const V6_BUILDINGS:V6Building[]=[
  {id:"sushi",name:"SAKURA SUSHI",at:[-242,riverZ(-255)-2],size:[16,14,6],kind:"shop",tone:3,level:"island"},
  {id:"loan-tower",name:"RIVERBANK FINANCIAL",at:[-410,-810],size:[32,30,112],kind:"tower",tone:1,level:"city"},
  {id:"condo-tower",name:"NORTHSHORE RESIDENCES",at:[-170,-810],size:[34,32,138],kind:"tower",tone:0,level:"city"},
- {id:"principal",name:"UNIVERSITY OF VATALOO - NEEDLES HALL",at:[590,745],size:[46,25,15],kind:"campus",tone:2,level:"ground"},
- {id:"engineering",name:"ENGINEERING 7",at:[912,665],size:[44,54,24],kind:"campus",tone:0,level:"ground"},
- {id:"engineering-5",name:"ENGINEERING 5",at:[912,752],size:[44,48,24],kind:"campus",tone:1,level:"ground"},
- {id:"science",name:"SCIENCE TEACHING COMPLEX",at:[772,746],size:[49,36,18],kind:"campus",tone:0,level:"ground"},
- {id:"business",name:"TATHAM CO-OP CENTRE",at:[605,810],size:[50,27,14],kind:"campus",tone:1,level:"ground"},
- {id:"arts",name:"HAGEY HALL - ARTS & HUMANITIES",at:[728,843],size:[62,28,15],kind:"historic",tone:3,level:"ground"},
- {id:"cafeteria",name:"STUDENT LIFE CENTRE - CAFE",at:[642,579],size:[51,35,9],kind:"shop",tone:1,level:"ground"},
- {id:"gym",name:"PHYSICAL ACTIVITIES COMPLEX",at:[570,595],size:[56,46,13],kind:"gym",tone:2,level:"ground"},
- {id:"davis",name:"DAVIS COMPUTING CENTRE",at:[784,595],size:[55,35,13],kind:"campus",tone:0,level:"ground"},
- {id:"math",name:"MATHEMATICS & COMPUTER",at:[708,590],size:[49,42,23],kind:"campus",tone:2,level:"ground"},
- {id:"qnc",name:"QUANTUM-NANO CENTRE",at:[724,675],size:[54,39,24],kind:"campus",tone:0,level:"ground"},
- {id:"porter",name:"DANA PORTER LIBRARY",at:[660,738],size:[30,30,40],kind:"campus",tone:2,level:"ground"},
- {id:"environment",name:"ENVIRONMENT 3",at:[588,858],size:[39,25,14],kind:"campus",tone:1,level:"ground"},
  {id:"terminal",name:"OWAWA REGIONAL AIRPORT",at:[-710,90],size:[40,90,13.5],kind:"terminal",tone:0,level:"ground"},
 ];
 V6_BUILDINGS.push(
@@ -119,7 +90,7 @@ V6_BUILDINGS.push(
  {id:"south-condos",name:"SOUTH COMMONS CONDOS",at:[-145,565],size:[34,24,15],kind:"condo",tone:2,level:"ground"},
  {id:"ridge-strip",name:"RIDGE MARKET · CAFE · PHARMACY",at:[-300,35],size:[55,25,7],kind:"shop",tone:1,level:"ground"},
 );
-V6_BUILDINGS.push(...MEADOW_BUILDINGS);
+V6_BUILDINGS.push(...MEADOW_BUILDINGS, ...CAMPUS_BUILDINGS);
 for (let i=0;i<5;i++) V6_BUILDINGS.push({id:"island-home-"+i,name:"Heron Gardens "+(i+1),at:[-342+i*30,riverZ(-255)-20],size:[20,12,9],kind:"condo",tone:i%4,level:"island"});
 for(const b of V6_BUILDINGS.filter(b=>b.level==="island")){
  if(b.id.startsWith("island-home")){const n=Number(b.id.split("-").at(-1));b.at=[-708+n*29,-675];}
@@ -165,39 +136,34 @@ export const ISLAND_WALKS: Walk[] = (() => {
 export function onIslandWalk(x: number, z: number, pad = 0) {
  return ISLAND_WALKS.some(w => w.points.slice(1).some((p, i) => distanceToSegment(x, z, w.points[i], p) < w.width / 2 + pad));
 }
-// Mixed civic, commercial, heritage and residential blocks fill the north shore,
-// leaving generous road corridors and the original eastern civic centre intact.
-for (let x=-900;x<500;x+=66) for(let z=-905;z<NORTH_SHORE_Z(x)-22;z+=69){
- if(x< -440 && Math.hypot((x+690)/190,(z+650)/150)<1.4)continue;
- if(!roadClear(x,z,NORTH_ROADS,24))continue;
- if(V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+25&&Math.abs(z-b.at[1])<b.size[1]/2+25))continue;
- const n=V6_BUILDINGS.length, kind=(["tower","condo","historic","campus","shop"] as const)[n%5];
- V6_BUILDINGS.push({id:"north-"+n,name:(["QUAYSIDE OFFICES","RIVER LOFTS","HERITAGE MARKET","CIVIC LIBRARY","RIVERSIDE SHOPS"])[n%5],at:[x,z],size:[28+(n%3)*3,27,kind==="tower"?65+(n%6)*13:kind==="condo"?25:12+(n%3)*5],kind,tone:n%4,level:"city"});
+// Owawa: the north shore's street grid and high-rise blocks (owawaCity.ts), around the
+// two visitable towers, and the businesses along Rideau Avenue West.
+/** The riverfront road's centre line (straight between RIVER_WALK points) at x. */
+export function riverfrontZ(x:number){
+ for(let i=0;i<RIVER_WALK.length-1;i++){const a=RIVER_WALK[i],b=RIVER_WALK[i+1];if(x>=a[0]&&x<=b[0])return a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0]);}
+ return NORTH_SHORE_Z(x);
 }
+const northCity=buildNorthCity(riverfrontZ,V6_BUILDINGS.filter(b=>b.level==="city"));
+NORTH_ROADS.push(...northCity.roads);
+V6_BUILDINGS.push(...northCity.buildings);
+export const CITY_BLOCKS=northCity.buildings;
+export const BUSINESSES=businessSpots(northCity.buildings);
+export const CITY_LOOPS=cityLoops(northCity.roads);
 for(const [i,at] of ([[530,100],[720,105],[810,245],[-570,95],[-570,265],[65,560],[-245,565]] as Point[]).entries())
  V6_BUILDINGS.push({id:"strip-"+i,name:["RIDGE COFFEE · PHARMACY","GROCER · BAKERY","EASTSIDE STRIP MALL","WEST MARKET","BOOKS · CAFE","SOUTH COMMONS","CYCLE · GARDEN SHOP"][i],at,size:[42,18,7],kind:"shop",tone:i%4,level:"ground"});
-export const CAMPUS_PATHS:Point[][]=[
- [[530,700],[645,700],[720,720],[834,705]],
- [[642,610],[650,680],[660,715]],[[712,620],[712,648]],
- [[785,617],[785,695],[798,780],[770,825]],
- [[590,763],[590,783],[650,790],[699,810]],[[620,755],[630,755]],
- [[560,840],[560,810],[590,783]],[[650,790],[675,835],[695,843]],
- [[810,630],[860,630],[875,635],[912,635]],[[825,785],[860,785],[880,785],[912,779]],
- [[476,558],[505,558],[535,650],[530,700]],
- [[834,705],[875,705],[912,695]],[[772,767],[798,780]],[[728,860],[675,865],[650,790]],
-];
+/** Campus footpaths: the walks, the paths from every door, and the paths from the station and St. Jerome's. */
+export const CAMPUS_PATHS:Point[][]=[...CAMPUS_WALKS,...DOOR_PATHS];
 export const CAMPUS_TREES:( {position:Point;y:number;scale:number;variant:0|1|2})[]=[];
-for(let x=545;x<840;x+=25)for(let z=635;z<895;z+=25){
+// Trees on the campus lawns and along the creek (a loose grid, jittered), clear of roads, buildings, paths and the water.
+for(let gx=480;gx<935;gx+=21)for(let gz=535;gz<925;gz+=21){
+ const x=gx+Math.sin(gx*12.9898+gz*78.233)*6,z=gz+Math.sin(gx*39.346+gz*11.135)*6;
  if(!roadClear(x,z,SUBURB_ROADS,3)||V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+6&&Math.abs(z-b.at[1])<b.size[1]/2+6))continue;
- if(CAMPUS_PATHS.some(p=>p.slice(1).some((b,i)=>distanceToSegment(x,z,p[i],b)<4)))continue;
+ if(CAMPUS_PATHS.some(p=>p.slice(1).some((b,i)=>distanceToSegment(x,z,p[i],b)<5)))continue;
+ if(LAUREL_CREEK.slice(1).some((b,i)=>distanceToSegment(x,z,LAUREL_CREEK[i],b)<CREEK_WIDTH/2+3))continue;
+ if((x*7+z*13)%5===0)continue;
  CAMPUS_TREES.push({position:[x,z],y:0,scale:.72+((x+z)%3)*.12,variant:0});
 }
-export const STUDENT_LOOPS:Point[][]=[
- [[535,700],[645,700],[650,680],[642,625],[620,625],[620,680]],
- [[712,630],[712,645],[740,645],[780,645],[785,630]],
- [[590,780],[650,790],[675,825],[650,845],[610,830],[590,810]],
- [[790,660],[815,660],[820,700],[800,705],[785,690]],
-];
+export const STUDENT_LOOPS:Point[][]=CAMPUS_LOOPS;
 export const SUBJECTS=[
  {id:"engineering",question:"A panel line makes 12 panels in 3 minutes. How many in 15 minutes?",choices:["48 panels","60 panels","72 panels"],correct:1,explanation:"12 ÷ 3 = 4 panels/minute; 4 × 15 = 60."},
  {id:"science",question:"Which riverbank planting best reduces soil erosion?",choices:["Native plants with deep roots","Bare soil","Plastic turf"],correct:0,explanation:"Native roots bind soil and filter runoff before it reaches the river."},

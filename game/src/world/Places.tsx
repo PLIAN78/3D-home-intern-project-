@@ -11,6 +11,7 @@ import { VEHICLES, type VehicleId } from "../sim/vehicle";
 import { DISPLAY_CARS, LANDMARKS, PAVED } from "./map";
 import { DESK_H, DESK_SIZE, DESKS, KITCHEN, MANAGER_DESK, MANAGER_ROOM, OFFICE, OFFICE_X0, OFFICE_X1, OFFICE_Z0, OFFICE_Z1, RECEPTION } from "./office";
 import { B, ParkingLot } from "./props";
+import { Armchair, Bookshelf, Plant as PottedPlant, Rug, Sofa, Table, WallArt } from "../models/furniture";
 
 /**
  * The town's newer places: the Caivan office (walk-in, with a lit interior),
@@ -208,6 +209,15 @@ function Office() {
       <mesh position={[ox, floorH + 0.05, OFFICE_Z1 + 1.6]} material={mat("#ecebe6", { rough: 0.5 })} castShadow>
         <boxGeometry args={[7, 0.2, 3.2]} />
       </mesh>
+      {/* A lounge corner by the door, plants and art */}
+      <Rug position={[207, 0.03, -44]} w={4.6} d={3.6} color="#56705a" border="#d8d2c4" />
+      <Sofa position={[207, 0, -42.4]} rotation={Math.PI} width={2.4} color="#3d4a52" />
+      <Armchair position={[209.8, 0, -44.6]} rotation={-Math.PI / 2} color="#b5553c" />
+      <Table position={[207, 0, -44.4]} w={1.2} d={0.6} h={0.42} top="#9a7350" />
+      {[[179, -59.8], [210.6, -40.2], [200.6, -40.2], [179, -48]].map(([px, pz], i) => <PottedPlant key={i} position={[px, 0, pz]} h={1.6} />)}
+      <WallArt position={[OFFICE_X0 + 0.35, 2.1, -52]} rotation={Math.PI / 2} w={2.4} h={1.2} color="#1f3a5f" />
+      <WallArt position={[OFFICE_X0 + 0.35, 2.1, -57]} rotation={Math.PI / 2} w={1.4} h={1} color="#e0a43a" />
+      <Bookshelf position={[190, 0, OFFICE_Z0 + 0.5]} w={3} h={2.2} />
       {/* Reception */}
       <group>
         <mesh position={[RECEPTION.at[0], 0.55, RECEPTION.at[1]]} material={white} castShadow receiveShadow>

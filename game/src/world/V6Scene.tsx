@@ -8,12 +8,15 @@ import {runtime} from "../core/runtime";
 import {host} from "../core/simHost";
 import {Human,TOWNSFOLK} from "../models/human";
 import {Decal} from "../render/decal";
-import {waterNormalMap} from "../render/textures";
 import {concreteSurface,groundAsphalt,groundConcrete,mat} from "../render/materials";
 import {useV6} from "../story/v6Store";
 import {AirportScene} from "./AirportScene";
 import {VatalooCampus} from "./VatalooCampus";
 import {StationEntrance} from "./StationEntrance";
+import {Armchair,Bed,Bookshelf,Chair,Counter,DiningSet,FloorLamp,Kitchen,LiftDoors,Plant,Rug,Sofa,Table,TV,WallArt} from "../models/furniture";
+import {Shores} from "./Shores";
+import {OwawaBlocks} from "./OwawaBlocks";
+import {TrafficLights} from "./TrafficLights";
 import {Walkway} from "./Walkways";
 import {deckAt} from "./lake";
 import {JetSkiRider} from "../models/jetski";
@@ -21,13 +24,12 @@ import {MEADOW_PAVING} from "./meadows";
 import {railPosts,RAIL_POST_SIZE} from "./railPosts";
 import {B,Sign} from "./props";
 import {Building,facade} from "./OwawaScene";
-import {CITY_Y,LAKE_Y,groundAt,HILL_TREES} from "./terrain";
+import {ABUTMENT,CITY_Y,LAKE_Y,groundAt,HILL_TREES} from "./terrain";
 import {buildingY,BRIDGES} from "./v6Geometry";
-import {V6_BUILDINGS,NORTH_ROADS,riverZ,riverWidth,PORTS,RAIL_PATH,RAIL_Y,STATION_ACCESS,TRAIN_COUNT,trainAt,pathPoint,ISLAND_WALKS,NPC_JETSKIS,npcJetSki,STUDENT_LOOPS,COOPS,type Point,type V6Building} from "./v6";
+import {V6_BUILDINGS,NORTH_ROADS,PORTS,RAIL_PATH,RAIL_Y,STATION_ACCESS,TRAIN_COUNT,trainAt,pathPoint,ISLAND_WALKS,NPC_JETSKIS,npcJetSki,STUDENT_LOOPS,COOPS,type V6Building} from "./v6";
 
 /** Walkways on Heron Gardens Island follow the ground, and the pier decks where they run onto them. */
 const islandSurface=(x:number,z:number)=>Math.max(groundAt(x,z),deckAt(x,z)??-Infinity);
-const riverPoints:Point[]=Array.from({length:161},(_,i)=>{const x=-1100+i*2200/160;return [x,riverZ(x)];});
 /**
  * A road bridge: a concrete deck (the road ribbon is drawn on top by
  * CountryRoads), parapets, piers standing in the river, and abutments at each
@@ -43,16 +45,15 @@ function Bridge({b}:{b:typeof BRIDGES[number]}){
    <B size={[.4,1,b.length]} position={[s*(b.width/2-.2),.5,0]} color="#c1c3bd"/>
    <B size={[.12,.12,b.length]} position={[s*(b.width/2-.2),1.06,0]} color="#8d9496"/>
    {piers.map(z=><B key={z} size={[1.1,rise+1.5,1.4]} position={[s*b.width*.3,-(rise+1.5)/2-.6,z]} color="#a5a49b"/>)}
-   <B size={[b.width+1.2,rise+2,1.6]} position={[0,-(rise+2)/2-.6,s*(b.length/2-.8)]} color="#a9a79f"/>
+   {/* Abutment: a concrete face where the fill under each deck end meets the river. */}
+   <B size={[b.width+8,rise+4.6,1.4]} position={[0,-(rise+4.6)/2-.6,s*(b.length/2-ABUTMENT-.9)]} color="#a9a79f"/>
+   <B size={[b.width+8.4,.4,1.8]} position={[0,-.75,s*(b.length/2-ABUTMENT-.9)]} color="#9a9b95"/>
   </group>)}
   {piers.map(z=><B key={z} size={[b.width*.72,.8,1.2]} position={[0,-1.2,z]} color="#9a9b95"/>)}
  </group>;
 }
 function River(){
- const water=useMemo(()=>{const p:number[]=[],idx:number[]=[];riverPoints.forEach(([x,z],i)=>{const w=riverWidth(x);p.push(x,LAKE_Y,z-w/2,x,LAKE_Y,z+w/2);if(i){const n=i*2;idx.push(n-2,n-1,n,n-1,n+1,n);}});const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(p,3));g.setIndex(idx);g.computeVertexNormals();return g;},[]);
- const m=useMemo(()=>new THREE.MeshPhysicalMaterial({color:"#397c89",roughness:.2,normalMap:waterNormalMap(),normalScale:new THREE.Vector2(.22,.22),metalness:.25,transparent:true,opacity:.87,clearcoat:1,side:THREE.DoubleSide}),[]);
- useEffect(()=>()=>{water.dispose();m.dispose();},[water,m]);
- return <group name="Owawa River"><mesh geometry={water} material={m} receiveShadow/>{BRIDGES.map(b=><Bridge key={b.x} b={b}/>)}
+ return <group name="Owawa River"><Shores/>{BRIDGES.map(b=><Bridge key={b.x} b={b}/>)}
  {ISLAND_WALKS.map(w=><Walkway key={w.id} points={w.points} width={w.width} surface={islandSurface} color={w.id==="island-promenade"?"#c9bea6":"#bfb49c"}/>)}
  {PORTS.map(p=><group key={p.id} position={[p.shore[0],0,p.shore[1]]}><Sign text={p.name.toUpperCase()} sub="F - motorboat / jet ski" at={[0,0]} heading={-Math.PI/2} width={8}/></group>)}
  {Array.from({length:NPC_JETSKIS},(_,i)=><RiverJetSki key={i} index={i}/>)}
@@ -78,6 +79,8 @@ function CivicBuilding({b}:{b:V6Building}){
  const group=useRef<THREE.Group>(null),camera=useThree(s=>s.camera);
  useFrame(()=>{if(group.current)group.current.visible=Math.hypot(camera.position.x-b.at[0],camera.position.z-b.at[1])<1100;});
  if(b.level==="ground"&&((b.at[0]>490&&b.at[1]>500)||b.id==="terminal"))return null;
+ // Owawa's blocks are drawn together, merged (OwawaBlocks).
+ if(b.id.startsWith("owawa-"))return null;
  const visit=b.id==="loan-tower"||b.id==="condo-tower",[w,d,h]=b.size;
  return <group ref={group} position={[0,buildingY(b),0]}>
  {visit?<VisitableTower b={b}/>:<><Building b={{at:b.at,size:b.size,kind:b.kind==="tower"?"tower":b.kind==="shop"||b.kind==="historic"?"lowrise":"midrise",tone:b.tone,name:b.name}}/>
@@ -95,13 +98,68 @@ function VisitableTower({b}:{b:V6Building}){
  <B size={[w,.25,d]} position={[0,.125,0]} color="#b8b3a7"/><B size={[w,.25,d]} position={[0,48.125,0]} color="#d1c8b5"/><B size={[w,.25,d]} position={[0,53.125,0]} color="#eee9dd"/><B size={[w+1,1,d+1]} position={[0,h,0]} color="#c2c4bf"/>
  {[-1,1].map(s=><B key={s} size={[w/2-2,5,.4]} position={[s*(w/4+1),2.5,d/2]} color="#a7b6b7"/>)}
  <Decal text={b.name} color="#f4e4b7" position={[0,6.2,d/2+.24]} rotation={[0,0,0]} size={[w*.85,1.1]}/>
- <B size={[4,4,.4]} position={[0,50,-d/2+1]} color="#687982"/><Decal text="ELEVATOR · E" color="#f2e7c8" position={[0,51,-d/2+1.25]} rotation={[0,0,0]} size={[3,.6]}/>
- <B size={[8,.7,3]} position={[-6,48.6,1]} color="#b9a68b"/><B size={[7,1.2,2.8]} position={[6,48.8,-5]} color="#777f72"/><B size={[2.5,.45,2]} position={[6,48.5,-.8]} color="#a17d55"/><B size={[2,2,.5]} position={[-9,49.2,-d/2+1]} color="#5a6967"/>
- <HumanAt at={[2,z]} y={0} hidden/>
- <group position={[-6,48.3,-1]}><Human outfit={TOWNSFOLK[3]}/></group>
+ <TowerLobby w={w} d={d} bank={b.id==="loan-tower"}/>
+ <group position={[0,48.25,0]}>{b.id==="loan-tower"?<BankSuite w={w} d={d}/>:<CondoSuite w={w} d={d}/>}</group>
  </group>;
 }
-function HumanAt({at,y=0,hidden=false}:{at:Point;y?:number;hidden?:boolean}){return hidden?null:<group position={[at[0],y,at[1]]}><Human outfit={TOWNSFOLK[0]}/></group>;}
+/** Ground-floor lobby: stone floor, reception, waiting seats, plants, lift doors and a feature wall. */
+function TowerLobby({w,d,bank}:{w:number;d:number;bank:boolean}){
+ return <group name="Lobby">
+  <B size={[w-1,.02,d-1]} position={[0,.26,0]} color="#d8d2c4" cast={false}/>
+  <Rug position={[0,.27,d/2-7]} w={8} d={5} color={bank?"#1f3a5f":"#6f5a48"} border="#c9b98f"/>
+  <Counter position={[-w/2+6,.25,-2]} rotation={Math.PI/2} w={4} sign={bank?"#1f3a5f":"#c9a54f"}/>
+  <Sofa position={[3,.25,d/2-9]} rotation={0} color={bank?"#3d4a52":"#8c6a52"}/>
+  <Armchair position={[6.5,.25,d/2-6.5]} rotation={-Math.PI/2} color="#a7a39a"/>
+  <Table position={[3,.25,d/2-7]} w={1.4} d={.7} h={.42} top="#2b2f34"/>
+  {[[-w/2+1.5,d/2-1.5],[w/2-1.5,d/2-1.5],[-w/2+1.5,-d/2+3],[w/2-1.5,-d/2+3]].map(([px,pz],i)=><Plant key={i} position={[px,.25,pz]} h={2}/>)}
+  {[-3,3].map(px=><LiftDoors key={px} position={[px,.25,-d/2+.6]}/>)}
+  <B size={[14,4,.2]} position={[0,2.3,-d/2+.3]} color={bank?"#2b4a63":"#8a6a52"}/>
+  <Decal text={bank?"RIVERBANK FINANCIAL":"NORTHSHORE RESIDENCES"} color="#f4e4b7" position={[0,3.9,-d/2+.45]} rotation={[0,0,0]} size={[10,.7]}/>
+  <WallArt position={[w/2-.4,2.6,0]} rotation={-Math.PI/2} w={3} h={1.8} color={bank?"#2f6f86":"#c9744f"}/>
+  <group position={[-w/2+4.5,.25,-2]} rotation={[0,-Math.PI/2,0]}><Human outfit={TOWNSFOLK[bank?3:5]}/></group>
+ </group>;
+}
+/** Riverbank Financial's client suite: reception, waiting area, the adviser's office and a meeting table. */
+function BankSuite({w,d}:{w:number;d:number}){
+ return <group name="Client suite">
+  <B size={[w-1,.02,d-1]} position={[0,.13,0]} color="#c9c1b3" cast={false}/>
+  <LiftDoors position={[0,.12,-d/2+1.1]}/><Decal text="ELEVATOR · E" color="#f2e7c8" position={[0,2.95,-d/2+1.2]} rotation={[0,0,0]} size={[2.4,.4]}/>
+  <Counter position={[-5,.12,-d/2+5]} w={3.5} sign="#1f3a5f"/>
+  <Rug position={[-8,.13,3]} w={5} d={4} color="#1f3a5f"/>
+  <Sofa position={[-8,.12,1.5]} color="#3d4a52"/><Armchair position={[-10.8,.12,3.8]} rotation={Math.PI/2} color="#7a6450"/><Table position={[-8,.12,3.4]} w={1.2} d={.6} h={.42} top="#2b2f34"/>
+  <Table position={[6,.12,-4]} w={2.2} d={1} top="#5a4632"/>
+  <B size={[.6,.38,.03]} position={[6,1.05,-4.3]} color="#15171a"/>
+  <Chair position={[6,.12,-5.1]} color="#22262b"/>{[-.7,.7].map(px=><Chair key={px} position={[6+px,.12,-2.9]} rotation={Math.PI} color="#7a6450"/>)}
+  <Bookshelf position={[6,.12,-d/2+1.4]} w={3.6} h={2.6}/>
+  <DiningSet position={[6,.12,6]} seats={4} top="#e8e4da" chair="#3d4a52"/>
+  {[[-w/2+1.4,-d/2+1.6],[w/2-1.4,-d/2+1.6],[-w/2+1.4,d/2-1.6],[w/2-1.4,d/2-1.6]].map(([px,pz],i)=><Plant key={i} position={[px,.12,pz]} h={1.8}/>)}
+  <WallArt position={[-w/2+.4,2.2,-4]} rotation={Math.PI/2} w={2.4} h={1.4}/><WallArt position={[w/2-.4,2.2,4]} rotation={-Math.PI/2} w={2} h={1.2} color="#2f6f86"/>
+  <FloorLamp position={[-11,.12,0]}/>
+  <group position={[6,.12,-5.1]}><Human outfit={TOWNSFOLK[3]} pose="sit"/></group>
+ </group>;
+}
+/** The Northshore show suite: living room, kitchen and dining, and a bedroom corner. */
+function CondoSuite({w,d}:{w:number;d:number}){
+ return <group name="Show suite">
+  <B size={[w-1,.02,d-1]} position={[0,.13,0]} color="#b8a27f" cast={false}/>
+  <LiftDoors position={[0,.12,-d/2+1.1]}/><Decal text="ELEVATOR · E" color="#f2e7c8" position={[0,2.95,-d/2+1.2]} rotation={[0,0,0]} size={[2.4,.4]}/>
+  {/* Living room by the south windows */}
+  <Rug position={[-6,.13,6]} w={6} d={4.2} color="#6f5a48"/>
+  <Sofa position={[-6,.12,4.4]} width={2.6} color="#8c8f86"/><Armchair position={[-9.4,.12,6.6]} rotation={Math.PI/2} color="#b5553c"/><Table position={[-6,.12,6.4]} w={1.3} d={.7} h={.42} top="#5a4632"/>
+  <TV position={[-6,.12,9.6]} rotation={Math.PI} w={1.8}/><FloorLamp position={[-9.2,.12,4]}/>
+  {/* Kitchen along the west wall, dining in front */}
+  <Kitchen position={[-w/2+1,.12,-4]} rotation={Math.PI/2} w={5}/>
+  <DiningSet position={[-6,.12,-4]} seats={4}/>
+  {/* Bedroom corner */}
+  <Rug position={[8,.13,-6]} w={4.4} d={5} color="#9aa3a6"/>
+  <Bed position={[8,.12,-7]} duvet="#c9d4d8"/>
+  <WallArt position={[8,2.4,-d/2+1.1]} w={2} h={1}/>
+  <Bookshelf position={[w/2-.9,.12,2]} rotation={-Math.PI/2} w={2.4} h={2.2}/>
+  {[[-w/2+1.4,d/2-1.6],[w/2-1.4,d/2-1.6],[3,-d/2+1.6]].map(([px,pz],i)=><Plant key={i} position={[px,.12,pz]} h={1.6}/>)}
+  <WallArt position={[-w/2+.4,2.2,6]} rotation={Math.PI/2} w={2.2} h={1.3} color="#c9744f"/>
+  <group position={[2,.12,4]}><Human outfit={TOWNSFOLK[5]}/></group>
+ </group>;
+}
 function Campus(){
  return <VatalooCampus><Flowers/>{Array.from({length:36},(_,i)=><Student key={i} index={i}/>)}
  <group position={[590,0,761]}><Human outfit={TOWNSFOLK[6]} pose="wave"/></group>
@@ -164,5 +222,5 @@ function MeadowParking(){
   </group>;})}</group>;
 }
 export function V6Scene(){
- return <group name="V6 River City"><River/><CivicRoads/><MeadowParking/>{V6_BUILDINGS.map(b=><CivicBuilding key={b.id} b={b}/>)}<Campus/><AirportScene/><Rail/>{Array.from({length:42},(_,i)=><Wildlife key={i} index={i}/>)}<V6Dynamics/></group>;
+ return <group name="V6 River City"><River/><CivicRoads/><OwawaBlocks/><TrafficLights/><MeadowParking/>{V6_BUILDINGS.map(b=><CivicBuilding key={b.id} b={b}/>)}<Campus/><AirportScene/><Rail/>{Array.from({length:42},(_,i)=><Wildlife key={i} index={i}/>)}<V6Dynamics/></group>;
 }

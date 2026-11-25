@@ -1,5 +1,6 @@
 import type { RigidBody, World } from "@dimforge/rapier3d-compat";
 import { groups, LAYER, type Rapier } from "./rapier";
+import { mayGo, signalAt } from "../world/signals";
 import { angleDelta, approach, damp, quatFromHeading } from "./math";
 
 /**
@@ -74,7 +75,7 @@ export interface TrafficCar {
   z: number;
   heading: number;
   body: RigidBody;
-  model: "car" | "truck";
+  model: "car" | "truck" | "police";
   color: string;
   /** Wheel spin (radians), for drawing. */
   spin: number;
@@ -109,12 +110,17 @@ export interface Obstacle {
 export class Town {
   readonly cars: TrafficCar[] = [];
   readonly walkers: Walker[] = [];
+  /** Seconds since the town started (traffic lights run on it). */
+  clock = 0;
+  /** Junctions with traffic lights (empty in the Ridge: stop signs and courtesy). */
+  readonly signals: [number, number][];
 
   /** Ground height the town sits on (Owawa is up on its plateau). */
   readonly y: number;
 
-  constructor(R: Rapier, world: World, loops: P[][], walkLoops: P[][], opts: { carsPerLoop: number[]; walkersPerLoop: number; laneOffset: number; y?: number }) {
+  constructor(R: Rapier, world: World, loops: P[][], walkLoops: P[][], opts: { carsPerLoop: number[]; walkersPerLoop: number; laneOffset: number; y?: number; signals?: [number, number][]; policeEvery?: number }) {
     this.y = opts.y ?? 0;
+    this.signals = opts.signals ?? [];
     let id = 0;
     loops.forEach((loop, li) => {
       const path = new Path(laneOf(loop, opts.laneOffset));
@@ -122,7 +128,8 @@ export class Town {
       for (let k = 0; k < n; k++) {
         const s = (path.length / n) * k + li * 7;
         const p = path.at(s);
-        const truck = (id * 7) % 5 === 0;
+        const police = !!opts.policeEvery && id % opts.policeEvery === 3;
+        const truck = !police && (id * 7) % 5 === 0;
         const body = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(p.x, this.y + 0.85, p.z).setRotation(quatFromHeading(p.heading)));
         world.createCollider(
           R.ColliderDesc.cuboid(truck ? 2.75 : 2.3, truck ? 0.75 : 0.6, 0.98)
@@ -130,7 +137,7 @@ export class Town {
             .setCollisionGroups(groups(LAYER.VEHICLE)),
           body,
         );
-        this.cars.push({ id: id++, path, s, speed: 0, cruise: 10 + ((id * 13) % 5), x: p.x, z: p.z, heading: p.heading, body, model: truck ? "truck" : "car", color: CAR_COLORS[id % CAR_COLORS.length], spin: 0 });
+        this.cars.push({ id: id++, path, s, speed: 0, cruise: 10 + ((id * 13) % 5), x: p.x, z: p.z, heading: p.heading, body, model: police ? "police" : truck ? "truck" : "car", color: police ? "#f2f2ef" : CAR_COLORS[id % CAR_COLORS.length], spin: 0 });
       }
     });
     walkLoops.forEach((loop, li) => {
@@ -144,12 +151,20 @@ export class Town {
   }
 
   step(dt: number, obstacles: Obstacle[]) {
+    this.clock += dt;
     // Cars
     for (const c of this.cars) {
       const here = c.path.at(c.s);
       let target = here.toCorner < 14 ? Math.min(c.cruise, 4 + here.toCorner * 0.5) : c.cruise;
       const fx = Math.cos(c.heading);
       const fz = Math.sin(c.heading);
+      // Traffic lights: stop at the line (9 m before the junction's centre) unless it's green our way.
+      const eastWest = Math.abs(fx) > Math.abs(fz);
+      for (const [sx, sz] of this.signals) {
+        const dx = sx - c.x, dz = sz - c.z, ahead = dx * fx + dz * fz, lateral = Math.abs(-dx * fz + dz * fx);
+        if (ahead < 7.5 || ahead > 30 || lateral > 6) continue;
+        if (!mayGo(signalAt(this.clock, sx, sz), eastWest)) target = Math.min(target, Math.max(0, (ahead - 9.5) * 0.7));
+      }
       const gap = (ox: number, oz: number, r: number) => {
         const dx = ox - c.x;
         const dz = oz - c.z;

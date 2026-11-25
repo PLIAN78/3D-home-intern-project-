@@ -41,7 +41,7 @@ export function gearOfRide(r: Exclude<Ride, { kind: "boat" }|{kind:"plane"}>): G
 
 /** Can you get in or on this? The lake boat is free; the school bus is lent for the co-op run. */
 export function canRide(r: Ride, g: GameState) {
-  if (r.kind === "boat"||r.kind==="plane") return true;
+  if (r.kind === "boat"||r.kind==="plane"||(r.kind==="heli"&&r.id)) return true;
   if (r.kind === "vehicle" && r.id === "bus") return g.coop === "hired" || g.coop === "riding" || g.coop === "done";
   return g.owned[gearOfRide(r)];
 }
@@ -173,7 +173,7 @@ function rideFor(id: GearId): Ride | null {
 }
 
 function positionOf(s: Simulation, r: Ride) {
-  if (r.kind === "heli") return s.heli;
+  if (r.kind === "heli") return r.id ? s.helis[r.id] ?? null : s.heli;
   if (r.kind === "boat") return s.boats[r.id??"lake-boat"];
   if(r.kind==="plane")return s.planes[r.id];
   if (r.kind === "animal") return s.animals[r.id] ?? null;

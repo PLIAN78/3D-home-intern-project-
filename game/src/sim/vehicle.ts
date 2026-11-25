@@ -44,6 +44,12 @@ export interface VehicleSpec {
   allWheelDrive: boolean;
   /** Lower the centre of mass (m below the collider centre) so it corners without rolling. */
   comDrop: number;
+  /**
+   * How readily the tail steps out, 0..1: how much rear grip the handbrake takes away,
+   * how much power oversteer there is, and how long a slide holds under throttle. Light
+   * rear-drive coupes drift; trucks, the SUV and the bus barely do.
+   */
+  drift: number;
 }
 
 export const VEHICLES: Record<VehicleId, VehicleSpec> = {
@@ -71,6 +77,7 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 8,
     allWheelDrive: true,
     comDrop: 0.45,
+    drift: 0.3,
   },
   car: {
     id: "car",
@@ -96,6 +103,7 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 10,
     allWheelDrive: false,
     comDrop: 0.4,
+    drift: 0.75,
   },
   trail: {
     id: "trail",
@@ -121,6 +129,7 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 9,
     allWheelDrive: true,
     comDrop: 0.55,
+    drift: 0.25,
   },
   hauler: {
     id: "hauler",
@@ -146,6 +155,7 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 8,
     allWheelDrive: false,
     comDrop: 0.5,
+    drift: 0.15,
   },
   roadster: {
     id: "roadster",
@@ -171,6 +181,7 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 9,
     allWheelDrive: false,
     comDrop: 0.35,
+    drift: 0.85,
   },
   coupe: {
     id: "coupe",
@@ -196,6 +207,7 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 10,
     allWheelDrive: false,
     comDrop: 0.38,
+    drift: 0.95,
   },
   super: {
     id: "super",
@@ -221,6 +233,7 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 10,
     allWheelDrive: true,
     comDrop: 0.42,
+    drift: 0.5,
   },
   suv: {
     id: "suv",
@@ -246,6 +259,7 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 9,
     allWheelDrive: true,
     comDrop: 0.55,
+    drift: 0.2,
   },
   sedan: {
     id: "sedan",
@@ -271,6 +285,7 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 9,
     allWheelDrive: false,
     comDrop: 0.42,
+    drift: 0.45,
   },
   bus: {
     id: "bus",
@@ -296,6 +311,7 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
     reverseSpeed: 6,
     allWheelDrive: false,
     comDrop: 0.7,
+    drift: 0.05,
   },
 };
 
@@ -318,6 +334,9 @@ export class VehicleController {
   private flipped = 0;
   /** Engine load 0..1 for sound and exhaust. */
   load = 0;
+  /** Slip angle (radians) between where the car points and where it's going, and whether it's drifting. */
+  slip = 0;
+  drifting = false;
   /** Velocity before the last physics step, for breaking things on impact. */
   preVel: Vec3 = { x: 0, y: 0, z: 0 };
 
@@ -421,8 +440,36 @@ export class VehicleController {
     }
     this.load = clamp(Math.abs(engine) / s.engine, 0, 1);
 
-    // Speed-sensitive steering: full lock at a crawl, much less at speed.
-    const lock = s.maxSteer / (1 + Math.abs(v) / 12);
+    // Slip angle from the sideways part of the velocity.
+    const lv = this.body.linvel(), right = rotate(this.rotation, { x: 0, y: 0, z: 1 });
+    const lateral = lv.x * right.x + lv.z * right.z;
+    this.slip = Math.atan2(Math.abs(lateral), Math.max(1, Math.abs(v)));
+    this.drifting = Math.abs(v) > 6 && this.slip > 0.12;
+
+    // Rear grip: the handbrake breaks the tail loose, throttle in a turn oversteers a
+    // rear-driven car, and a slide holds while you keep the power on. All scaled by spec.drift.
+    const t = clamp(input.throttle, 0, 1), turning = Math.abs(clamp(input.steer, -1, 1));
+    let rearGrip = 1;
+    if (input.handbrake) rearGrip = 0.55 - 0.4 * s.drift;
+    if (Math.abs(v) > 6 && t > 0.5 && turning > 0.3) rearGrip *= 1 - (s.allWheelDrive ? 0.5 : 1) * 0.5 * s.drift * t * turning;
+    if (this.drifting && t > 0.3) rearGrip = Math.min(rearGrip, 1 - 0.55 * s.drift);
+    // Arcade drift assist: break the tail loose with a yaw kick (handbrake, or power in a
+    // turn for the cars that oversteer), and cap the spin so a slide stays catchable.
+    const kick = Math.abs(v) > 7 && turning > 0.2 && (input.handbrake || (t > 0.6 && this.drifting));
+    if (kick && s.drift > 0.1) {
+      const w = this.body.angvel(), cap = 0.6 + 1.0 * s.drift;
+      const wy = clamp(w.y - clamp(input.steer, -1, 1) * s.drift * (input.handbrake ? 4.2 : 1.4) * dt, -cap, cap);
+      this.body.setAngvel({ x: w.x, y: wy, z: w.z }, true);
+    }
+    // Past about 35° of slide, ease the rotation so it doesn't spin out.
+    if (this.slip > 0.6 && Math.abs(v) > 4) {
+      const w = this.body.angvel();
+      this.body.setAngvel({ x: w.x, y: w.y * (1 - damp(2.5 + 3 * (1 - s.drift), dt)), z: w.z }, true);
+    }
+
+    // Speed-sensitive steering: full lock at a crawl, much less at speed, but enough to
+    // catch a slide (counter-steer) while drifting.
+    const lock = this.drifting ? s.maxSteer * (0.45 + 0.4 * s.drift) : s.maxSteer / (1 + Math.abs(v) / 12);
     this.steer += (-clamp(input.steer, -1, 1) * lock - this.steer) * damp(8, dt);
 
     for (let i = 0; i < 4; i++) {
@@ -433,8 +480,8 @@ export class VehicleController {
       this.controller.setWheelEngineForce(i, driven ? engine / (s.allWheelDrive ? 2 : 1) : 0);
       const hb = input.handbrake && rear ? s.brake * 1.2 : 0;
       this.controller.setWheelBrake(i, brake + hb);
-      // Handbrake turns: the rear tyres let go so the tail can slide.
-      this.controller.setWheelSideFrictionStiffness(i, rear && input.handbrake ? s.sideFriction * 0.35 : s.sideFriction);
+      this.controller.setWheelSideFrictionStiffness(i, rear ? s.sideFriction * rearGrip : s.sideFriction);
+      this.controller.setWheelFrictionSlip(i, rear ? s.frictionSlip * (0.45 + 0.55 * rearGrip) : s.frictionSlip);
     }
     if (input.throttle !== 0 || input.steer !== 0) this.body.wakeUp();
 
