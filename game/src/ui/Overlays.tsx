@@ -283,8 +283,8 @@ export function Title() {
     <div className="title-screen">
       <div className="title-card">
         <div className="logo">CAIVAN</div>
-        <h1>Build It</h1>
-        <p className="tagline">An open-world day on the job in Caivan Ridge. Check survey stakes, help a family choose their home, fix the panel line, pour a foundation and hand over the keys. Then drive up into the hills, run deliveries, and earn your way to a helicopter.</p>
+        <h1>Build It</h1><div className="eyebrow">V6.1 · VATALOO & AIRFIELD</div>
+        <p className="tagline">An open-world day on the job in Caivan Ridge. Check survey stakes, help a family choose their home, fix the panel line, pour a foundation and hand over the keys. Explore the Owawa riverfront and Heron Gardens, ride the express to university or the airport, recruit co-ops, and buy a Northshore condo.</p>
         <button className="play" onClick={start} autoFocus>
           Start your first day
         </button>

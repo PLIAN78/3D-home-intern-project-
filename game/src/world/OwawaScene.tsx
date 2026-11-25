@@ -12,7 +12,7 @@ import { runtime } from "../core/runtime";
 import { Human, TOWNSFOLK } from "../models/human";
 import { angleDelta } from "../sim/math";
 import { B } from "./props";
-import { BENCHES, CITY_BUILDINGS, CITY_HALL, CITY_SIGN, CITY_STREETS, FOUNTAIN, OWAWA_ROADS, PORTICO, SHAWARMA, SQUARE, SQUARE_PEOPLE, type CityBuilding } from "./owawa";
+import { BENCHES, CITY_BUILDINGS, CITY_HALL, CITY_PAVING, CITY_SIGN, CITY_STREETS, FOUNTAIN, OWAWA_ROADS, PORTICO, SHAWARMA, SQUARE, SQUARE_PEOPLE, type CityBuilding } from "./owawa";
 import { CITY_Y, groundAt } from "./terrain";
 
 /**
@@ -46,10 +46,7 @@ export function OwawaScene() {
 
 const XS = [CITY_STREETS.lyon.x, CITY_STREETS.elgin.x, CITY_STREETS.kent.x];
 const ZS = [CITY_STREETS.wellington.z, CITY_STREETS.rideau.z, CITY_STREETS.queen.z];
-const X0 = 540;
-const X1 = 840;
-const Z0 = -820;
-const Z1 = -500;
+const { x0: X0, x1: X1, z0: Z0, z1: Z1 } = CITY_PAVING;
 
 function Streets() {
   const site = useMemo(() => {
@@ -192,7 +189,7 @@ const facadeCache = new Map<string, THREE.Material>();
  * Towers: curtain wall (glass with mullions and spandrels); mid-rises:
  * precast panels with punched windows. Some offices have their lights on.
  */
-function facade(kind: "tower" | "midrise", tone: number) {
+export function facade(kind: "tower" | "midrise", tone: number) {
   const key = `${kind}|${tone}`;
   let m = facadeCache.get(key);
   if (m) return m;
@@ -275,7 +272,7 @@ function facade(kind: "tower" | "midrise", tone: number) {
 }
 
 /** One downtown building: a lobby or shopfront base, the facade, a crown and rooftop plant. */
-function Building({ b }: { b: CityBuilding }) {
+export function Building({ b }: { b: CityBuilding }) {
   const [x, z] = b.at;
   const [w, d, h] = b.size;
   const geo = useMemo(

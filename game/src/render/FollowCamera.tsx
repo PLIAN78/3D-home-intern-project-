@@ -27,6 +27,7 @@ const RIG = {
   suv: { dist: 9.6, lift: 2.0, fov: 56 },
   sedan: { dist: 9, lift: 1.7, fov: 56 },
   bus: { dist: 15, lift: 3.2, fov: 56 },
+  plane: {dist:20,lift:3.3,fov:60},
   boat: { dist: 11, lift: 2.4, fov: 57 },
   heli: { dist: 17, lift: 2.4, fov: 58 },
 };
@@ -45,7 +46,7 @@ export function FollowCamera() {
     const dt = Math.min(rawDt, 1 / 15);
     const keys = cameraKeys();
     const c = sim.control;
-    const kind = c.kind === "vehicle" || c.kind === "animal" ? c.id : c.kind === "heli" ? "heli" : sim.player.jetpack ? "jetpack" : "foot";
+    const kind = c.kind === "vehicle" || c.kind === "animal" ? c.id : c.kind === "heli" ? "heli" : c.kind==="plane"?"plane":c.kind==="boat"?"boat":sim.player.jetpack ? "jetpack" : "foot";
     const rig = RIG[kind];
 
     runtime.cameraYaw += mouse.dx * 0.005 + keys.yaw * 2.2 * dt;
@@ -59,7 +60,7 @@ export function FollowCamera() {
 
     const steered = c.kind !== "foot";
     const idle = performance.now() - mouse.lastMove > 1100 && keys.yaw === 0;
-    const flying = (c.kind === "foot" && sim.player.jetpack && !sim.player.grounded) || (c.kind === "heli" && !f.grounded);
+    const flying = (c.kind === "foot" && sim.player.jetpack && !sim.player.grounded) || ((c.kind === "heli"||c.kind==="plane") && !f.grounded);
     if ((steered || flying) && idle && Math.abs(f.speed) > 2) {
       const behind = f.speed < -1 ? f.heading + Math.PI : f.heading;
       runtime.cameraYaw += angleDelta(runtime.cameraYaw, behind) * Math.min(1, dt * (flying ? 1.2 : 2.2));
@@ -79,7 +80,9 @@ export function FollowCamera() {
     desired.y = Math.max(desired.y, groundY + 0.4, terrainHeight(desired.x, desired.z) + 0.6);
 
     const follow = 1 - Math.exp(-dt * (steered ? 7 : 11));
-    camera.position.lerp(desired, want < len ? 1 : follow);
+    const transferred=camera.position.distanceTo(target)>120;
+    camera.position.lerp(desired, transferred||want < len ? 1 : follow);
+    if(transferred)smoothLook.copy(target);
 
     // Shake from impacts.
     if (runtime.shake > 0.001) {
@@ -101,3 +104,4 @@ export function FollowCamera() {
   }, -20);
   return null;
 }
+

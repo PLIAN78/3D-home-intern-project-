@@ -1,5 +1,6 @@
 import type { Road } from "@/lib/models/community";
 import type { Box, V2 } from "./map";
+import { RIVER_WALK } from "./v6";
 import { CITY_Y, groundAt, OWAWA } from "./terrain";
 
 /**
@@ -12,18 +13,17 @@ const ROAD_DIMS = { width: 9, sidewalkWidth: 1.6, boulevardWidth: 2 };
 const road = (id: string, from: V2, to: V2): Road => ({ id, from, to, ...ROAD_DIMS });
 
 export const CITY_STREETS = {
-  wellington: { name: "Wellington Avenue", z: -740 },
-  rideau: { name: "Rideau Avenue", z: -660 },
-  queen: { name: "Queen Street", z: -580 },
+  wellington: { name: "Wellington Avenue", z: -840 },
+  rideau: { name: "Rideau Avenue", z: -760 },
+  queen: { name: "Queen Street", z: -680 },
   lyon: { name: "Lyon Street", x: 610 },
   elgin: { name: "Elgin Street", x: 690 },
   kent: { name: "Kent Street", x: 770 },
 } as const;
 
-const X0 = 540;
-const X1 = 840;
-const Z0 = -820;
-const Z1 = -500;
+/** Shared footprint for downtown paving in the world, map and grass mask. */
+export const CITY_PAVING = { x0: 540, x1: 840, z0: -920, z1: -600 } as const;
+const { x0: X0, x1: X1, z0: Z0, z1: Z1 } = CITY_PAVING;
 
 export const OWAWA_ROADS: Road[] = [
   road("wellington", [X0, CITY_STREETS.wellington.z], [X1, CITY_STREETS.wellington.z]),
@@ -49,29 +49,29 @@ export interface CityBuilding {
 
 /** Every building downtown (City Hall and the shawarma place are separate). */
 export const CITY_BUILDINGS: CityBuilding[] = [
-  { at: [575, -780], size: [28, 28, 96], kind: "tower", tone: 0 },
-  { at: [650, -782], size: [26, 30, 124], kind: "tower", tone: 1, name: "CAIVAN TOWER" },
-  { at: [714, -790], size: [26, 26, 36], kind: "midrise", tone: 2 },
-  { at: [748, -766], size: [22, 26, 48], kind: "midrise", tone: 3 },
-  { at: [805, -780], size: [26, 26, 110], kind: "tower", tone: 2 },
-  { at: [575, -700], size: [40, 30, 28], kind: "midrise", tone: 1 },
-  { at: [650, -700], size: [30, 30, 150], kind: "tower", tone: 3 },
-  { at: [730, -700], size: [26, 34, 84], kind: "tower", tone: 0 },
-  { at: [805, -700], size: [36, 40, 40], kind: "midrise", tone: 0 },
-  { at: [575, -620], size: [40, 28, 22], kind: "midrise", tone: 2 },
-  { at: [745, -632], size: [30, 24, 26], kind: "midrise", tone: 1 },
-  { at: [805, -620], size: [28, 28, 72], kind: "tower", tone: 1 },
-  { at: [575, -540], size: [40, 30, 12], kind: "lowrise", tone: 3 },
-  { at: [730, -540], size: [30, 40, 30], kind: "midrise", tone: 2 },
-  { at: [805, -540], size: [30, 30, 64], kind: "tower", tone: 3 },
+  { at: [575, -880], size: [28, 28, 96], kind: "tower", tone: 0 },
+  { at: [650, -882], size: [26, 30, 124], kind: "tower", tone: 1, name: "CAIVAN TOWER" },
+  { at: [714, -890], size: [26, 26, 36], kind: "midrise", tone: 2 },
+  { at: [748, -866], size: [22, 26, 48], kind: "midrise", tone: 3 },
+  { at: [805, -880], size: [26, 26, 110], kind: "tower", tone: 2 },
+  { at: [575, -800], size: [40, 30, 28], kind: "midrise", tone: 1 },
+  { at: [650, -800], size: [30, 30, 150], kind: "tower", tone: 3 },
+  { at: [730, -800], size: [26, 34, 84], kind: "tower", tone: 0 },
+  { at: [805, -800], size: [36, 40, 40], kind: "midrise", tone: 0 },
+  { at: [575, -720], size: [40, 28, 22], kind: "midrise", tone: 2 },
+  { at: [745, -732], size: [30, 24, 26], kind: "midrise", tone: 1 },
+  { at: [805, -720], size: [28, 28, 72], kind: "tower", tone: 1 },
+  { at: [575, -640], size: [40, 30, 12], kind: "lowrise", tone: 3 },
+  { at: [730, -640], size: [30, 40, 30], kind: "midrise", tone: 2 },
+  { at: [805, -640], size: [30, 30, 64], kind: "tower", tone: 3 },
 ];
 
 /** City Hall: a stone civic building with a clock tower, facing its square to the south. */
-export const CITY_HALL = { at: [650, -632] as V2, size: [42, 24, 16] as [number, number, number], tower: { at: [650, -636] as V2, size: [9, 9, 40] as [number, number, number] } };
+export const CITY_HALL = { at: [650, -732] as V2, size: [42, 24, 16] as [number, number, number], tower: { at: [650, -736] as V2, size: [9, 9, 40] as [number, number, number] } };
 /** Owawa Square: the open block south of City Hall, across Queen Street. */
-export const SQUARE = { x0: 618.1, z0: -571.9, x1: 681.9, z1: -508.1 };
+export const SQUARE = { x0: 618.1, z0: -671.9, x1: 681.9, z1: -608.1 };
 /** The shawarma place on Queen Street. */
-export const SHAWARMA = { at: [712, -596] as V2, size: [14, 12, 5] as [number, number, number] };
+export const SHAWARMA = { at: [712, -696] as V2, size: [14, 12, 5] as [number, number, number] };
 
 const HALL_FRONT = CITY_HALL.at[1] + CITY_HALL.size[1] / 2;
 /** City Hall's portico: a raised platform with two steps down to the plaza, and six columns. Solid, so you climb it. */
@@ -92,16 +92,16 @@ export const SHAWARMA_DOOR: V2 = [SHAWARMA.at[0], SHAWARMA.at[1] + SHAWARMA.size
 /** Traffic and pedestrian loops downtown (on top of the plateau). */
 export const CITY_TRAFFIC: V2[][] = [
   [
-    [610, -740],
-    [770, -740],
-    [770, -580],
-    [610, -580],
+    [610, -840],
+    [770, -840],
+    [770, -680],
+    [610, -680],
   ],
   [
-    [545, -659.95],
-    [835, -659.95],
-    [835, -660.05],
-    [545, -660.05],
+    [545, -759.95],
+    [835, -759.95],
+    [835, -760.05],
+    [545, -760.05],
   ],
 ];
 export const CITY_WALKS: V2[][] = (() => {
@@ -112,7 +112,7 @@ export const CITY_WALKS: V2[][] = (() => {
     [x1 - k, z1 - k],
     [x0 + k, z1 - k],
   ];
-  return [block(610, -740, 690, -660), block(690, -740, 770, -660), block(610, -660, 690, -580), block(690, -660, 770, -580), block(610, -580, 690, -500), block(690, -580, 770, -500)];
+  return [...RIVER_WALK.slice(1).map((p,i)=>[[RIVER_WALK[i][0],RIVER_WALK[i][1]-8],[p[0],p[1]-8],[p[0],p[1]-11],[RIVER_WALK[i][0],RIVER_WALK[i][1]-11]] as V2[]), block(610, -840, 690, -760), block(690, -840, 770, -760), block(610, -760, 690, -680), block(690, -760, 770, -680), block(610, -680, 690, -600), block(690, -680, 770, -600)];
 })();
 
 /** Every building footprint downtown, for keeping trees and props clear. */
@@ -120,10 +120,10 @@ const FOOTPRINTS: { at: V2; size: [number, number, number] }[] = [...CITY_BUILDI
 const clearOfBuildings = (x: number, z: number, pad: number) => FOOTPRINTS.every((b) => Math.abs(x - b.at[0]) > b.size[0] / 2 + pad || Math.abs(z - b.at[1]) > b.size[1] / 2 + pad);
 
 /** "Welcome to Owawa" beside Owawa Road, below the plateau. */
-export const CITY_SIGN = { at: [701, -468] as V2 };
+export const CITY_SIGN = { at: [701, -568] as V2 };
 
 /** The fountain in Owawa Square. */
-export const FOUNTAIN = { at: [650, -540] as V2, radius: 3.5 };
+export const FOUNTAIN = { at: [650, -640] as V2, radius: 3.5 };
 
 /**
  * Street trees in tree pits just behind the sidewalks (clear of the lamp
@@ -171,12 +171,12 @@ export const SQUARE_PEOPLE: { at: V2; facing: number; outfit: number; pose: "sit
     const spots = i === 0 ? [-0.5, 0.5] : [0.3];
     return spots.map((o, k) => ({ at: [b.at[0] + ax * o - Math.cos(b.heading) * 0.15, b.at[1] + az * o - Math.sin(b.heading) * 0.15] as V2, facing: b.heading, outfit: (i * 3 + k * 5) % 10, pose: "sit" as const }));
   }),
-  { at: [645, -553], facing: 1.2, outfit: 1, pose: "auto" },
-  { at: [646.1, -552.2], facing: -2.1, outfit: 4, pose: "auto" },
-  { at: [628, -610], facing: Math.PI / 2, outfit: 0, pose: "auto" },
-  { at: [671, -612], facing: 2.2, outfit: 3, pose: "auto" },
-  { at: [700, -585], facing: -Math.PI / 2, outfit: 5, pose: "auto" },
-  { at: [722, -585.5], facing: Math.PI, outfit: 8, pose: "auto" },
+  { at: [645, -653], facing: 1.2, outfit: 1, pose: "auto" },
+  { at: [646.1, -652.2], facing: -2.1, outfit: 4, pose: "auto" },
+  { at: [628, -710], facing: Math.PI / 2, outfit: 0, pose: "auto" },
+  { at: [671, -712], facing: 2.2, outfit: 3, pose: "auto" },
+  { at: [700, -685], facing: -Math.PI / 2, outfit: 5, pose: "auto" },
+  { at: [722, -685.5], facing: Math.PI, outfit: 8, pose: "auto" },
 ];
 
 export function owawaBoxes(): Box[] {

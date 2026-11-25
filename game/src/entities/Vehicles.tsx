@@ -7,6 +7,9 @@ import { ElephantModel, HorseModel } from "../models/animals";
 import { HeliModel } from "../models/heli";
 import { ModelCar } from "../models/cars";
 import { BusShell } from "../models/bus";
+import {MotorShipModel} from "../models/motorShip";
+import {LightPlaneModel} from "../models/planes";
+import {PLANE_SPOTS,type PlaneId} from "../sim/plane";
 import { BoatModel } from "../models/boat";
 import { Human } from "../models/human";
 import { useGame } from "../story/store";
@@ -30,7 +33,8 @@ export function Vehicles() {
         <AnimalEntity key={id} id={id} />
       ))}
       {sim.heli && <HeliEntity />}
-      <BoatEntity />
+      {Object.keys(sim.boats).map(id=><BoatEntity key={id} id={id}/>)}
+      {(Object.keys(sim.planes) as PlaneId[]).map(id=><PlaneEntity key={id} id={id}/>)}
       <Debris />
     </>
   );
@@ -170,7 +174,7 @@ function VehicleEntity({ id }: { id: VehicleId }) {
 }
 
 /** The Lakerunner: bobs on the water, rolls into turns, pitches up under power. */
-function BoatEntity() {
+function BoatEntity({id}:{id:string}) {
   const outfit = useGame((g) => g.outfit);
   const root = useRef<THREE.Group>(null);
   const tilt = useRef<THREE.Group>(null);
@@ -178,25 +182,34 @@ function BoatEntity() {
   useFrame(() => {
     const s = host.sim;
     if (!s || !root.current) return;
-    const p = s.pose("boat", host.alpha);
+    const p = s.pose("boat:"+id, host.alpha);
     root.current.position.set(p.x, p.y, p.z);
     root.current.quaternion.set(p.q.x, p.q.y, p.q.z, p.q.w);
-    const b = s.boat;
+    const b = s.boats[id];
     if (tilt.current) tilt.current.rotation.set(b.roll, 0, b.pitch);
     if (tilt.current) tilt.current.position.y = b.bob;
-    if (skipper.current) skipper.current.visible = s.control.kind === "boat";
+    if (skipper.current) skipper.current.visible = s.control.kind === "boat" && s.boats[s.control.id??"lake-boat"]===b;
   });
-  const speed = () => host.sim?.boat.speed ?? 0;
+  const speed = () => host.sim?.boats[id]?.speed ?? 0;
   return (
     <group ref={root} name="boat">
       <group ref={tilt}>
-        <BoatModel speed={speed} />
+        {id.endsWith("ship")?<MotorShipModel/>:<BoatModel speed={speed} />}
         <group ref={skipper} position={[-0.5, 0.02, 0.48]} visible={false}>
           <Human outfit={outfit} pose="sit" />
         </group>
       </group>
     </group>
   );
+}
+
+function PlaneEntity({id}:{id:PlaneId}){
+ const root=useRef<THREE.Group>(null),tilt=useRef<THREE.Group>(null);
+ useFrame(()=>{const sim=host.sim,p=sim?.planes[id];if(!sim||!p||!root.current)return;
+  const pose=sim.pose("plane:"+id,host.alpha);root.current.position.set(pose.x,pose.y,pose.z);root.current.quaternion.set(pose.q.x,pose.q.y,pose.q.z,pose.q.w);
+  if(tilt.current)tilt.current.rotation.set(p.roll,0,p.pitch);
+ });
+ return <group ref={root} name={id}><group ref={tilt}><LightPlaneModel color={PLANE_SPOTS[id].color} speed={()=>host.sim?.planes[id].speed??0}/></group></group>;
 }
 
 /** Saddle height for the rider on each animal. */
@@ -284,3 +297,4 @@ function Debris() {
   });
   return <instancedMesh ref={mesh} args={[plankGeo, lumber(), MAX_PLANKS]} castShadow receiveShadow frustumCulled={false} />;
 }
+

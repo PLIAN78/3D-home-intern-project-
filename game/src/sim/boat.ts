@@ -42,13 +42,14 @@ export class BoatController {
     z: number,
     heading: number,
     waterY: number,
+    readonly spec:typeof BOAT & {halfLength?:number}=BOAT,
   ) {
     this.x = x;
     this.z = z;
     this.y = waterY;
     this.heading = heading;
-    this.body = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(x, this.centreY, z));
-    this.collider = world.createCollider(R.ColliderDesc.capsule(BOAT.halfHeight, BOAT.radius).setCollisionGroups(groups(LAYER.VEHICLE, LAYER.STATIC | LAYER.BREAKABLE | LAYER.VEHICLE | LAYER.ANIMAL)), this.body);
+    this.body = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(x, this.centreY, z).setRotation(quatFromHeading(heading)));
+    this.collider = world.createCollider((this.spec.halfLength?R.ColliderDesc.cuboid(this.spec.halfLength,this.spec.halfHeight,this.spec.radius):R.ColliderDesc.capsule(this.spec.halfHeight,this.spec.radius)).setCollisionGroups(groups(LAYER.VEHICLE, LAYER.STATIC | LAYER.BREAKABLE | LAYER.VEHICLE | LAYER.ANIMAL)), this.body);
     this.kcc = world.createCharacterController(0.05);
     this.kcc.setUp({ x: 0, y: 1, z: 0 });
     this.kcc.setMaxSlopeClimbAngle((4 * Math.PI) / 180);
@@ -57,7 +58,7 @@ export class BoatController {
 
   /** The capsule's centre: its bottom sits a little under the water. */
   private get centreY() {
-    return this.y + BOAT.halfHeight + BOAT.radius - BOAT.draft - 0.55;
+    return this.spec.halfLength?this.y+.4:this.y + this.spec.halfHeight + this.spec.radius - this.spec.draft - 0.55;
   }
 
   place(x: number, z: number, heading = this.heading) {
@@ -73,13 +74,13 @@ export class BoatController {
     this.t += dt;
     const fwd = input ? clamp(input.forward, -1, 1) : 0;
     const side = input ? clamp(input.side, -1, 1) : 0;
-    const want = fwd > 0 ? BOAT.top * fwd : fwd < 0 ? -BOAT.reverse : 0;
-    this.speed = fwd === 0 ? this.speed * (1 - damp(BOAT.drag, dt)) : approach(this.speed, want, BOAT.accel * dt);
+    const want = fwd > 0 ? this.spec.top * fwd : fwd < 0 ? -this.spec.reverse : 0;
+    this.speed = fwd === 0 ? this.speed * (1 - damp(this.spec.drag, dt)) : approach(this.speed, want, this.spec.accel * dt);
     // Boats steer by the prop wash: a little at rest, more with way on.
-    const steer = BOAT.turn * (0.35 + 0.65 * clamp(Math.abs(this.speed) / 8, 0, 1)) * (this.speed < -0.2 ? -1 : 1);
+    const steer = this.spec.turn * (0.35 + 0.65 * clamp(Math.abs(this.speed) / 8, 0, 1)) * (this.speed < -0.2 ? -1 : 1);
     this.heading += side * steer * dt;
-    this.roll += (side * clamp(Math.abs(this.speed) / BOAT.top, 0, 1) * 0.18 - this.roll) * damp(3, dt);
-    this.pitch += ((this.speed > 0 ? clamp(this.speed / BOAT.top, 0, 1) * 0.08 : 0) + (fwd > 0 ? 0.03 : 0) - this.pitch) * damp(2, dt);
+    this.roll += (side * clamp(Math.abs(this.speed) / this.spec.top, 0, 1) * 0.18 - this.roll) * damp(3, dt);
+    this.pitch += ((this.speed > 0 ? clamp(this.speed / this.spec.top, 0, 1) * 0.08 : 0) + (fwd > 0 ? 0.03 : 0) - this.pitch) * damp(2, dt);
 
     const desired = { x: Math.cos(this.heading) * this.speed * dt, y: 0, z: Math.sin(this.heading) * this.speed * dt };
     this.kcc.computeColliderMovement(this.collider, desired, this.R.QueryFilterFlags.EXCLUDE_SENSORS, groups(LAYER.VEHICLE, LAYER.STATIC | LAYER.BREAKABLE | LAYER.VEHICLE | LAYER.ANIMAL));
@@ -98,3 +99,4 @@ export class BoatController {
     return Math.sin(this.t * 1.7) * 0.05 + Math.sin(this.t * 2.9 + 1) * 0.025;
   }
 }
+

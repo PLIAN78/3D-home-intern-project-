@@ -5,7 +5,7 @@ import { VEHICLE_IDS } from "../sim/vehicle";
 export type GearId = VehicleId | "horse" | "jetpack" | "heli" | "elephant";
 
 /** What the player is using: on foot, or one piece of gear. */
-export type ModeId = "walk" | "boat" | GearId;
+export type ModeId = "walk" | "boat" | "plane" | GearId;
 
 /** Hotbar slots. "car" is whichever of your cars is selected (press 2 again to switch). */
 export type SlotId = "walk" | "car" | "horse" | "jetpack" | "heli" | "elephant";
@@ -54,7 +54,7 @@ export function isVehicle(id: GearId | ModeId): id is VehicleId {
 
 /** The hotbar slot a mode belongs to. */
 export function slotOf(mode: ModeId): SlotId | null {
-  if (mode === "boat" || mode === "bus") return null;
+  if (mode === "boat" || mode === "plane" || mode === "bus") return null;
   return isVehicle(mode) ? "car" : mode;
 }
 
@@ -139,3 +139,4 @@ export function cheatMatcher(code = CHEAT_CODE) {
     return false;
   };
 }
+

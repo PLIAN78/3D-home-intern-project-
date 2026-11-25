@@ -1,3 +1,4 @@
+import { riverZ,riverWidth,ISLANDS,NORTH_ROADS,RAIL_PATH,STATIONS,PORTS,CAMPUS_PATHS } from "../world/v6";
 import { runtime } from "../core/runtime";
 import { host, TREES } from "../core/simHost";
 import type { Owned } from "../story/economy";
@@ -7,7 +8,7 @@ import { PLACE_IDS, PLACES } from "../story/places";
 import { OFFICE } from "../world/office";
 import { CAIVAN_RIDGE, collisionBoxes, LANDMARKS, PAVED, PEN, STREETS, type V2 } from "../world/map";
 import { COTTAGE, COUNTRY_ROADS, FLAT_HALF, LAKE, LAKE_Y, lakeRadius, OWAWA, PLAY_HALF, terrainHeight } from "../world/terrain";
-import { CITY_HALL, CITY_STREETS, OWAWA_ROADS, SHAWARMA, SQUARE } from "../world/owawa";
+import { CITY_HALL, CITY_PAVING, CITY_STREETS, OWAWA_ROADS, SHAWARMA, SQUARE } from "../world/owawa";
 import { ELIAS, TACKLE_SEARCH } from "../world/lake";
 import { activeQuests, TRAN } from "../story/quests";
 import type { CoopStep, EliasStep, GameState } from "../story/store";
@@ -107,6 +108,9 @@ function paintBase(stages: Record<string, string>) {
   const ctx = c.getContext("2d")!;
   hillshade(ctx);
 
+  // River, new island communities and express rail share the world contract.
+  for(let x=-1000;x<1000;x+=4){ctx.fillStyle=PALETTE.water;ctx.fillRect(wx(x),wx(riverZ(x)-riverWidth(x)/2),4*PPM,riverWidth(x)*PPM);}
+  for(const island of ISLANDS){ctx.fillStyle=PALETTE.field;ctx.beginPath();ctx.ellipse(wx(island.at[0]),wx(island.at[1]),island.rx*PPM,island.rz*PPM,0,0,Math.PI*2);ctx.fill();}
   // Woods: every tree as a soft canopy dot.
   ctx.fillStyle = PALETTE.woods;
   for (const t of TREES) {
@@ -142,14 +146,14 @@ function paintBase(stages: Record<string, string>) {
 
   // Downtown Owawa: paved blocks and the square's lawn.
   ctx.fillStyle = PALETTE.parking;
-  ctx.fillRect(wx(540), wx(-820), 300 * PPM, 320 * PPM);
+  ctx.fillRect(wx(CITY_PAVING.x0), wx(CITY_PAVING.z0), (CITY_PAVING.x1 - CITY_PAVING.x0) * PPM, (CITY_PAVING.z1 - CITY_PAVING.z0) * PPM);
   ctx.fillStyle = PALETTE.field;
   ctx.fillRect(wx(SQUARE.x0), wx(SQUARE.z0), (SQUARE.x1 - SQUARE.x0) * PPM, (SQUARE.z1 - SQUARE.z0) * PPM);
 
   // Roads: casing, then surface. Country roads get a cream fill.
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  const streets = [...CAIVAN_RIDGE.roads, ...OWAWA_ROADS];
+  const streets = [...CAIVAN_RIDGE.roads, ...OWAWA_ROADS, ...NORTH_ROADS];
   for (const r of streets) strokePath(ctx, [r.from as V2, r.to as V2], r.width + 2.4, PALETTE.roadCase);
   for (const r of COUNTRY_ROADS) strokePath(ctx, r.points, r.width + 2.4, PALETTE.roadCase);
   for (const r of streets) strokePath(ctx, [r.from as V2, r.to as V2], r.width, PALETTE.road);
@@ -189,6 +193,10 @@ function paintBase(stages: Record<string, string>) {
   ctx.strokeRect(wx(PEN.centre[0] - PEN.half), wx(PEN.centre[1] - PEN.half), PEN.half * 2 * PPM, PEN.half * 2 * PPM);
   ctx.fillStyle = PALETTE.landmark;
   ctx.fillRect(wx(COTTAGE.position[0] - 23), wx(COTTAGE.position[1] - 2), 10 * PPM, 8 * PPM);
+  strokePath(ctx,RAIL_PATH,3,"#37a6bd");
+  for(const station of STATIONS){ctx.fillStyle="#e9f6f5";ctx.strokeStyle="#237e97";ctx.lineWidth=2;ctx.beginPath();ctx.arc(wx(station.at[0]),wx(station.at[1]),7,0,Math.PI*2);ctx.fill();ctx.stroke();}
+  for(const path of CAMPUS_PATHS)strokePath(ctx,path,5,"#d5cdb9");
+  ctx.fillStyle=PALETTE.parking;ctx.fillRect(wx(-896),wx(-275),42*PPM,550*PPM);
   base = c;
   baseStages = stages;
   return c;
@@ -314,11 +322,14 @@ const LABELS: { text: string; at: V2; minScale?: number }[] = [
   { text: "Subs", at: [LANDMARKS.subs.position[0], LANDMARKS.subs.position[1] + 10] },
   { text: "Burgers", at: [LANDMARKS.burger.position[0], LANDMARKS.burger.position[1] + 11] },
   { text: "Heron Lake", at: [LAKE.centre[0] - 70, LAKE.centre[1] + 60] },
-  { text: "Elias's Island", at: [LAKE.centre[0], LAKE.centre[1] - 38] },
+  {text:"Heron Gardens Island",at:[-650,-700]},
   { text: "Boat Dock", at: [-575, -520] },
   { text: "City Hall", at: [CITY_HALL.at[0], CITY_HALL.at[1] - 20] },
-  { text: "Owawa Square", at: [650, -512] },
+  { text: "Owawa Square", at: [650, -612] },
   { text: "Shawarma", at: [SHAWARMA.at[0], SHAWARMA.at[1] - 11] },
+  ...PORTS.map(p=>({text:p.name,at:[p.at[0],p.at[1]-16] as V2})),
+  ...STATIONS.map(s=>({text:s.name+" Station",at:[s.at[0],s.at[1]+24] as V2})),
+  ...[{text:"UNIVERSITY OF VATALOO",at:[675,700] as V2},{text:"Owawa River",at:[70,riverZ(70)] as V2},{text:"Regional Airport",at:[-800,0] as V2},{text:"Riverbank Financial",at:[-410,-830] as V2},{text:"Northshore Condos",at:[-170,-830] as V2}],
   { text: "OWAWA", at: [OWAWA.centre[0], OWAWA.centre[1] - OWAWA.half + 4] },
 ];
 
@@ -430,7 +441,8 @@ export function drawMap(ctx: CanvasRenderingContext2D, w: number, h: number, v: 
     for (const veh of Object.values(sim.vehicles)) if (veh) spots.push([veh.position.x, veh.position.z]);
     for (const [id, a] of Object.entries(sim.animals)) if (a && (id !== "elephant" || st.owned.elephant)) spots.push([a.x, a.z]);
     if (sim.heli) spots.push([sim.heli.x, sim.heli.z]);
-    spots.push([sim.boat.x, sim.boat.z]);
+    for(const b of Object.values(sim.boats))spots.push([b.x,b.z]);
+    for(const p of Object.values(sim.planes))spots.push([p.x,p.z]);
     const b = runtime.body;
     for (const [x, z] of spots) if (Math.hypot(x - b.x, z - b.z) > 3) marker(ctx, ...P(x, z), "vehicle");
   }

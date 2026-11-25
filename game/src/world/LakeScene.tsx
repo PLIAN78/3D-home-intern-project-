@@ -360,3 +360,4 @@ function TackleBox() {
 }
 
 const beaconMat = new THREE.MeshBasicMaterial({ color: "#facc15", transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false });
+

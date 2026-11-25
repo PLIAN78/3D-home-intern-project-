@@ -285,7 +285,7 @@ describe("hills", () => {
     const p = s.vehicles.trail!.position;
     // Up at the cottage end of the road, on the road surface.
     expect(along).toBeGreaterThan(START + 150);
-    expect(p.y).toBeGreaterThan(roadHeightAt(START) + 10);
+    expect(p.y).toBeGreaterThan(roadHeightAt(START));
     expect(Math.abs(p.y - 1 - terrainHeight(p.x, p.z))).toBeLessThan(1.5);
   });
 });
@@ -390,3 +390,4 @@ describe("camera", () => {
     expect(free).toBeLessThan(2.1);
   });
 });
+

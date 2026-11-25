@@ -7,8 +7,10 @@ import { runtime } from "../core/runtime";
 import { noBackfaceFlip } from "../render/materials";
 import { useQuality } from "../render/quality";
 import { useGame } from "../story/store";
-import { CAIVAN_RIDGE, collisionBoxes, FRONT, LANDMARKS, PAVED, WORLD_HALF } from "./map";
-import { COUNTRY_ROADS } from "./terrain";
+import { CAIVAN_RIDGE, collisionBoxes, LANDMARKS, PAVED } from "./map";
+import {CITY_PAVING,OWAWA_ROADS} from "./owawa";
+import { CAMPUS_PATHS, AIRPORT, NORTH_ROADS, riverZ, riverWidth } from "./v6";
+import { COUNTRY_ROADS, PLAY_HALF,LAKE } from "./terrain";
 
 /**
  * Real grass near the camera: tens of thousands of instanced blades in a square
@@ -19,23 +21,23 @@ import { COUNTRY_ROADS } from "./terrain";
  * look beyond the field, which fades out at its edge.
  */
 
-const MASK_SIZE = 1024;
+const MASK_SIZE = 2048;
 
 /** Paints the grass mask: white = lawn, black = no grass. */
 function paintMask(stages: Record<string, string>) {
   const c = document.createElement("canvas");
   c.width = c.height = MASK_SIZE;
   const ctx = c.getContext("2d")!;
-  const k = MASK_SIZE / (WORLD_HALF * 2);
-  const X = (x: number) => (x + WORLD_HALF) * k;
-  const Z = (z: number) => (z + WORLD_HALF) * k;
+  const k = MASK_SIZE / (PLAY_HALF * 2);
+  const X = (x: number) => (x + PLAY_HALF) * k;
+  const Z = (z: number) => (z + PLAY_HALF) * k;
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, MASK_SIZE, MASK_SIZE);
   ctx.fillStyle = "#000";
   ctx.strokeStyle = "#000";
   ctx.lineCap = "butt";
   // Streets: the whole right-of-way except the grass boulevard strip.
-  for (const r of CAIVAN_RIDGE.roads) {
+  for (const r of [...CAIVAN_RIDGE.roads,...NORTH_ROADS,...OWAWA_ROADS]) {
     ctx.lineWidth = (r.width + 0.6) * k;
     ctx.beginPath();
     ctx.moveTo(X(r.from[0]), Z(r.from[1]));
@@ -48,7 +50,7 @@ function paintMask(stages: Record<string, string>) {
     const nx = -dz / L;
     const nz = dx / L;
     for (const side of [-1, 1]) {
-      const off = (FRONT - r.sidewalkWidth / 2) * side;
+      const off = (r.width/2+r.boulevardWidth+r.sidewalkWidth/2) * side;
       ctx.lineWidth = (r.sidewalkWidth + 0.3) * k;
       ctx.beginPath();
       ctx.moveTo(X(r.from[0] + nx * off), Z(r.from[1] + nz * off));
@@ -115,9 +117,18 @@ function paintMask(stages: Record<string, string>) {
     road.points.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z))));
     ctx.stroke();
   }
+  // V6: the mask covers the whole playable world, including university paths and airport pavement.
+  ctx.lineWidth=9*k;
+  for(const path of CAMPUS_PATHS){ctx.beginPath();path.forEach(([x,z],i)=>i?ctx.lineTo(X(x),Z(z)):ctx.moveTo(X(x),Z(z)));ctx.stroke();}
+  ctx.fillRect(X(891),Z(828),48*k,28*k);
+  ctx.fillRect(X(643),Z(685),30*k,22*k);
+  ctx.fillRect(X(CITY_PAVING.x0),Z(CITY_PAVING.z0),(CITY_PAVING.x1-CITY_PAVING.x0)*k,(CITY_PAVING.z1-CITY_PAVING.z0)*k);
+  ctx.beginPath();ctx.ellipse(X(LAKE.centre[0]),Z(LAKE.centre[1]),LAKE.rx*1.2*k,LAKE.rz*1.2*k,0,0,Math.PI*2);ctx.fill();
+  for(let x=-1050;x<1050;x+=6)ctx.fillRect(X(x),Z(riverZ(x)-riverWidth(x)/2-25),7*k,(riverWidth(x)+50)*k);
+  ctx.fillRect(X(AIRPORT.x0),Z(AIRPORT.z0),(AIRPORT.x1-AIRPORT.x0)*k,(AIRPORT.z1-AIRPORT.z0)*k);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.NoColorSpace;
-  t.flipY = false; // row 0 of the canvas is the north edge (z = −WORLD_HALF)
+  t.flipY = false; // row 0 of the canvas is the north edge (z = −PLAY_HALF)
   t.magFilter = THREE.LinearFilter;
   t.minFilter = THREE.LinearFilter;
   t.generateMipmaps = false;
@@ -173,7 +184,7 @@ const UNIFORMS = {
   uCentre: { value: new THREE.Vector2() },
   uField: { value: 72 },
   uMask: { value: null as THREE.Texture | null },
-  uWorldHalf: { value: WORLD_HALF },
+  uWorldHalf: { value: PLAY_HALF },
   uPlayer: { value: new THREE.Vector3() },
 };
 
@@ -250,3 +261,4 @@ export function Grass() {
 
   return <mesh geometry={geo} material={material} frustumCulled={false} receiveShadow />;
 }
+

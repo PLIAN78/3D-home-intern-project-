@@ -19,6 +19,7 @@ import { FullMap } from "./ui/MapView";
 import { PlacePanel } from "./ui/PlacePanels";
 import { JobOverlay } from "./ui/WorkGames";
 import { GameEnvironment } from "./world/Environment";
+import { V6Panel } from "./ui/V6Panel";
 import { World } from "./world/World";
 
 export function App() {
@@ -70,6 +71,7 @@ export function App() {
           <PerformanceMonitor onDecline={() => quality.auto && useQuality.getState().set("low", true)} flipflops={2} />
           <Suspense fallback={null}>
             <GameEnvironment />
+            {phase !== "title" && <>
             <World />
             <Npcs />
             <Goats />
@@ -81,6 +83,7 @@ export function App() {
             <Town />
             <FollowCamera />
             <Director />
+            </>}
             <PostFX />
           </Suspense>
         </Canvas>
@@ -92,6 +95,7 @@ export function App() {
       <FullMap />
       <PlacePanel />
       <JobOverlay />
+      <V6Panel />
       <Ending />
       {phase === "title" && <Title />}
     </div>

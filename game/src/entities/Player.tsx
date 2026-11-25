@@ -16,11 +16,12 @@ import { VEHICLE_SPOTS } from "../story/missions";
 import { useGame, type GameState } from "../story/store";
 import { BOOST } from "../story/work";
 import { MY_SEAT } from "../world/office";
+import { useV6 } from "../story/v6Store";
 import { LAKE_Y } from "../world/terrain";
 
 /** Anything that takes over the screen (dialogs, panels, mini-games, the map) pauses the controls. */
 export function isBusy(g: GameState) {
-  return g.phase !== "playing" || g.dialog !== null || g.minigame !== null || g.shopOpen || g.mapOpen || g.panel !== null || g.job !== null;
+  return useV6.getState().panel !== null || useV6.getState().ride !== null || g.phase !== "playing" || g.dialog !== null || g.minigame !== null || g.shopOpen || g.mapOpen || g.panel !== null || g.job !== null;
 }
 
 /** What the hotbar shows as active, from what the player is controlling. */
@@ -29,17 +30,18 @@ export function modeOf(sim: Simulation): ModeId {
   if (c.kind === "vehicle" || c.kind === "animal") return c.id;
   if (c.kind === "heli") return "heli";
   if (c.kind === "boat") return "boat";
+  if(c.kind==="plane")return "plane";
   return sim.player.jetpack ? "jetpack" : "walk";
 }
 
 /** Which piece of gear a ride is (to check you own it). */
-export function gearOfRide(r: Exclude<Ride, { kind: "boat" }>): GearId {
+export function gearOfRide(r: Exclude<Ride, { kind: "boat" }|{kind:"plane"}>): GearId {
   return r.kind === "heli" ? "heli" : r.id;
 }
 
 /** Can you get in or on this? The lake boat is free; the school bus is lent for the co-op run. */
 export function canRide(r: Ride, g: GameState) {
-  if (r.kind === "boat") return true;
+  if (r.kind === "boat"||r.kind==="plane") return true;
   if (r.kind === "vehicle" && r.id === "bus") return g.coop === "hired" || g.coop === "riding" || g.coop === "done";
   return g.owned[gearOfRide(r)];
 }
@@ -172,7 +174,8 @@ function rideFor(id: GearId): Ride | null {
 
 function positionOf(s: Simulation, r: Ride) {
   if (r.kind === "heli") return s.heli;
-  if (r.kind === "boat") return s.boat;
+  if (r.kind === "boat") return s.boats[r.id??"lake-boat"];
+  if(r.kind==="plane")return s.planes[r.id];
   if (r.kind === "animal") return s.animals[r.id] ?? null;
   const v = s.vehicles[r.id];
   return v ? v.position : null;
@@ -185,7 +188,7 @@ function handleControls(s: Simulation, g: ReturnType<typeof useGame.getState>, b
   if (wasPressed("KeyF")) {
     if (c.kind !== "foot") {
       const f = s.focus();
-      const airborne = c.kind === "heli" && !f.grounded;
+      const airborne = (c.kind === "heli"||c.kind==="plane") && !f.grounded;
       if (Math.abs(f.speed) < 6 && !airborne) {
         if (s.exit()) {
           sfx("blip");

@@ -10,7 +10,7 @@ import { objective, useGame } from "../story/store";
 import { GearIcon, LockIcon, MapIcon } from "./icons";
 import { Minimap } from "./MapView";
 
-const NAMES: Record<ModeId, string> = { walk: "On foot", boat: "Lakerunner boat", ...Object.fromEntries(Object.values(GEAR).map((g) => [g.id, g.name])) } as Record<ModeId, string>;
+const NAMES: Record<ModeId, string> = { walk: "On foot", boat: "Watercraft", plane:"Training plane", ...Object.fromEntries(Object.values(GEAR).map((g) => [g.id, g.name])) } as Record<ModeId, string>;
 
 /** Live readout for the current way of getting around: speed, jetpack fuel, or altitude. */
 function Gauge() {
@@ -40,7 +40,7 @@ function Gauge() {
         {Math.round(v.speed)}
         <span>km/h</span>
       </div>
-      {mode === "heli" && <div className="gauge-sub">Altitude {Math.round(v.alt)} m</div>}
+      {(mode === "heli"||mode==="plane") && <div className="gauge-sub">Altitude {Math.round(v.alt)} m</div>}
     </div>
   );
 }
@@ -166,6 +166,7 @@ export function Hud() {
           )}
         </div>
         <SideJobs />
+        {mode==="plane"&&<div className="panel hint">W/S throttle · A/D steer · Space take off/climb · Shift descend · F exit when stopped</div>}
         {!delivery && deliveries === 0 && obj && progress.mission >= 2 && (
           <div className="hint">
             Need cash? Bring a pickup to the factory dock for delivery runs. <Distance target={DEPOT} />
@@ -276,3 +277,4 @@ export function Hud() {
     </div>
   );
 }
+

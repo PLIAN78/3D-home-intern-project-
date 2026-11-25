@@ -5,6 +5,8 @@
  * Pure functions: no three.js, no React.
  */
 
+import { riverZ, riverWidth, riverDistance, islandRadius, inRiver, inNorthCity, nearV6Development, CAMPUS, AIRPORT, SUBURBS, SUBURB_ROADS, distanceToSegment, V6_BUILDINGS } from "./v6";
+
 export type P2 = [number, number];
 
 /** Flat community ground ends here (Chebyshev distance from the centre). */
@@ -51,11 +53,8 @@ const smoothstep = (e0: number, e1: number, x: number) => {
 };
 
 /** Natural hills before any roads are cut in. */
-export function naturalHeight(x: number, z: number) {
-  const r = Math.max(Math.abs(x), Math.abs(z));
-  const t = smoothstep(FLAT_HALF, FLAT_HALF + 500, r);
-  const far = smoothstep(900, 2600, r);
-  return t * (fbm(x * 0.0022, z * 0.0022) * 90 + 6) + far * 180 * fbm(x * 0.0009 + 3.1, z * 0.0009);
+export function naturalHeight(x:number,z:number) {
+ return smoothstep(390,1050,z)*(1.6+5.2*fbm(x*.0022+4,z*.0022));
 }
 
 /** Rosa's cottage on the south-west hills, and where Peanut the elephant wandered off to. */
@@ -68,7 +67,7 @@ export const LAKE = { centre: [-690, -650] as P2, rx: 190, rz: 150, island: 28 }
 export const DOCK_LAND: P2 = [-556, -529];
 
 /** Owawa: a downtown on a levelled plateau in the north-east hills. */
-export const OWAWA = { centre: [690, -660] as P2, half: 175 };
+export const OWAWA = { centre: [690, -760] as P2, half: 175 };
 
 const PROFILE_STEP = 6;
 const MAX_GRADE = 0.11;
@@ -188,7 +187,7 @@ export const OWAWA_ROAD = new CountryRoad("Owawa Road", [
   [480, -60],
   [560, -190],
   [630, -320],
-  [675, -430],
+  [690, -430],
   [690, OWAWA.centre[1] + OWAWA.half],
 ], 9);
 
@@ -216,9 +215,9 @@ const COTTAGE_PAD = 26;
 const cottageHeight = COTTAGE_ROAD.endHeight;
 export const COTTAGE_Y = cottageHeight;
 /** Lake surface: a little below where Lake Road reaches the shore. */
-export const LAKE_Y = LAKE_ROAD.endHeight - 1.6;
+export const LAKE_Y = -1.4;
 /** Owawa's ground level: where Owawa Road arrives. */
-export const CITY_Y = OWAWA_ROAD.endHeight;
+export const CITY_Y = 0;
 
 /** 0 at the lake's centre, 1 on the shoreline. */
 export function lakeRadius(x: number, z: number) {
@@ -226,36 +225,32 @@ export function lakeRadius(x: number, z: number) {
 }
 
 export function inLake(x: number, z: number) {
-  return lakeRadius(x, z) < 1 && Math.hypot(x - LAKE.centre[0], z - LAKE.centre[1]) > LAKE.island;
+  return islandRadius(x,z)>1.18 && (inRiver(x,z) || lakeRadius(x,z)<1);
 }
 
 /** Ground height anywhere: hills, with the lake, the city, the cottage yard and the roads worked in. */
-export function terrainHeight(x: number, z: number) {
-  const r = Math.max(Math.abs(x), Math.abs(z));
-  if (r < FLAT_HALF - 4) return 0;
-  let h = naturalHeight(x, z);
-  // Heron Lake: shelving bed, a gentle bank, and the island.
-  const e = lakeRadius(x, z);
-  if (e < 1.4) {
-    // Inside the shoreline the bank keeps falling smoothly, so there's no step at the water's edge.
-    if (e < 1) h = LAKE_Y + 1.2 - Math.min(7.2, (1 - e) * 38);
-    else h += (LAKE_Y + 1.2 - h) * smoothstep(1.4, 1.0, e);
-    const di = Math.hypot(x - LAKE.centre[0], z - LAKE.centre[1]);
-    if (di < LAKE.island * 1.5) h = Math.max(h, LAKE_Y - 2.5 + 6 * smoothstep(LAKE.island * 1.5, LAKE.island * 0.55, di));
-  }
-  // Owawa's plateau.
-  const [ox, oz] = OWAWA.centre;
-  const dq = Math.max(Math.abs(x - ox), Math.abs(z - oz)) - OWAWA.half;
-  if (dq < 45) h += (CITY_Y - h) * smoothstep(45, 0, dq);
-  // The cottage yard, then the roads on top, so each drive meets its end exactly.
-  const dc = Math.hypot(x - COTTAGE.position[0], z - COTTAGE.position[1]);
-  if (dc < COTTAGE_PAD + 22) h += (cottageHeight - h) * smoothstep(COTTAGE_PAD + 22, COTTAGE_PAD, dc);
-  const road = nearestCountryRoad(x, z);
-  if (road.d < 34) {
-    const k = smoothstep(30, road.road.width / 2 + 2.5, road.d);
-    h += (road.road.heightAt(road.s) - h) * k;
-  }
-  return h;
+export function terrainHeight(x:number,z:number) {
+ let h=naturalHeight(x,z);
+ const outside=(r:{x0:number;z0:number;x1:number;z1:number})=>Math.hypot(Math.max(r.x0-x,0,x-r.x1),Math.max(r.z0-z,0,z-r.z1));
+ for(const r of [CAMPUS,AIRPORT,...SUBURBS])h*=smoothstep(0,65,outside(r));
+ const road=nearestCountryRoad(x,z);
+ if(road.d<40)h+=(road.road.heightAt(road.s)-h)*smoothstep(40,road.road.width/2+2,road.d);
+ for(const rd of SUBURB_ROADS){const d=distanceToSegment(x,z,rd.from,rd.to);if(d<45)h*=smoothstep(rd.width/2+rd.sidewalkWidth+rd.boulevardWidth,45,d);}
+ const dc=Math.hypot(x-COTTAGE.position[0],z-COTTAGE.position[1]);
+ if(dc<60)h+=(cottageHeight-h)*smoothstep(60,COTTAGE_PAD,dc);
+ const e=lakeRadius(x,z);
+ if(e<1)h=Math.min(h,LAKE_Y-4*smoothstep(1,.78,e));
+ else if(e<1.2)h=Math.min(h,LAKE_Y+(Math.max(0,h)-LAKE_Y)*smoothstep(1,1.2,e));
+ const r=riverDistance(x,z)/(riverWidth(x)/2);
+ if(r<1)h=Math.min(h,LAKE_Y-4*smoothstep(1,.62,r));
+ else if(r<1.5)h=Math.min(h,LAKE_Y+(Math.max(0,h)-LAKE_Y)*smoothstep(1,1.5,r));
+ const island=islandRadius(x,z);
+ if(island<1.18)h=Math.max(h,LAKE_Y+2.5*smoothstep(1.18,.82,island));
+ for(const bx of [-480,100,690]){
+  const lateral=Math.abs(x-bx),along=Math.abs(z-riverZ(bx)),rw=riverWidth(bx)/2;
+  if(lateral<20&&along<220&&along>rw-2){const deck=LAKE_Y+7,target=deck+(h-deck)*smoothstep(rw+24,220,along);h+=(target-h)*smoothstep(20,7,lateral);}
+ }
+ return h;
 }
 
 /** Clearing in the woods where Peanut is grazing. */
@@ -266,37 +261,27 @@ const CLEARING = 26;
  * kinds as in town, breakable like them), in bands rather than everywhere,
  * kept off the road and out of the cottage yard and Peanut's clearing.
  */
-export const HILL_TREES: { position: P2; y: number; scale: number; variant: 0 | 1 | 2 }[] = (() => {
-  const out: { position: P2; y: number; scale: number; variant: 0 | 1 | 2 }[] = [];
-  const rand = (i: number) => hash(i * 1.37 + 0.5, i * 2.71 + 0.25);
-  const edge = PLAY_HALF - 14;
-  for (let i = 0; out.length < 1100 && i < 30000; i++) {
-    const x = (rand(i) * 2 - 1) * edge;
-    const z = (rand(i + 50000) * 2 - 1) * edge;
-    if (Math.max(Math.abs(x), Math.abs(z)) < FLAT_HALF + 18) continue;
-    if (fbm(x * 0.004 + 7, z * 0.004) < 0.47) continue;
-    if (nearestCountryRoad(x, z).d < 9) continue;
-    if (lakeRadius(x, z) < 1.25) continue;
-    if (Math.max(Math.abs(x - OWAWA.centre[0]), Math.abs(z - OWAWA.centre[1])) < OWAWA.half + 25) continue;
-    if (Math.hypot(x - COTTAGE.position[0], z - COTTAGE.position[1]) < 36) continue;
-    if (Math.hypot(x - ELEPHANT_SPOT[0], z - ELEPHANT_SPOT[1]) < CLEARING) continue;
-    const y = terrainHeight(x, z);
-    const conifer = y > 45 || rand(i + 90000) < 0.35;
-    out.push({ position: [x, z], y, scale: 0.9 + rand(i + 70000) * 0.7, variant: conifer ? 1 : rand(i + 80000) < 0.5 ? 0 : 2 });
-  }
-  // A few pines and maples on Elias's island, leaving the path to his jetty clear.
-  const [cx, cz] = LAKE.centre;
-  for (let i = 0; i < 11; i++) {
-    const a = i * 2.39996 + 0.4;
-    if (Math.abs(Math.atan2(Math.sin(a - 1.27), Math.cos(a - 1.27))) < 0.55) continue;
-    const r = 5 + ((i * 7.3) % 13);
-    const x = cx + Math.cos(a) * r;
-    const z = cz + Math.sin(a) * r;
-    // Clear of Elias's shack (world/lake.ts LAKE_HUTS).
-    if (Math.hypot(x - (cx - 7), z - (cz - 6)) < 6) continue;
-    out.push({ position: [x, z], y: terrainHeight(x, z), scale: 0.8 + ((i * 0.37) % 0.6), variant: i % 3 === 0 ? 0 : 1 });
-  }
-  return out;
+export const HILL_TREES: {position:P2;y:number;scale:number;variant:0|1|2}[]=(()=>{
+ const out:{position:P2;y:number;scale:number;variant:0|1|2}[]=[];
+ const rand=(i:number)=>hash(i*1.37+.5,i*2.71+.25);
+ const add=(x:number,z:number,i:number)=>{
+  if(nearestCountryRoad(x,z).d<15 || SUBURB_ROADS.some(r=>distanceToSegment(x,z,r.from,r.to)<14))return;
+  if(lakeRadius(x,z)<1.25 || inRiver(x,z) || inNorthCity(x,z,20) || nearV6Development(x,z,12))return;
+  if(Math.hypot(x-COTTAGE.position[0],z-COTTAGE.position[1])<38 || Math.hypot(x-ELEPHANT_SPOT[0],z-ELEPHANT_SPOT[1])<CLEARING)return;
+  if(V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+7&&Math.abs(z-b.at[1])<b.size[1]/2+7))return;
+  out.push({position:[x,z],y:terrainHeight(x,z),scale:.85+rand(i+70000)*.9,variant:rand(i+80000)<.62?1:rand(i+90000)<.6?0:2});
+ };
+ let i=0;
+ for(let x=-965;x<-425;x+=14)for(let z=420;z<970;z+=14){i++;const px=x+(rand(i)-.5)*7,pz=z+(rand(i+2000)-.5)*7;if(fbm(px*.004+11,pz*.004+7)>.32)add(px,pz,i);}
+ for(let n=0;out.length<2400&&n<25000;n++){const x=(rand(n+10000)*2-1)*980,z=(rand(n+40000)*2-1)*980;
+  if(Math.max(Math.abs(x),Math.abs(z))<FLAT_HALF+15 || (x<-425&&z>420) || fbm(x*.004+7,z*.004)<.43)continue;
+  add(x,z,n+100000);
+ }
+ for(let n=0;n<14;n++){const angle=n*2.4,x=-650+Math.cos(angle)*85,z=-655+Math.sin(angle)*36;
+  if(V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+5&&Math.abs(z-b.at[1])<b.size[1]/2+5)||Math.hypot(x+697,z+656)<8)continue;
+  out.push({position:[x,z],y:terrainHeight(x,z),scale:.85+(n%4)*.13,variant:n%3===0?0:1});
+ }
+ return out;
 })();
 
 /**
@@ -318,4 +303,10 @@ export function groundAt(x: number, z: number) {
   const hd = terrainHeight(X(c), Z(r + 1));
   const he = terrainHeight(X(c + 1), Z(r + 1));
   return u + v <= 1 ? ha + (hb - ha) * u + (hd - ha) * v : he + (hd - he) * (1 - u) + (hb - he) * (1 - v);
+}
+
+/** Road decks and the interpolated heightfield use the same world coordinates. */
+export function roadSurfaceAt(x:number,z:number){
+ for(const bx of [-480,100,690])if(Math.abs(x-bx)<8&&Math.abs(z-riverZ(bx))<riverWidth(bx)/2+24)return LAKE_Y+7;
+ return groundAt(x,z);
 }

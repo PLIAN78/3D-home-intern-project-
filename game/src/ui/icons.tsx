@@ -15,6 +15,7 @@ function Svg({ children, size = 22 }: { children: ReactNode; size?: number }) {
 }
 
 const GEAR_ICONS: Record<ModeId, ReactNode> = {
+ plane:<><path d="M3 12h18M12 3v18M5 18l7-3 7 3M5 10l7-4 7 4"/></>,
   walk: (
     <>
       <circle cx="12.5" cy="4.5" r="1.9" />
@@ -215,3 +216,4 @@ export function CheckIcon({ size = 16 }: { size?: number }) {
     </Svg>
   );
 }
+

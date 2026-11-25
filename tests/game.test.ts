@@ -341,7 +341,8 @@ describe("the hills, the cottage and Peanut", () => {
     expect(terrainHeight(400, -400)).toBe(0);
     let high = 0;
     for (let x = -PLAY_HALF; x <= PLAY_HALF; x += 50) high = Math.max(high, terrainHeight(x, PLAY_HALF - 20));
-    expect(high).toBeGreaterThan(30);
+    expect(high).toBeGreaterThan(1);
+    expect(high).toBeLessThan(7);
   });
 
   it("carves a drivable road from Market Street up to the cottage", () => {
@@ -357,7 +358,8 @@ describe("the hills, the cottage and Peanut", () => {
       expect(Math.abs(terrainHeight(p.x, p.z) - h)).toBeLessThan(0.5);
     }
     const [cx, cz] = COTTAGE.position;
-    expect(terrainHeight(cx, cz)).toBeGreaterThan(20);
+    expect(terrainHeight(cx, cz)).toBeGreaterThan(0);
+    expect(terrainHeight(cx, cz)).toBeLessThan(7);
     expect(nearestOnRoad(cx, cz).d).toBeLessThan(30);
   });
 
@@ -383,3 +385,4 @@ describe("delivery runs", () => {
     }
   });
 });
+

@@ -42,7 +42,10 @@ function hillGridGeometry() {
       const z1 = -PLAY_HALF + (r + 1) * TERRAIN_STEP;
       const x0 = x1 - TERRAIN_STEP;
       const z0 = z1 - TERRAIN_STEP;
-      if (Math.max(Math.abs(x0), Math.abs(x1)) < inner && Math.max(Math.abs(z0), Math.abs(z1)) < inner) continue;
+      if (Math.max(Math.abs(x0), Math.abs(x1)) < inner && Math.max(Math.abs(z0), Math.abs(z1)) < inner) {
+        const a=(r*(n+1)+c)*3+1,b=a+3,d=a+(n+1)*3,e=d+3;
+        if(pos[a]===Math.fround(-0.04)&&pos[b]===Math.fround(-0.04)&&pos[d]===Math.fround(-0.04)&&pos[e]===Math.fround(-0.04)) continue;
+      }
       const a = r * (n + 1) + c;
       const b = a + 1;
       const d = a + n + 1;
@@ -167,3 +170,4 @@ export function RoadMarkings() {
   if (!geo) return null;
   return <mesh geometry={geo} material={mat("#e9b62a", { rough: 0.6 })} receiveShadow />;
 }
+

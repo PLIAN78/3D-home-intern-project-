@@ -1,4 +1,5 @@
 import type { Box, V2 } from "./map";
+import {riverZ,riverWidth} from "./v6";
 import { groundAt, LAKE, LAKE_Y } from "./terrain";
 
 /**
@@ -8,11 +9,17 @@ import { groundAt, LAKE, LAKE_Y } from "./terrain";
  */
 
 /** Plank decks: axis-aligned, walkable, standing on posts in the water. */
-export const JETTIES: { x0: number; z0: number; x1: number; z1: number }[] = [
-  // The public dock, running north from the shore below Lake Road.
-  { x0: -561.6, z0: -568, x1: -558.4, z1: -542 },
-  // Elias's jetty, south off the island.
-  { x0: -683.4, z0: -624, x1: -680.6, z1: -609 },
+export const JETTIES:{x0:number;z0:number;x1:number;z1:number}[]=[
+ {x0:-561.6,z0:-570,x1:-558.4,z1:-520},
+ {x0:-551,z0:-570,x1:-549,z1:-542},
+ {x0:-562,z0:-544,x1:-548,z1:-542},
+ {x0:-564,z0:-526,x1:-548,z1:-523},
+ {x0:-789,z0:-657,x1:-757,z1:-654},
+ {x0:-620,z0:-620,x1:-618,z1:-577},
+ {x0:-610,z0:-604,x1:-608,z1:-577},
+ {x0:-621,z0:-604,x1:-607,z1:-602},
+ ...[418,424].map(x=>({x0:x-1,z0:riverZ(420)-riverWidth(420)/2-12,x1:x+1,z1:riverZ(420)-riverWidth(420)/2+32})),
+ {x0:417,z0:riverZ(420)-riverWidth(420)/2+5,x1:425,z1:riverZ(420)-riverWidth(420)/2+7},
 ];
 export const DECK_Y = LAKE_Y + 0.9;
 
@@ -20,7 +27,7 @@ export const DECK_Y = LAKE_Y + 0.9;
 export const BOAT_SPOT = { at: [-555.8, -564] as V2, heading: -Math.PI / 2 };
 
 /** Elias sits at the end of his jetty, line in the water. */
-export const ELIAS = { at: [-682, -610.6] as V2, facing: Math.PI / 2, name: "Elias · Fisherman" };
+export const ELIAS = { at: [-776, -655.5] as V2, facing: Math.PI / 2, name: "Elias · Fisherman" };
 
 /** The tackle box that floated away: somewhere in the lake's north-west. */
 export const TACKLE_BOX: V2 = [-810, -720];
@@ -57,3 +64,4 @@ export function deckAt(x: number, z: number) {
 }
 
 export { LAKE, LAKE_Y };
+

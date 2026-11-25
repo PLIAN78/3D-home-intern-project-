@@ -227,3 +227,4 @@ export function BoatModel({ speed }: { speed: () => number }) {
     </group>
   );
 }
+

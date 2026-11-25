@@ -7,6 +7,9 @@ import { COTTAGE, COTTAGE_Y, nearestCountryRoad } from "./terrain";
 import { OFFICE, officeBoxes } from "./office";
 import { lakeBoxes } from "./lake";
 import { owawaBoxes } from "./owawa";
+import { V6_LOTS } from "./v6Lots";
+import { SUBURB_ROADS, V6_BUILDINGS } from "./v6";
+import { v6Boxes } from "./v6Geometry";
 import type { VehicleId } from "../sim/vehicle";
 
 /**
@@ -247,6 +250,7 @@ function startingStages(lots: Lot[]): Record<string, StageId> {
   let k = 0;
   let e = 0;
   for (const l of lots) {
+    if(l.id.startsWith("v6-")) {const n=Number(l.id.slice(7));if(n%7===0)stages[l.id]="permits";else if(n%5===0)stages[l.id]="framing";else if(n%9===0)stages[l.id]="foundation";continue;}
     const n = Number(l.number);
     if (isEastLot(n)) {
       if (e % 5 !== 4) stages[l.id] = east[e % east.length];
@@ -312,6 +316,7 @@ function buildTrees(lots: Lot[]): Tree[] {
   const rand = mulberry32(7);
   const trees: Tree[] = [];
   const tryPlace = (x: number, z: number, variant?: 0 | 1 | 2, pad = 3) => {
+    if(V6_BUILDINGS.some(b=>Math.abs(x-b.at[0])<b.size[0]/2+pad+1&&Math.abs(z-b.at[1])<b.size[1]/2+pad+1))return;
     if (!isOpenGround(x, z, lots, pad)) return;
     if (CLEARINGS.some((c) => x > c.min[0] && x < c.max[0] && z > c.min[1] && z < c.max[1])) return;
     trees.push({ position: [x, z], scale: 0.85 + rand() * 0.8, variant: variant ?? ((Math.floor(rand() * 3)) as 0 | 1 | 2) });
@@ -330,7 +335,8 @@ function buildTrees(lots: Lot[]): Tree[] {
   return trees;
 }
 
-const LOTS = buildLots();
+const LOTS = [...buildLots(), ...V6_LOTS];
+ROADS.push(...SUBURB_ROADS);
 
 export const CAIVAN_RIDGE: Community = {
   id: "caivan-ridge",
@@ -402,7 +408,7 @@ export function collisionBoxes(stages: Record<string, StageId>): Box[] {
   boxes.push({ x0: cx - 6, z0: cz - 4.5 - 2.4, x1: cx + 6, z1: cz - 4.5, h: 0.45, kind: "landmark", id: "porch", y: COTTAGE_Y });
   for (const c of [...PARKED_CARS, ...DISPLAY_CARS]) boxes.push({ x0: c.x - 0.95, z0: c.z - 2.3, x1: c.x + 0.95, z1: c.z + 2.3, h: 1.4, kind: "landmark", id: "parked" });
   for (const c of CRANES) boxes.push({ x0: c.x - 1.1, z0: c.z - 1.1, x1: c.x + 1.1, z1: c.z + 1.1, h: c.height, kind: "landmark", id: "crane" });
-  boxes.push(...lakeBoxes(), ...owawaBoxes());
+  boxes.push(...lakeBoxes(), ...owawaBoxes(), ...v6Boxes());
   for (const g of SIGNS) {
     const along = Math.abs(Math.cos(g.heading)) < 0.5;
     const hw = g.width / 2 + 0.25;

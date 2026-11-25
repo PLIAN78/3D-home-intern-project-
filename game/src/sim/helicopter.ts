@@ -154,3 +154,4 @@ export class HelicopterController {
     this.body.setNextKinematicRotation(quatFromHeading(this.heading));
   }
 }
+

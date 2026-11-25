@@ -1,4 +1,5 @@
 import { useFrame } from "@react-three/fiber";
+import { useV6, v6Offer } from "./v6Store";
 import { BLUEPRINTS, inPen } from "./collectibles";
 import { GEAR } from "./economy";
 import { alreadySatisfied, currentStep, GEAR_GARAGE, NPC_SPOTS } from "./missions";
@@ -22,7 +23,8 @@ let appliedStages = -1;
 
 function rideName(r: Ride) {
   if (r.kind === "heli") return "Fly the Skylark";
-  if (r.kind === "boat") return "Take the Lakerunner boat";
+  if (r.kind === "boat") return r.id?.endsWith("ship")?"Board the motor ship":"Take the motorboat";
+  if(r.kind==="plane")return "Fly the "+r.id+" - F to board";
   if (r.kind === "vehicle" && r.id === "bus") return "Drive the school bus";
   if (r.kind === "animal") return r.id === "horse" ? "Ride Biscuit" : "Ride Peanut";
   return `Get in the ${VEHICLES[r.id].name}`;
@@ -67,6 +69,8 @@ export function Director() {
         host.sim.setStages(g.stages);
       }
     }
+    const v6 = useV6.getState();
+    if (v6.ride !== null && !v6.panel) { const v=v6Offer(); g.setPrompt(v?.text ?? null); if(wasPressed("KeyE"))v?.run(); endFrame();return; }
     if (busy) {
       endFrame();
       return;
@@ -79,6 +83,8 @@ export function Director() {
       prompt = text;
       action = fn;
     };
+
+    const extra=v6Offer();if(extra){g.setPrompt(extra.text);if(e)extra.run();endFrame();return;}
 
     // Story step
     const step = currentStep(g.progress);

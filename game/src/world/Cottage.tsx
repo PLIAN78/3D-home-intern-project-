@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { logs, metricBox, seamRoof } from "../render/architecture";
 import { glass, groundAsphalt, groundDirt, lumber, mat } from "../render/materials";
-import { COTTAGE, COTTAGE_ROAD, COTTAGE_Y, COUNTRY_ROADS, groundAt, type CountryRoad } from "./terrain";
+import { COTTAGE, COTTAGE_ROAD, COTTAGE_Y, COUNTRY_ROADS, groundAt, roadSurfaceAt, type CountryRoad } from "./terrain";
 import { B } from "./props";
 
 /**
@@ -32,7 +32,7 @@ function ribbon(road: CountryRoad, half: number, lift: number, from = 0, to = ro
     for (const k of ACROSS) {
       const x = c.x + nx * half * k;
       const z = c.z + nz * half * k;
-      pos.push(x, Math.max(0, groundAt(x, z)) + lift, z);
+      pos.push(x, roadSurfaceAt(x,z) + lift, z);
     }
   }
   const w = ACROSS.length;
@@ -64,7 +64,7 @@ function markings(road: CountryRoad) {
       const g = new THREE.PlaneGeometry(1.6, 0.13);
       g.rotateX(-Math.PI / 2);
       g.rotateY(-ang);
-      g.translate(p.x, Math.max(0, groundAt(p.x, p.z)) + 0.075, p.z);
+      g.translate(p.x, roadSurfaceAt(p.x,p.z) + 0.075, p.z);
       parts.push(g);
     }
     for (const side of [-1, 1]) {
@@ -73,7 +73,7 @@ function markings(road: CountryRoad) {
       const g = new THREE.PlaneGeometry(1.6, 0.11);
       g.rotateX(-Math.PI / 2);
       g.rotateY(-ang);
-      g.translate(ex, Math.max(0, groundAt(ex, ez)) + 0.075, ez);
+      g.translate(ex, roadSurfaceAt(ex,ez) + 0.075, ez);
       edges.push(g);
     }
   }
@@ -307,3 +307,4 @@ export function CottageScene() {
     </group>
   );
 }
+
